@@ -1,0 +1,11 @@
+Model Information:
+* title:	Lowpoly Farm and Mill
+* source:	https://sketchfab.com/3d-models/lowpoly-farm-and-mill-29a883b0a5a7499b9335747bd6006c03
+* author:	Samer_Arab_S5 (https://sketchfab.com/Samer_Arab_S5)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Lowpoly Farm and Mill" (https://sketchfab.com/3d-models/lowpoly-farm-and-mill-29a883b0a5a7499b9335747bd6006c03) by Samer_Arab_S5 (https://sketchfab.com/Samer_Arab_S5) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
