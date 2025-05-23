@@ -9,7 +9,7 @@
 ## 📂 Project Structure
 
 - `engine/` — Core rendering engine and Vulkan abstractions.
-- `executables/visualization/` — The IK implementation is inside this folder.
+- `executables/default/` — The main implementation is inside this folder.
 - `shared/` — Common utilities and shared components.
 - `assets/` — Fonts, images, and other media assets.
 - `submodules/` — External dependencies (e.g., Eigen).
