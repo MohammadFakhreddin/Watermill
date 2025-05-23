@@ -1,8 +1,8 @@
-# Inverse kinematics :)
+# Watermill :)
 
-**A lightweight framework implemented to experiment with different aspects of inverse kinematics (IK).**
-
-<img src="assets/IK_Gif.gif"  height=400>
+**This project goal is to practice shaders and visual effects**
+<!-- 
+<img src="assets/IK_Gif.gif"  height=400> -->
 
 ---
 
