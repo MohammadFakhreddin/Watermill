@@ -1,5 +1,7 @@
 #include "MenuScene.hpp"
 
+#include <utility>
+
 #include "BedrockPath.hpp"
 #include "LogicalDevice.hpp"
 
@@ -7,7 +9,13 @@ using namespace MFA;
 
 //======================================================================================================================
 
-MenuScene::MenuScene(WebViewContainer::Params & params)
+MenuScene::MenuScene(
+    WebViewContainer::Params const & webviewParams,
+    InputParams inputParams,
+    Params menuParams
+)
+    : _inputParams(std::move(inputParams))
+    , _menuParams(std::move(menuParams))
 {
     auto const * device = LogicalDevice::Instance;
 
@@ -19,15 +27,51 @@ MenuScene::MenuScene(WebViewContainer::Params & params)
     clip.width = device->GetWindowWidth();
     clip.height = device->GetWindowHeight();
 
-    _webViewContainer = std::make_unique<WebViewContainer>(htmlPath.c_str(), clip, params);
+    _webViewContainer = std::make_unique<WebViewContainer>(htmlPath.c_str(), clip, webviewParams);
 
     QueryButtons();
-
 }
 
 //======================================================================================================================
 
-void MenuScene::Update(float deltaTime) { _webViewContainer->Update(); }
+float inputAxisCooldown = 0.0f;
+void MenuScene::Update(float deltaTime)
+{
+    _webViewContainer->Update();
+
+    if (inputAxisCooldown <= 0.0f)
+    {
+        glm::vec2 const inputAxis = _inputParams.InputAxis();
+        if (std::abs(inputAxis.y) > 0.0f)
+        {
+            inputAxisCooldown = 0.25f;
+            if (inputAxis.y > 0.0f)
+            {
+                SetSelectedButton(_selectedButton + 1);
+            }
+            else
+            {
+                SetSelectedButton(_selectedButton - 1);
+            }
+        }
+    }
+    else
+    {
+        inputAxisCooldown -= deltaTime;
+    }
+
+    if (_inputParams.IsButtonA_Pressed() == true)
+    {
+        if (_selectedButton == 0)
+        {
+            _menuParams.PlayPressed();
+        }
+        else if (_selectedButton == 1)
+        {
+            _menuParams.ScoreBoardPressed();
+        }
+    }
+}
 
 //======================================================================================================================
 

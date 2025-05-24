@@ -13,6 +13,9 @@ int main()
                                      .applicationName = "Timeshift"};
 
     auto device = LogicalDevice::Instantiate(params);
+
+    if (SDL_JoystickOpen(0) != nullptr) SDL_JoystickEventState(SDL_ENABLE);
+
     assert(device->IsValid() == true);
     {
         TimeShiftApp app{};

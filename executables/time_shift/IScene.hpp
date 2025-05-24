@@ -1,7 +1,16 @@
 #pragma once
 
 #include "RenderTypes.hpp"
-#include "WebViewContainer.hpp"
+
+#include <glm/glm.hpp>
+#include <functional>
+
+struct InputParams
+{
+    std::function<glm::vec2()> InputAxis;
+    std::function<bool()> IsButtonA_Pressed;
+    std::function<bool()> IsButtonB_Pressed;
+};
 
 class IScene
 {

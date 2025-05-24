@@ -37,6 +37,15 @@ private:
     [[nodiscard]]
     std::tuple<std::shared_ptr<MFA::RT::GpuTexture>, glm::vec2> RequestImage(char const *imageName);
 
+    [[nodiscard]]
+    glm::vec2 GetInputAxis() const { return _inputAxis;}
+
+    [[nodiscard]]
+    bool IsInputA_Pressed() const { return _inputA;}
+
+    [[nodiscard]]
+    bool IsInputB_Pressed() const { return _inputB;}
+
     std::shared_ptr<MFA::DisplayRenderPass> _displayRenderPass;
 
     std::shared_ptr<MFA::SolidFillRenderer> _solidFillRenderer;
@@ -52,4 +61,9 @@ private:
     std::unique_ptr<GameScene> _gameScene;
     std::vector<IScene *> _scenes {};
     int _activeSceneIndex = 0;
+    int _nextSceneIndex = 0;
+
+    glm::vec2 _inputAxis{};
+    bool _inputA{};
+    bool _inputB{};
 };

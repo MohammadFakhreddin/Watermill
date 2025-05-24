@@ -55,7 +55,7 @@ void TimeShiftApp::Run()
         clip.width = device->GetWindowWidth();
         clip.height = device->GetWindowHeight();
 
-        WebViewContainer::Params params
+        WebViewContainer::Params webviewParams
         {
             .solidFillRenderer = _solidFillRenderer,
             .imageRenderer = _imageRenderer,
@@ -65,9 +65,36 @@ void TimeShiftApp::Run()
             .requestImage = [this](char const * image) {return RequestImage(image);}
         };
 
-        _menuScene = std::make_unique<MenuScene>(params);
-        // _gameScene = std::make_unique<GameScene>(params);
+        InputParams inputParams
+        {
+            .InputAxis = [this]()->glm::vec2 {return GetInputAxis();},
+            .IsButtonA_Pressed = [this]()->bool {return IsInputA_Pressed();},
+            .IsButtonB_Pressed = [this]()->bool {return IsInputB_Pressed();}
+        };
+
+        MenuScene::Params menuParams
+        {
+            .PlayPressed = [this]()->void
+            {
+                MFA_LOG_INFO("Play pressed");
+                // LogicalDevice::Instance->DeviceWaitIdle();
+                _nextSceneIndex = 1;
+            },
+            .ScoreBoardPressed = [this]()->void {MFA_LOG_INFO("Scoreboard pressed");},
+        };
+
+        _menuScene = std::make_unique<MenuScene>(webviewParams, inputParams, menuParams);
+
+        GameScene::Params gameParams
+        {
+
+        };
+
+        _gameScene = std::make_unique<GameScene>(webviewParams, inputParams, gameParams);
+
         _scenes.emplace_back(_menuScene.get());
+        _scenes.emplace_back(_gameScene.get());
+
         _activeSceneIndex = 0;
     }
 
@@ -114,7 +141,16 @@ void TimeShiftApp::Run()
 
 void TimeShiftApp::Update(float const deltaTime)
 {
+    _activeSceneIndex = _nextSceneIndex;
     _scenes[_activeSceneIndex]->Update(deltaTime);
+    //
+    // MFA_LOG_INFO(
+    //     "Input axis: %f, %f\nInput A: %d, Input B: %d"
+    //     , _inputAxis.x
+    //     , _inputAxis.y
+    //     , _inputA == true ? 1 : 0
+    //     , _inputB == true ? 1 : 0
+    // );
 }
 
 //=============================================================
@@ -164,25 +200,77 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
         {
             Reload();
         }
-        else if (event->key.keysym.sym == SDLK_DOWN)
+    }
+
+    {// Keyboard
+        if (event->type == SDL_KEYDOWN || event->type == SDL_KEYUP)
         {
-            // TODO
+            auto const modifier = event->type == SDL_KEYDOWN ? 1.0f : -1.0f;
+            if (event->key.keysym.sym == SDLK_LEFT || event->key.keysym.sym == SDLK_RIGHT)
+            {
+                if (event->key.keysym.sym == SDLK_LEFT)
+                {
+                    _inputAxis.x -= modifier;
+                }
+                else if (event->key.keysym.sym == SDLK_RIGHT)
+                {
+                    _inputAxis.x += modifier;
+                }
+                _inputAxis.x = std::clamp(_inputAxis.x, -1.0f, 1.0f);
+            }
+            else if (event->key.keysym.sym == SDLK_UP || event->key.keysym.sym == SDLK_DOWN)
+            {
+                if (event->key.keysym.sym == SDLK_UP)
+                {
+                    _inputAxis.y += modifier;
+                }
+                else if (event->key.keysym.sym == SDLK_DOWN)
+                {
+                    _inputAxis.y -= modifier;
+                }
+                _inputAxis.y = std::clamp(_inputAxis.y, -1.0f, 1.0f);
+            }
+            else if(event->key.keysym.sym == SDLK_z)
+            {
+                _inputA = modifier > 0;
+            }
+            else if (event->key.keysym.sym == SDLK_x)
+            {
+                _inputB = modifier > 0;
+            }
         }
-        else if (event->key.keysym.sym == SDLK_UP)
+    }
+
+    auto ProcessJoystickAxis = [](Sint16 joyAxisValue)->float
+    {
+        constexpr Sint16 JOYSTICK_DEADZONE = 8000;
+        return joyAxisValue < -JOYSTICK_DEADZONE ? -1.0 : joyAxisValue > JOYSTICK_DEADZONE ? 1.0 : 0.0;
+    };
+
+    {// Joystick
+        if (event->type == SDL_JOYAXISMOTION)
         {
-            // TODO
+            if (event->jaxis.axis == 0)
+            {
+                _inputAxis.x = ProcessJoystickAxis(event->jaxis.value);
+            }
+            else if (event->jaxis.axis == 1)
+            {
+                _inputAxis.y = ProcessJoystickAxis(event->jaxis.value);
+            }
         }
-        else if (event->key.keysym.sym == SDLK_RIGHT)
+
+        if (event->type == SDL_JOYBUTTONDOWN || event->type == SDL_JOYBUTTONUP)
         {
-            // TODO
-        }
-        else if (event->key.keysym.sym == SDLK_LEFT)
-        {
-            // TODO
-        }
-        else if (event->key.keysym.sym == SDLK_SPACE)
-        {
-            // TODO
+            auto const modifier = (event->type == SDL_JOYBUTTONDOWN) ? 1.0f : -1.0f;
+            if (event->jbutton.button == 1 /* BUTTON A */)
+            {
+                _inputA = modifier > 0.0f;
+            }
+            else if (event->jbutton.button == 2 /* BUTTON B */)
+            {
+                _inputB = modifier > 0.0f;
+            }
         }
     }
 }
