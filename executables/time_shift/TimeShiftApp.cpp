@@ -4,6 +4,7 @@
 #include "BedrockPath.hpp"
 #include "ImportTexture.hpp"
 #include "LogicalDevice.hpp"
+#include "ScoreboardScene.hpp"
 #include "Time.hpp"
 #include "litehtml/el_text.h"
 
@@ -65,37 +66,50 @@ void TimeShiftApp::Run()
             .requestImage = [this](char const * image) {return RequestImage(image);}
         };
 
-        InputParams inputParams
         {
-            .InputAxis = [this]()->glm::vec2 {return GetInputAxis();},
-            .IsButtonA_Pressed = [this]()->bool {return IsInputA_Pressed();},
-            .IsButtonB_Pressed = [this]()->bool {return IsInputB_Pressed();}
-        };
-
-        MenuScene::Params menuParams
-        {
-            .PlayPressed = [this]()->void
+            MenuScene::Params menuParams
             {
-                MFA_LOG_INFO("Play pressed");
-                // LogicalDevice::Instance->DeviceWaitIdle();
-                _nextSceneIndex = 1;
-            },
-            .ScoreBoardPressed = [this]()->void {MFA_LOG_INFO("Scoreboard pressed");},
-        };
+                .PlayPressed = [this]()->void
+                {
+                    MFA_LOG_INFO("Play pressed");
+                    _nextSceneIndex = 1;
+                },
+                .ScoreBoardPressed = [this]()->void
+                {
+                    MFA_LOG_INFO("Scoreboard pressed");
+                    _nextSceneIndex = 2;
+                },
+            };
 
-        _menuScene = std::make_unique<MenuScene>(webviewParams, inputParams, menuParams);
+            _menuScene = std::make_unique<MenuScene>(webviewParams, menuParams);
+            _scenes.emplace_back(_menuScene.get());
+        }
 
-        GameScene::Params gameParams
         {
+            GameScene::Params gameParams
+            {
 
-        };
+            };
 
-        _gameScene = std::make_unique<GameScene>(webviewParams, inputParams, gameParams);
+            _gameScene = std::make_unique<GameScene>(webviewParams, gameParams);
+            _scenes.emplace_back(_gameScene.get());
+        }
 
-        _scenes.emplace_back(_menuScene.get());
-        _scenes.emplace_back(_gameScene.get());
+        {
+            ScoreboardScene::Params scoreboardParams
+            {
+                .BackPressed = [this]()->void
+                {
+                    MFA_LOG_INFO("Back pressed");
+                    _nextSceneIndex = 0;
+                }
+            };
+            _scoreboardScene = std::make_unique<ScoreboardScene>(webviewParams, scoreboardParams);
+            _scenes.emplace_back(_scoreboardScene.get());
+        }
 
-        _activeSceneIndex = 0;
+        _nextSceneIndex = 0;
+        _activeSceneIndex = _nextSceneIndex;
     }
 
     SDL_GL_SetSwapInterval(0);
@@ -202,6 +216,10 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
         }
     }
 
+    bool inputAxisChanged = false;
+    bool inputA_Changed = false;
+    bool inputB_Changed = false;
+
     {// Keyboard
         if (event->type == SDL_KEYDOWN || event->type == SDL_KEYUP)
         {
@@ -217,6 +235,7 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
                     _inputAxis.x += modifier;
                 }
                 _inputAxis.x = std::clamp(_inputAxis.x, -1.0f, 1.0f);
+                inputAxisChanged = true;
             }
             else if (event->key.keysym.sym == SDLK_UP || event->key.keysym.sym == SDLK_DOWN)
             {
@@ -229,14 +248,17 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
                     _inputAxis.y -= modifier;
                 }
                 _inputAxis.y = std::clamp(_inputAxis.y, -1.0f, 1.0f);
+                inputAxisChanged = true;
             }
             else if(event->key.keysym.sym == SDLK_z)
             {
                 _inputA = modifier > 0;
+                inputA_Changed = true;
             }
             else if (event->key.keysym.sym == SDLK_x)
             {
                 _inputB = modifier > 0;
+                inputB_Changed = true;
             }
         }
     }
@@ -253,10 +275,12 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
             if (event->jaxis.axis == 0)
             {
                 _inputAxis.x = ProcessJoystickAxis(event->jaxis.value);
+                inputAxisChanged = true;
             }
             else if (event->jaxis.axis == 1)
             {
                 _inputAxis.y = ProcessJoystickAxis(event->jaxis.value);
+                inputAxisChanged = true;
             }
         }
 
@@ -266,12 +290,29 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
             if (event->jbutton.button == 1 /* BUTTON A */)
             {
                 _inputA = modifier > 0.0f;
+                inputA_Changed = true;
             }
             else if (event->jbutton.button == 2 /* BUTTON B */)
             {
                 _inputB = modifier > 0.0f;
+                inputB_Changed = true;
             }
         }
+    }
+
+    if (inputAxisChanged == true)
+    {
+        _scenes[_activeSceneIndex]->UpdateInputAxis(_inputAxis);
+    }
+
+    if (inputA_Changed == true)
+    {
+        _scenes[_activeSceneIndex]->ButtonA_Changed(_inputA);
+    }
+
+    if (inputB_Changed == true)
+    {
+        _scenes[_activeSceneIndex]->ButtonB_Pressed(_inputB);
     }
 }
 

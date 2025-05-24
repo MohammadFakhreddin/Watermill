@@ -11,11 +11,9 @@ using namespace MFA;
 
 GameScene::GameScene(
     WebViewContainer::Params const & webviewParams,
-    InputParams  inputParams,
     Params gameParams
 )
-    : _inputParams(std::move(inputParams))
-    , _gameParams(std::move(gameParams))
+    : _gameParams(std::move(gameParams))
 {
     auto const * device = MFA::LogicalDevice::Instance;
 
@@ -70,7 +68,7 @@ void GameScene::Resize()
 
 void GameScene::Reload()
 {
-    auto const * device = LogicalDevice::Instance;
+    auto const *device = LogicalDevice::Instance;
 
     litehtml::position clip;
     clip.x = 0;
@@ -80,5 +78,11 @@ void GameScene::Reload()
 
     _webViewContainer->OnReload(clip);
 }
+
+//======================================================================================================================
+
+void GameScene::UpdateInputAxis(const glm::vec2 &inputAxis) {}
+void GameScene::ButtonA_Changed(bool value) {}
+void GameScene::ButtonB_Pressed(bool value) {}
 
 //======================================================================================================================

@@ -1,24 +1,21 @@
-#include "MenuScene.hpp"
-
-#include <utility>
+#include "ScoreboardScene.hpp"
 
 #include "BedrockPath.hpp"
 #include "LogicalDevice.hpp"
-#include "Time.hpp"
 
 using namespace MFA;
 
 //======================================================================================================================
 
-MenuScene::MenuScene(
+ScoreboardScene::ScoreboardScene(
     WebViewContainer::Params const & webviewParams,
-    Params menuParams
+    Params params
 )
-    : _menuParams(std::move(menuParams))
+    : _params(std::move(params))
 {
     auto const * device = LogicalDevice::Instance;
 
-    auto const htmlPath = Path::Instance()->Get("ui/menu/Menu.html");
+    auto const htmlPath = Path::Instance()->Get("ui/scoreboard/Scoreboard.html");
 
     litehtml::position clip;
     clip.x = 0;
@@ -27,34 +24,32 @@ MenuScene::MenuScene(
     clip.height = device->GetWindowHeight();
 
     _webViewContainer = std::make_unique<WebViewContainer>(htmlPath.c_str(), clip, webviewParams);
-
-    QueryButtons();
 }
 
 //======================================================================================================================
 
-void MenuScene::Update(float deltaTime)
+void ScoreboardScene::Update(float deltaTime)
 {
     _webViewContainer->Update();
 }
 
 //======================================================================================================================
 
-void MenuScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
+void ScoreboardScene::UpdateBuffer(RT::CommandRecordState &recordState)
 {
     _webViewContainer->UpdateBuffer(recordState);
 }
 
 //======================================================================================================================
 
-void MenuScene::Render(MFA::RT::CommandRecordState &recordState)
+void ScoreboardScene::Render(RT::CommandRecordState &recordState)
 {
     _webViewContainer->DisplayPass(recordState);
 }
 
 //======================================================================================================================
 
-void MenuScene::Resize()
+void ScoreboardScene::Resize()
 {
     auto const *device = LogicalDevice::Instance;
 
@@ -69,7 +64,7 @@ void MenuScene::Resize()
 
 //======================================================================================================================
 
-void MenuScene::Reload()
+void ScoreboardScene::Reload()
 {
     auto const *device = LogicalDevice::Instance;
 
@@ -84,83 +79,26 @@ void MenuScene::Reload()
 
 //======================================================================================================================
 
-float cooldownEndTime = 0.0f;
-void MenuScene::UpdateInputAxis(const glm::vec2 &inputAxis)
+void ScoreboardScene::UpdateInputAxis(const glm::vec2 &inputAxis)
 {
-    auto const now = Time::NowSec();
-    if (std::abs(inputAxis.y) > 0.0f && now > cooldownEndTime)
-    {
-        if (inputAxis.y > 0.0f)
-        {
-            SetSelectedButton(_selectedButton + 1);
-        }
-        else
-        {
-            SetSelectedButton(_selectedButton - 1);
-        }
-        cooldownEndTime = Time::NowSec() + 0.25f;
-    }
+
 }
 
-void MenuScene::ButtonA_Changed(bool value)
+//======================================================================================================================
+
+void ScoreboardScene::ButtonA_Changed(bool value)
 {
     if (value == true)
     {
-        if (_selectedButton == 0)
-        {
-            _menuParams.PlayPressed();
-        }
-        else if (_selectedButton == 1)
-        {
-            _menuParams.ScoreBoardPressed();
-        }
+        _params.BackPressed();
     }
-}
-
-void MenuScene::ButtonB_Pressed(bool value)
-{
-
 }
 
 //======================================================================================================================
 
-void MenuScene::QueryButtons()
+void ScoreboardScene::ButtonB_Pressed(bool value)
 {
-    _buttons.clear();
-    {
-        auto const element = _webViewContainer->GetElementById("play");
-        if (element != nullptr)
-        {
-            _buttons.emplace_back(element);
-        }
-    }
-    {
-        auto const element = _webViewContainer->GetElementById("scoreboard");
-        if (element != nullptr)
-        {
-            _buttons.emplace_back(element);
-        }
-    }
-    SetSelectedButton(0);
-}
 
-//======================================================================================================================
-
-void MenuScene::SetSelectedButton(int const index)
-{
-    _selectedButton = (index + (int)_buttons.size()) % (int)_buttons.size();
-
-    for (const auto & button : _buttons)
-    {
-        _webViewContainer->RemoveClass(button, "selected");
-        _webViewContainer->AddClass(button, "unselected");
-    }
-
-    if (_selectedButton >= 0)
-    {
-        _webViewContainer->RemoveClass(_buttons[_selectedButton], "unselected");
-        _webViewContainer->AddClass(_buttons[_selectedButton], "selected");
-    }
 }
 
 //======================================================================================================================

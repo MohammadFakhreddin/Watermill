@@ -14,7 +14,6 @@ public:
 
     explicit GameScene(
         WebViewContainer::Params const &webviewParams,
-        InputParams inputParams,
         Params gameParams
     );
 
@@ -28,13 +27,18 @@ public:
 
     void Reload() override;
 
+    void UpdateInputAxis(const glm::vec2 &inputAxis) override;
+
+    void ButtonA_Changed(bool value) override;
+
+    void ButtonB_Pressed(bool value) override;
+
 private:
 
     std::unique_ptr<WebViewContainer> _webViewContainer;
     std::vector<litehtml::element::ptr> _buttons{};
     int _selectedButton = 0;
 
-    InputParams _inputParams;
     Params _gameParams;
 
 };

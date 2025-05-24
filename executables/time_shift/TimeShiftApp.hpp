@@ -1,10 +1,11 @@
 #pragma once
 
-#include "RenderTypes.hpp"
-#include "render_pass/DisplayRenderPass.hpp"
-#include "WebViewContainer.hpp"
-#include "MenuScene.hpp"
 #include "GameScene.hpp"
+#include "MenuScene.hpp"
+#include "RenderTypes.hpp"
+#include "ScoreboardScene.hpp"
+#include "WebViewContainer.hpp"
+#include "render_pass/DisplayRenderPass.hpp"
 
 class TimeShiftApp
 {
@@ -59,6 +60,8 @@ private:
 
     std::unique_ptr<MenuScene> _menuScene;
     std::unique_ptr<GameScene> _gameScene;
+    std::unique_ptr<ScoreboardScene> _scoreboardScene;
+
     std::vector<IScene *> _scenes {};
     int _activeSceneIndex = 0;
     int _nextSceneIndex = 0;

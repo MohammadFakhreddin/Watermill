@@ -3,19 +3,18 @@
 #include "IScene.hpp"
 #include "WebViewContainer.hpp"
 
-class MenuScene final : public IScene
+class ScoreboardScene final : public IScene
 {
 public:
 
     struct Params
     {
-        std::function<void()> PlayPressed;
-        std::function<void()> ScoreBoardPressed;
+        std::function<void()> BackPressed;
     };
 
-    explicit MenuScene(
+    explicit ScoreboardScene(
         WebViewContainer::Params const & webviewParams,
-        Params  menuParams
+        Params  params
     );
 
     void Update(float deltaTime) override;
@@ -36,15 +35,9 @@ public:
 
 private:
 
-    void QueryButtons();
-
-    void SetSelectedButton(int index);
-
-private:
-    Params _menuParams;
+    Params _params;
 
     std::unique_ptr<WebViewContainer> _webViewContainer;
     std::vector<litehtml::element::ptr> _buttons{};
     int _selectedButton = 0;
-
 };
