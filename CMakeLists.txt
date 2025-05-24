@@ -94,6 +94,11 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/engine/libs/libconfig/tiny_gltf
 add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/SDL2")
 include_directories("${CMAKE_SOURCE_DIR}/submodules/SDL2/include")
 
+### Litehtml #############################################
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/webview/litehtml")
+include_directories("${CMAKE_SOURCE_DIR}/webview/litehtml/include")
+
 ### Linking libraries ####################################
 
 if(OpenMP_CXX_FOUND)
@@ -158,9 +163,22 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/engine/render_system")
 include_directories("${CMAKE_SOURCE_DIR}/engine/render_system")
 link_libraries(RenderSystem)
 
+### Shared ###############################################
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/shared")
+include_directories("${CMAKE_SOURCE_DIR}/shared")
+link_libraries(Shared)
+
+### WebView #############################################
+
+link_libraries(litehtml)
+add_subdirectory("${CMAKE_SOURCE_DIR}/webview")
+include_directories("${CMAKE_SOURCE_DIR}/webview")
+link_libraries(Webview)
 
 ##########################################################
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/executables/default")
+add_subdirectory("${CMAKE_SOURCE_DIR}/executables/time_shift")
 
 ##########################################################

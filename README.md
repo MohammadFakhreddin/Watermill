@@ -22,7 +22,7 @@ First, ensure you have installed the Vulkan SDK and CMake (version 3.10+).
 
 1. Clone the repository with submodules:
    ```bash
-   git clone --recurse-submodules https://github.com/MohammadFakhreddin/WebView.git
+   git clone --recurse-submodules https://github.com/MohammadFakhreddin/Watermill.git
 
 2. Create a build directory:
    ```bash

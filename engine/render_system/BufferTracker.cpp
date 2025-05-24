@@ -72,7 +72,21 @@ namespace MFA
     }
 
     //-----------------------------------------------------------------------------------------------
-    
+
+    LocalBufferTracker::LocalBufferTracker(
+        std::shared_ptr<RT::BufferGroup> localBuffer,
+        std::shared_ptr<RT::BufferGroup> hostVisibleBuffer,
+        Alias const & data
+    )
+        : mLocalBuffer(std::move(localBuffer))
+        , mHostVisibleBuffer(std::move(hostVisibleBuffer))
+    {
+        mData = Memory::AllocSize(mLocalBuffer->bufferSize);
+        SetData(data);
+    }
+
+    //-----------------------------------------------------------------------------------------------
+
     LocalBufferTracker::LocalBufferTracker(
         std::shared_ptr<RT::BufferGroup> localBuffer,
         std::shared_ptr<RT::BufferGroup> hostVisibleBuffer
