@@ -613,7 +613,7 @@ void WebViewContainer::draw_text(
     auto const findResult = _activeState->textMap.find(hash);
     if (findResult == _activeState->textMap.end())
     {
-        textData = fontData.renderer->AllocateTextData(4096);
+        textData = fontData.renderer->AllocateTextData(std::max<int>(1024, strlen(text)));
         _activeState->textMap[hash] = textData;
     }
     else

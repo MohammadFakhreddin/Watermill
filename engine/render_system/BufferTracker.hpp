@@ -1,6 +1,5 @@
 #pragma once
 
-#include "BedrockAssert.hpp"
 #include "RenderBackend.hpp"
 #include "RenderTypes.hpp"
 
@@ -21,11 +20,10 @@ namespace MFA
         [[nodiscard]]
         uint8_t * Data();
 
-        [[nodiscard]]
-        std::shared_ptr<RT::BufferGroup> const & HostVisibleBuffer() const;
+        RT::BufferGroup const & HostVisibleBuffer();
 
     private:
-        
+
         std::shared_ptr<RT::BufferGroup> mBufferGroup;
         int mDirtyCounter = 0;
         std::unique_ptr<Blob> mData {};
@@ -55,10 +53,10 @@ namespace MFA
         uint8_t * Data();
 
         [[nodiscard]]
-        std::shared_ptr<RT::BufferGroup> const & HostVisibleBuffer() const;
+        RT::BufferGroup const & HostVisibleBuffer() const;
 
         [[nodiscard]]
-        std::shared_ptr<RT::BufferGroup> const & LocalBuffer() const;
+        RT::BufferGroup const & LocalBuffer() const;
 
     private:
 

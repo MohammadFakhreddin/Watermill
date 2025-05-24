@@ -30,7 +30,7 @@ namespace MFA
             float fontHeight
         );
 
-        std::unique_ptr<TextData> AllocateTextData(int maxCharCount = 4096);
+        std::unique_ptr<TextData> AllocateTextData(int maxCharCount = 1024);
 
         enum class HorizontalTextAlign {Center, Left, Right};
 

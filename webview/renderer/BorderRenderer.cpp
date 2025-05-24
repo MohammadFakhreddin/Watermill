@@ -150,7 +150,7 @@ namespace MFA
 
         _pipeline->SetPushConstant(recordState, pushConstants);
 
-        auto const & localBuffers = vertexBuffer.LocalBuffer()->buffers;
+        auto const & localBuffers = vertexBuffer.LocalBuffer().buffers;
         auto const & localBuffer = localBuffers[recordState.frameIndex % localBuffers.size()];
         VkBuffer buffers[2]{ localBuffer->buffer, localBuffer->buffer };
         VkDeviceSize bindingOffsets[2]{ 0,0 };

@@ -40,35 +40,28 @@ namespace MFA
         {
             RB::UpdateHostVisibleBuffer(
                 LogicalDevice::Instance->GetVkDevice(),
-                *mBufferGroup->buffers[recordState.frameIndex],
+                *mBufferGroup->buffers[recordState.frameIndex % mBufferGroup->buffers.size()],
                 Alias(mData->Ptr(), mData->Len())
             );
             --mDirtyCounter;
         }
     }
-    
+
     //-----------------------------------------------------------------------------------------------
-    
+
     void HostVisibleBufferTracker::SetData(Alias const & data)
     {
-        mDirtyCounter = mBufferGroup->buffers.size();
+        mDirtyCounter = (int)mBufferGroup->buffers.size();
         MFA_ASSERT(data.Len() <= mData->Len());
         std::memcpy(mData->Ptr(), data.Ptr(), data.Len());
     }
 
     //-----------------------------------------------------------------------------------------------
-    
-    uint8_t *HostVisibleBufferTracker::Data()
+
+    uint8_t * HostVisibleBufferTracker::Data()
     {
-        mDirtyCounter = mBufferGroup->buffers.size();
+        mDirtyCounter = (int)mBufferGroup->buffers.size();
         return mData->Ptr();
-    }
-
-    //-----------------------------------------------------------------------------------------------
-
-    std::shared_ptr<RT::BufferGroup> const &HostVisibleBufferTracker::HostVisibleBuffer() const
-    {
-        return mBufferGroup;
     }
 
     //-----------------------------------------------------------------------------------------------
@@ -96,57 +89,57 @@ namespace MFA
     {
         mData = Memory::AllocSize(mLocalBuffer->bufferSize);
     }
-    
+
     //-----------------------------------------------------------------------------------------------
-    
+
     void LocalBufferTracker::Update(RT::CommandRecordState const & recordState)
     {
         if (mDirtyCounter > 0)
         {
             RB::UpdateHostVisibleBuffer(
                 LogicalDevice::Instance->GetVkDevice(),
-                *mHostVisibleBuffer->buffers[recordState.frameIndex],
+                *mHostVisibleBuffer->buffers[recordState.frameIndex % mHostVisibleBuffer->buffers.size()],
                 Alias(mData->Ptr(), mData->Len())
             );
             RB::UpdateLocalBuffer(
                 recordState.commandBuffer,
-                *mLocalBuffer->buffers[recordState.frameIndex],
-                *mHostVisibleBuffer->buffers[recordState.frameIndex]
+                *mLocalBuffer->buffers[recordState.frameIndex % mLocalBuffer->buffers.size()],
+                *mHostVisibleBuffer->buffers[recordState.frameIndex % mHostVisibleBuffer->buffers.size()]
             );
             --mDirtyCounter;
         }
     }
 
     //-----------------------------------------------------------------------------------------------
-    
+
     void LocalBufferTracker::SetData(Alias const & data)
     {
-        mDirtyCounter = mLocalBuffer->buffers.size();
+        mDirtyCounter = (int)mLocalBuffer->buffers.size();
         MFA_ASSERT(data.Len() <= mData->Len());
         std::memcpy(mData->Ptr(), data.Ptr(), data.Len());
     }
 
     //-----------------------------------------------------------------------------------------------
-    
+
     uint8_t * LocalBufferTracker::Data()
     {
         // Returns the data and resets the counter.
-        mDirtyCounter = LogicalDevice::Instance->GetMaxFramePerFlight();
+        mDirtyCounter = (int)LogicalDevice::Instance->GetMaxFramePerFlight();
         return mData->Ptr();
-    }
-    
-    //-----------------------------------------------------------------------------------------------
-    
-    std::shared_ptr<RT::BufferGroup> const & LocalBufferTracker::HostVisibleBuffer() const
-    {
-        return mHostVisibleBuffer;
     }
 
     //-----------------------------------------------------------------------------------------------
-    
-    std::shared_ptr<RT::BufferGroup> const & LocalBufferTracker::LocalBuffer() const
+
+    RT::BufferGroup const & LocalBufferTracker::HostVisibleBuffer() const
     {
-        return mLocalBuffer;
+        return *mHostVisibleBuffer;
+    }
+
+    //-----------------------------------------------------------------------------------------------
+
+    RT::BufferGroup const & LocalBufferTracker::LocalBuffer() const
+    {
+        return *mLocalBuffer;
     }
     
     //-----------------------------------------------------------------------------------------------

@@ -215,7 +215,7 @@ namespace MFA
             _descriptorSet.descriptorSets[0]
         );
 
-        RB::BindVertexBuffer(recordState, *data.vertexData->LocalBuffer()->buffers[recordState.frameIndex]);
+        RB::BindVertexBuffer(recordState, *data.vertexData->LocalBuffer().buffers[recordState.frameIndex]);
 
         int previousLetterRange = 0;
         for (auto const& letterRange : data.letterRange)

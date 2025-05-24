@@ -117,7 +117,7 @@ namespace MFA
 
         RB::AutoBindDescriptorSet(recordState, RB::UpdateFrequency::PerPipeline, imageData.descriptorSet);
 
-    	auto const &localBuffers = imageData.vertexData->LocalBuffer()->buffers;
+    	auto const &localBuffers = imageData.vertexData->LocalBuffer().buffers;
         auto const &localBuffer = localBuffers[recordState.frameIndex % localBuffers.size()];
         VkBuffer buffers[2]{localBuffer->buffer, localBuffer->buffer};
         VkDeviceSize bindingOffsets[2]{0, 0};
