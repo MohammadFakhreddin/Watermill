@@ -6,7 +6,6 @@
 #include "LogicalDevice.hpp"
 #include "ScoreboardScene.hpp"
 #include "Time.hpp"
-#include "litehtml/el_text.h"
 
 using namespace MFA;
 
@@ -213,6 +212,10 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
         if (event->key.keysym.sym == SDLK_F5)
         {
             Reload();
+        }
+        else if (event->key.keysym.sym == SDLK_F1)
+        {
+            _nextSceneIndex = 0;
         }
     }
 
