@@ -70,14 +70,14 @@ namespace MFA
 	{
 		{// Vertex shader
 			bool success = Importer::CompileShaderToSPV(
-				Path::Instance()->Get("engine/shaders/border_pipeline/BorderPipeline.vert.hlsl"),
-				Path::Instance()->Get("engine/shaders/border_pipeline/BorderPipeline.vert.spv"),
+				Path::Instance()->Get("shaders/border_pipeline/BorderPipeline.vert.hlsl"),
+				Path::Instance()->Get("shaders/border_pipeline/BorderPipeline.vert.spv"),
 				"vert"
 			);
 			MFA_ASSERT(success == true);
 		}
 		auto cpuVertexShader = Importer::ShaderFromSPV(
-			Path::Instance()->Get("engine/shaders/border_pipeline/BorderPipeline.vert.spv"),
+			Path::Instance()->Get("shaders/border_pipeline/BorderPipeline.vert.spv"),
 			VK_SHADER_STAGE_VERTEX_BIT,
 			"main"
 		);
@@ -88,14 +88,14 @@ namespace MFA
 
 		{// Fragment shader
 			bool success = Importer::CompileShaderToSPV(
-				Path::Instance()->Get("engine/shaders/border_pipeline/BorderPipeline.frag.hlsl"),
-				Path::Instance()->Get("engine/shaders/border_pipeline/BorderPipeline.frag.spv"),
+				Path::Instance()->Get("shaders/border_pipeline/BorderPipeline.frag.hlsl"),
+				Path::Instance()->Get("shaders/border_pipeline/BorderPipeline.frag.spv"),
 				"frag"
 			);
 			MFA_ASSERT(success == true);
 		}
 		auto cpuFragmentShader = Importer::ShaderFromSPV(
-			Path::Instance()->Get("engine/shaders/border_pipeline/BorderPipeline.frag.spv"),
+			Path::Instance()->Get("shaders/border_pipeline/BorderPipeline.frag.spv"),
 			VK_SHADER_STAGE_FRAGMENT_BIT,
 			"main"
 		);

@@ -1,5 +1,6 @@
 #include "BedrockLog.hpp"
 #include "LogicalDevice.hpp"
+#include "TimeShiftApp.hpp"
 
 using namespace MFA;
 
@@ -13,10 +14,10 @@ int main()
 
     auto device = LogicalDevice::Instantiate(params);
     assert(device->IsValid() == true);
-//    {
-//        EditorApp app{};
-//        app.Run();
-//    }
+    {
+        TimeShiftApp app{};
+        app.Run();
+    }
     MFA_LOG_INFO("Beginning of a legend");
 
     return 0;

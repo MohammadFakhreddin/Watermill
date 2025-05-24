@@ -27,7 +27,6 @@ void TimeShiftApp::Run()
     );
 
     device->ResizeEventSignal2.Register([this]()->void {
-        //InstantiateWebViewContainer();
         Resize();
     });
 
@@ -49,7 +48,28 @@ void TimeShiftApp::Run()
         _imageRenderer = std::make_shared<ImageRenderer>(imagePipeline);
     }
 
-    InstantiateWebViewContainer();
+    {// Game scenes
+        litehtml::position clip;
+        clip.x = 0;
+        clip.y = 0;
+        clip.width = device->GetWindowWidth();
+        clip.height = device->GetWindowHeight();
+
+        WebViewContainer::Params params
+        {
+            .solidFillRenderer = _solidFillRenderer,
+            .imageRenderer = _imageRenderer,
+            .borderRenderer = _borderRenderer,
+            .requestBlob = [this](char const *address, bool force) { return RequestBlob(address, force); },
+            .requestFont = [this](char const * font) { return RequestFont(font); },
+            .requestImage = [this](char const * image) {return RequestImage(image);}
+        };
+
+        _menuScene = std::make_unique<MenuScene>(params);
+        // _gameScene = std::make_unique<GameScene>(params);
+        _scenes.emplace_back(_menuScene.get());
+        _activeSceneIndex = 0;
+    }
 
     SDL_GL_SetSwapInterval(0);
     SDL_Event e;
@@ -92,9 +112,9 @@ void TimeShiftApp::Run()
 
 //=============================================================
 
-void TimeShiftApp::Update(float deltaTime)
+void TimeShiftApp::Update(float const deltaTime)
 {
-    _webViewContainer->Update();
+    _scenes[_activeSceneIndex]->Update(deltaTime);
 }
 
 //=============================================================
@@ -113,9 +133,9 @@ void TimeShiftApp::Render(RT::CommandRecordState & recordState)
         RT::CommandBufferType::Graphic
     );
 
-    _webViewContainer->UpdateBuffer(recordState);
+    _scenes[_activeSceneIndex]->UpdateBuffer(recordState);
     _displayRenderPass->Begin(recordState);
-    _webViewContainer->DisplayPass(recordState);
+    _scenes[_activeSceneIndex]->Render(recordState);
     _displayRenderPass->End(recordState);
 
     device->EndCommandBuffer(recordState);
@@ -126,14 +146,12 @@ void TimeShiftApp::Render(RT::CommandRecordState & recordState)
 void TimeShiftApp::Resize()
 {
     auto const * device = LogicalDevice::Instance;
+    RB::DeviceWaitIdle(device->GetVkDevice());
 
-    litehtml::position clip;
-    clip.x = 0;
-    clip.y = 0;
-    clip.width = device->GetWindowWidth();
-    clip.height = device->GetWindowHeight();
-
-    _webViewContainer->OnResize(clip);
+    for (auto * scene : _scenes)
+    {
+        scene->Resize();
+    }
 }
 
 //=============================================================
@@ -148,19 +166,23 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
         }
         else if (event->key.keysym.sym == SDLK_DOWN)
         {
-            SetSelectedElement(_selectedElementIndex + 1);
+            // TODO
         }
         else if (event->key.keysym.sym == SDLK_UP)
         {
-            SetSelectedElement(_selectedElementIndex - 1);
+            // TODO
         }
         else if (event->key.keysym.sym == SDLK_RIGHT)
         {
-            ModifySelectedElement(+1);
+            // TODO
         }
         else if (event->key.keysym.sym == SDLK_LEFT)
         {
-            ModifySelectedElement(-1);
+            // TODO
+        }
+        else if (event->key.keysym.sym == SDLK_SPACE)
+        {
+            // TODO
         }
     }
 }
@@ -169,169 +191,14 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
 
 void TimeShiftApp::Reload()
 {
-    // TODO: Reload shaders too
     auto const * device = LogicalDevice::Instance;
-
     RB::DeviceWaitIdle(device->GetVkDevice());
 
-    litehtml::position clip;
-    clip.x = 0;
-    clip.y = 0;
-    clip.width = device->GetWindowWidth();
-    clip.height = device->GetWindowHeight();
+    // TODO: Reload shaders too
 
-    _webViewContainer->OnReload(clip);
-
-    QueryButtons();
-}
-
-//=============================================================
-
-void TimeShiftApp::InstantiateWebViewContainer()
-{
-    auto const path = Path::Instance();
-
-    auto const * device = LogicalDevice::Instance;
-
-	auto const htmlPath = path->Get("web_view/Test.html");
-
-    litehtml::position clip;
-    clip.x = 0;
-    clip.y = 0;
-    clip.width = device->GetWindowWidth();
-    clip.height = device->GetWindowHeight();
-
-    WebViewContainer::Params params
+    for (auto * scene : _scenes)
     {
-        .solidFillRenderer = _solidFillRenderer,
-        .imageRenderer = _imageRenderer,
-        .borderRenderer = _borderRenderer,
-        .requestBlob = [this](char const *address, bool force) { return RequestBlob(address, force); },
-        .requestFont = [this](char const * font) { return RequestFont(font); },
-        .requestImage = [this](char const * image) {return RequestImage(image);}
-    };
-
-    _webViewContainer = std::make_unique<WebViewContainer>(htmlPath.c_str(), clip, params);
-
-    QueryButtons();
-}
-
-//=============================================================
-
-void TimeShiftApp::QueryButtons()
-{
-    _elements.clear();
-    _elementsType.clear();
-    {
-        auto element = _webViewContainer->GetElementById("new-game");
-        if (element != nullptr)
-        {
-            _elements.emplace_back(element);
-            _elementsType.emplace_back(ElementType::Button);
-        }
-    }
-    {
-        auto element = _webViewContainer->GetElementById("continue");
-        if (element != nullptr)
-        {
-            _elements.emplace_back(element);
-            _elementsType.emplace_back(ElementType::Button);
-        }
-    }
-    {
-        auto element = _webViewContainer->GetElementById("settings");
-        if (element != nullptr)
-        {
-            _elements.emplace_back(element);
-            _elementsType.emplace_back(ElementType::Button);
-        }
-    }
-    {
-        auto element = _webViewContainer->GetElementById("exit");
-        if (element != nullptr)
-        {
-            _elements.emplace_back(element);
-            _elementsType.emplace_back(ElementType::Button);
-        }
-    }
-    {
-        auto element = _webViewContainer->GetElementById("slider");
-        if (element != nullptr)
-        {
-            _elements.emplace_back(element);
-            _elementsType.emplace_back(ElementType::Slider);
-        }
-    }
-    {
-        auto element = _webViewContainer->GetElementById("checkbox");
-        if (element != nullptr)
-        {
-            _elements.emplace_back(element);
-            _elementsType.emplace_back(ElementType::Checkbox);
-        }
-    }
-
-    SetSelectedElement(0);
-}
-
-//=============================================================
-
-void TimeShiftApp::SetSelectedElement(int const idx)
-{
-    _selectedElementIndex = (idx + _elements.size()) % _elements.size();
-
-    for (int i = 0; i < _elements.size(); ++i)
-    {
-        _webViewContainer->RemoveClass(_elements[i], "selected");
-        _webViewContainer->AddClass(_elements[i], "unselected");
-    }
-
-    if (_selectedElementIndex >= 0)
-    {
-        _webViewContainer->RemoveClass(_elements[_selectedElementIndex], "unselected");
-        _webViewContainer->AddClass(_elements[_selectedElementIndex], "selected");
-    }
-}
-
-//=============================================================
-
-void TimeShiftApp::ModifySelectedElement(int value)
-{
-    if (_selectedElementIndex < 0 || _selectedElementIndex >= _elements.size())
-    {
-        return;
-    }
-    auto const selectedElement = _elements[_selectedElementIndex];
-    auto const selectedElementType = _elementsType[_selectedElementIndex];
-    if (selectedElementType == ElementType::Slider)
-    {
-        auto const sliderValue = _webViewContainer->GetElementById("slider-value", selectedElement);
-        if (sliderValue != nullptr)
-        {
-            std::string sliderStyle = sliderValue->get_attr("style", "");
-            std::regex regex_pattern(R"(width:\s*(\d+)\%)");
-            std::smatch match;
-            int progress = 0;
-            if (std::regex_search(sliderStyle, match, regex_pattern))
-            {
-                std::string matchString = match[1].str();
-                progress = std::stoi(match[1].str());
-                progress = std::clamp(progress + value, 0, 100);
-                sliderStyle = std::regex_replace(sliderStyle, regex_pattern, "width: " + std::to_string(progress) + "%");
-            }
-            else
-            {
-                sliderStyle = "width:0%";
-            }
-            // TODO: Update the text
-            sliderValue->set_attr("style", sliderStyle.c_str());
-            auto element = (litehtml::el_text *)sliderValue->children().begin()->get();
-            std::string text{};
-            MFA_STRING(text, "%d%%", progress);
-            element->set_text(text.c_str());
-
-            _webViewContainer->InvalidateStyles(sliderValue);
-        }
+        scene->Reload();
     }
 }
 

@@ -613,7 +613,7 @@ void WebViewContainer::draw_text(
     auto const findResult = _activeState->textMap.find(hash);
     if (findResult == _activeState->textMap.end())
     {
-        textData = fontData.renderer->AllocateTextData(32);
+        textData = fontData.renderer->AllocateTextData(4096);
         _activeState->textMap[hash] = textData;
     }
     else
@@ -701,10 +701,10 @@ void WebViewContainer::import_css(
     litehtml::string& baseurl
 )
 {
-    // MFA_LOG_INFO(
-    //     "Requested import css.\nText: %s\nurl: %s\nbaseurl: %s"
-    //     , text.c_str(), url.c_str(), baseurl.c_str()
-    // );
+    MFA_LOG_INFO(
+        "Requested import css.\nText: %s\nurl: %s\nbaseurl: %s"
+        , text.c_str(), url.c_str(), baseurl.c_str()
+    );
     auto const cssPath = Path::Get(url.c_str(), _parentAddress.c_str());
     auto const cssBlob = _requestBlob(cssPath.c_str(), true);
     text = cssBlob->As<char const>();
