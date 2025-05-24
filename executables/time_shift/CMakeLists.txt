@@ -14,6 +14,7 @@ list(
     "${CMAKE_CURRENT_SOURCE_DIR}/GameScene.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ScoreboardScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ScoreboardScene.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/GenerateGame.cpp"
 )
 
 add_executable(${EXECUTABLE} ${EXECUTABLE_RESOURCES})
