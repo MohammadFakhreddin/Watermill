@@ -7,7 +7,7 @@
 
 #define MFA_STRING(variable, format, ...)           \
 {                                                   \
-    char charBufer[1024] {};                        \
+    char charBufer[4096] {};                        \
     auto const strLength = sprintf(                 \
         charBufer,                                  \
         format,                                     \
@@ -18,10 +18,10 @@
 
 #define MFA_STRING_VA(variable, format, ...)        \
 {                                                   \
-	char charBufer[1024]{};                         \
+	char charBufer[4096]{};                         \
 	auto const strLength = vsnprintf(               \
 	    charBufer,                                  \
-		1024,                                       \
+		4096,                                       \
 		format,                                     \
 	    __VA_ARGS__                                 \
 	);                                              \
@@ -30,7 +30,7 @@
 
 #define MFA_APPEND(variable, format, ...)           \
 {                                                   \
-    char charBufer[1024] {};                        \
+    char charBufer[4096] {};                        \
     auto const strLength = sprintf(                 \
         charBufer,                                  \
         format,                                     \
