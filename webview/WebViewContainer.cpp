@@ -2,12 +2,10 @@
 
 #include "ImportGLTF.hpp"
 #include "LogicalDevice.hpp"
+#include "RenderBackend.hpp"
 #include "BedrockFile.hpp"
 #include "BedrockPath.hpp"
 #include "ScopeProfiler.hpp"
-#include "renderer/BorderPipeline.hpp"
-#include "renderer/ImagePipeline.hpp"
-#include "renderer/TextOverlayPipeline.hpp"
 
 #include "litehtml/render_item.h"
 
@@ -233,7 +231,7 @@ void WebViewContainer::DisplayPass(RT::CommandRecordState & recordState)
 //=========================================================================================
 
 litehtml::element::ptr WebViewContainer::create_element(
-	const char* tag_name, 
+	const char* tag_name,
 	const litehtml::string_map& attributes,
 	const std::shared_ptr<litehtml::document>& doc
 )
@@ -247,11 +245,11 @@ litehtml::element::ptr WebViewContainer::create_element(
 //=========================================================================================
 
 litehtml::uint_ptr WebViewContainer::create_font(
-	const char* faceName, 
-	int const size, 
+	const char* faceName,
+	int const size,
 	int const weight,
-	litehtml::font_style italic, 
-	unsigned int decoration, 
+	litehtml::font_style italic,
+	unsigned int decoration,
 	litehtml::font_metrics* fm
 )
 {
@@ -286,16 +284,16 @@ void WebViewContainer::delete_font(litehtml::uint_ptr hFont)
 //=========================================================================================
 
 void WebViewContainer::draw_borders(
-	litehtml::uint_ptr hdc, 
+	litehtml::uint_ptr hdc,
 	const litehtml::borders& borders,
-	const litehtml::position& draw_pos, 
+	const litehtml::position& draw_pos,
 	bool root
 )
 {
     std::shared_ptr<LocalBufferTracker> bufferTracker = nullptr;
-    
+
     auto hash = std::hash<litehtml::position>()(draw_pos);
-    
+
     auto const x = static_cast<float>(draw_pos.x);
     auto const y = static_cast<float>(draw_pos.y);
     auto const width = static_cast<float>(draw_pos.width);
@@ -398,7 +396,7 @@ void WebViewContainer::draw_borders(
 //=========================================================================================
 
 void WebViewContainer::draw_conic_gradient(
-	litehtml::uint_ptr hdc, 
+	litehtml::uint_ptr hdc,
 	const litehtml::background_layer& layer,
 	const litehtml::background_layer::conic_gradient& gradient
 )
@@ -409,15 +407,20 @@ void WebViewContainer::draw_conic_gradient(
 //=========================================================================================
 
 void WebViewContainer::draw_image(
-	litehtml::uint_ptr hdc, 
+	litehtml::uint_ptr hdc,
 	const litehtml::background_layer& layer,
-	const std::string& url, 
+	const std::string& url,
 	const std::string& base_url
 )
 {
     auto hash = std::hash<litehtml::background_layer>()(layer);
     auto const imagePath = Path::Get(url.c_str(), _parentAddress.c_str());
     auto [gpuTexture, _] = _requestImage(imagePath.c_str());
+
+    if (gpuTexture == nullptr)
+    {
+        return;
+    }
 
     auto const borderX = static_cast<float>(layer.border_box.x);
     auto const borderY = static_cast<float>(layer.border_box.y);
@@ -445,7 +448,7 @@ void WebViewContainer::draw_image(
     auto const bottomRightX = (float)layer.border_radius.bottom_right_x;
     auto const bottomRightY = (float)layer.border_radius.bottom_right_y;
     auto const bottomRightRadius = glm::vec2{bottomRightX, bottomRightY};
-    
+
     std::shared_ptr<ImageRenderer::ImageData> imageData = nullptr;
     auto const findResult = _activeState->imageMap.find(hash);
     if (findResult == _activeState->imageMap.end())
@@ -453,7 +456,8 @@ void WebViewContainer::draw_image(
         imageData = _imageRenderer->AllocateImageData(
             *gpuTexture,
             topLeftPos, bottomLeftPos, topRightPos, bottomRightPos,
-            topLeftRadius, bottomLeftRadius, topRightRadius, bottomRightRadius
+            topLeftRadius, bottomLeftRadius, topRightRadius, bottomRightRadius,
+            ImagePipeline::UV{0.0f, 0.0f}, ImagePipeline::UV{0.0f, 1.0f}, ImagePipeline::UV{1.0f, 0.0f}, ImagePipeline::UV{1.0f, 1.0f}
         );
         _activeState->imageMap[hash] = imageData;
     }
@@ -464,9 +468,10 @@ void WebViewContainer::draw_image(
             *imageData,
             *gpuTexture,
             topLeftPos, bottomLeftPos, topRightPos, bottomRightPos,
-            topLeftRadius, bottomLeftRadius, topRightRadius, bottomRightRadius
+            topLeftRadius, bottomLeftRadius, topRightRadius, bottomRightRadius,
+            ImagePipeline::UV{0.0f, 0.0f}, ImagePipeline::UV{0.0f, 1.0f}, ImagePipeline::UV{1.0f, 0.0f}, ImagePipeline::UV{1.0f, 1.0f}
         );
-        
+
     }
 
     _activeState->drawCalls.emplace_back([this, imageData](RT::CommandRecordState & recordState)->void
@@ -483,7 +488,7 @@ void WebViewContainer::draw_image(
 //=========================================================================================
 
 void WebViewContainer::draw_linear_gradient(
-	litehtml::uint_ptr hdc, 
+	litehtml::uint_ptr hdc,
 	const litehtml::background_layer& layer,
 	const litehtml::background_layer::linear_gradient& gradient
 )
@@ -501,7 +506,7 @@ void WebViewContainer::draw_list_marker(litehtml::uint_ptr hdc, const litehtml::
 //=========================================================================================
 
 void WebViewContainer::draw_radial_gradient(
-	litehtml::uint_ptr hdc, 
+	litehtml::uint_ptr hdc,
 	const litehtml::background_layer& layer,
 	const litehtml::background_layer::radial_gradient& gradient
 )
@@ -512,13 +517,13 @@ void WebViewContainer::draw_radial_gradient(
 //=========================================================================================
 
 void WebViewContainer::draw_solid_fill(
-	litehtml::uint_ptr hdc, 
+	litehtml::uint_ptr hdc,
 	const litehtml::background_layer& layer,
 	const litehtml::web_color& color
 )
 {
     std::shared_ptr<LocalBufferTracker> bufferTracker = nullptr;
-    
+
     auto hash = std::hash<litehtml::background_layer>()(layer);
 
     auto const borderX = static_cast<float>(layer.border_box.x);
@@ -550,7 +555,7 @@ void WebViewContainer::draw_solid_fill(
     auto const bottomRightX = (float)layer.border_radius.bottom_right_x;
     auto const bottomRightY = (float)layer.border_radius.bottom_right_y;
     auto const bottomRightRadius = glm::vec2{bottomRightX, bottomRightY};
-    
+
     auto const findResult = _activeState->solidMap.find(hash);
     if (findResult == _activeState->solidMap.end())
     {
@@ -591,10 +596,10 @@ void WebViewContainer::draw_solid_fill(
 //=========================================================================================
 
 void WebViewContainer::draw_text(
-	litehtml::uint_ptr hdc, 
-	const char* text, 
+	litehtml::uint_ptr hdc,
+	const char* text,
 	litehtml::uint_ptr hFont,
-	litehtml::web_color color, 
+	litehtml::web_color color,
 	const litehtml::position& pos
 )
 {
@@ -613,7 +618,7 @@ void WebViewContainer::draw_text(
     auto const findResult = _activeState->textMap.find(hash);
     if (findResult == _activeState->textMap.end())
     {
-        textData = fontData.renderer->AllocateTextData(std::max<int>(1024, strlen(text)));
+        textData = fontData.renderer->AllocateTextData(1024);
         _activeState->textMap[hash] = textData;
     }
     else
@@ -623,7 +628,7 @@ void WebViewContainer::draw_text(
 
     fontData.renderer->ResetText(*textData);
     fontData.renderer->AddText(*textData, text, x, y, textParams);
-	
+
     _activeState->drawCalls.emplace_back([this, textData, &fontData](RT::CommandRecordState &recordState) -> void
 	{
 	    fontData.renderer->Draw(
@@ -701,10 +706,10 @@ void WebViewContainer::import_css(
     litehtml::string& baseurl
 )
 {
-    MFA_LOG_INFO(
-        "Requested import css.\nText: %s\nurl: %s\nbaseurl: %s"
-        , text.c_str(), url.c_str(), baseurl.c_str()
-    );
+    // MFA_LOG_INFO(
+    //     "Requested import css.\nText: %s\nurl: %s\nbaseurl: %s"
+    //     , text.c_str(), url.c_str(), baseurl.c_str()
+    // );
     auto const cssPath = Path::Get(url.c_str(), _parentAddress.c_str());
     auto const cssBlob = _requestBlob(cssPath.c_str(), true);
     text = cssBlob->As<char const>();

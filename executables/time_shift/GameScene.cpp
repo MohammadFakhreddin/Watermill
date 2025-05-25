@@ -25,6 +25,22 @@ GameScene::GameScene(
     clip.width = device->GetWindowWidth();
     clip.height = device->GetWindowHeight();
 
+    // WebViewContainer::Params webviewParamsOverride {
+    //     .solidFillRenderer = webviewParams.solidFillRenderer,
+    //     .imageRenderer = webviewParams.imageRenderer,
+    //     .borderRenderer = webviewParams.borderRenderer,
+    //     .requestBlob = webviewParams.requestBlob,
+    //     .requestFont = webviewParams.requestFont,
+    //     .requestImage = [webviewParams](char const * path)->std::tuple<std::shared_ptr<MFA::RT::GpuTexture>, glm::vec2>
+    //     {
+    //         if (std::string(path).find("game\\game") != std::string::npos)
+    //         {
+    //             return {nullptr, glm::vec2{1.0f, 1.0f}};
+    //         }
+    //         return webviewParams.requestImage(path);
+    //     }
+    // };
+
     _webViewContainer = std::make_unique<WebViewContainer>(htmlPath.c_str(), clip, webviewParams);
 }
 

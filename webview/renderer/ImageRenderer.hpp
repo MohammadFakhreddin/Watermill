@@ -36,7 +36,12 @@ namespace MFA
             Radius const &topLeftBorderRadius,
             Radius const &bottomLeftBorderRadius,
             Radius const &topRightBorderRadius,
-            Radius const &bottomRightBorderRadius
+            Radius const &bottomRightBorderRadius,
+
+            UV const &topLeftUV,
+            UV const &bottomLeftUV,
+            UV const &topRightUV,
+            UV const &bottomRightUV
         ) const;
 
         void UpdateImageData(
@@ -52,7 +57,12 @@ namespace MFA
             Radius const &topLeftBorderRadius,
             Radius const &bottomLeftBorderRadius,
             Radius const &topRightBorderRadius,
-            Radius const &bottomRightBorderRadius
+            Radius const &bottomRightBorderRadius,
+
+            UV const &topLeftUV,
+            UV const &bottomLeftUV,
+            UV const &topRightUV,
+            UV const &bottomRightUV
         ) const;
 
         void FreeImageData(ImageData &imageData);

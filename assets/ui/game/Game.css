@@ -54,10 +54,21 @@
 {
     color: white;
     position: absolute;
+    width: 90%;
+    height: 90%;
+    left: 5%;
+    top: 5%;
+}
+.backgroundWindow
+{
+    color: white;
+    position: absolute;
     width: 100%;
     height: 100%;
-    left: 0;
-    top: 0;
+    left: 0vmin;
+    top: 0vmin;
+    bottom: 0vmin;
+    right: 0vmin;
 }
 .scoreText
 {

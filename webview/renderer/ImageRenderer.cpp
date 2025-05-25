@@ -25,17 +25,22 @@ namespace MFA
         Radius const &topLeftBorderRadius,
         Radius const &bottomLeftBorderRadius,
         Radius const &topRightBorderRadius,
-        Radius const &bottomRightBorderRadius
+        Radius const &bottomRightBorderRadius,
+
+        UV const &topLeftUV,
+        UV const &bottomLeftUV,
+        UV const &topRightUV,
+        UV const &bottomRightUV
     ) const
     {
         auto const device = LogicalDevice::Instance;
 
         Pipeline::Vertex vertexData[4]
         {
-            Pipeline::Vertex{.position = topLeftPos, .radius = topLeftBorderRadius,.uv = {0, 0}},
-            Pipeline::Vertex{.position = bottomLeftPos, .radius = bottomLeftBorderRadius, .uv = {0, 1}},
-            Pipeline::Vertex{.position = topRightPos, .radius = topRightBorderRadius, .uv = {1, 0}},
-            Pipeline::Vertex{.position = bottomRightPos, .radius = bottomRightBorderRadius, .uv = {1, 1}},
+            Pipeline::Vertex{.position = topLeftPos, .radius = topLeftBorderRadius,.uv = topLeftUV},
+            Pipeline::Vertex{.position = bottomLeftPos, .radius = bottomLeftBorderRadius, .uv = bottomLeftUV},
+            Pipeline::Vertex{.position = topRightPos, .radius = topRightBorderRadius, .uv = topRightUV},
+            Pipeline::Vertex{.position = bottomRightPos, .radius = bottomRightBorderRadius, .uv = bottomRightUV},
         };
 
         auto const vertexBuffer = RB::CreateVertexBufferGroup(
@@ -61,7 +66,7 @@ namespace MFA
     }
 
     //------------------------------------------------------------------------------------------------------------------
-    
+
     void ImageRenderer::UpdateImageData(
         ImageData &imageData,
 
@@ -75,21 +80,34 @@ namespace MFA
         Radius const &topLeftBorderRadius,
         Radius const &bottomLeftBorderRadius,
         Radius const &topRightBorderRadius,
-        Radius const &bottomRightBorderRadius
+        Radius const &bottomRightBorderRadius,
+
+        UV const &topLeftUV,
+        UV const &bottomLeftUV,
+        UV const &topRightUV,
+        UV const &bottomRightUV
     ) const
     {
         MFA_ASSERT(imageData.vertexData.has_value() == true);
         auto * rawData = imageData.vertexData->Data();
 
         Pipeline::Vertex * vertexData = reinterpret_cast<Pipeline::Vertex *>(rawData);
+
         vertexData[0].position = topLeftPos;
         vertexData[0].radius = topLeftBorderRadius;
+        vertexData[0].uv = topLeftUV;
+
         vertexData[1].position = bottomLeftPos;
         vertexData[1].radius = bottomLeftBorderRadius;
+        vertexData[1].uv = bottomLeftUV;
+
         vertexData[2].position = topRightPos;
         vertexData[2].radius = topRightBorderRadius;
+        vertexData[2].uv = topRightUV;
+
         vertexData[3].position = bottomRightPos;
         vertexData[3].radius = bottomRightBorderRadius;
+        vertexData[3].uv = bottomRightUV;
 
         // TODO: We need to wrap descriptor sets as well to be freeable
         _pipeline->UpdateDescriptorSet(imageData.descriptorSet, gpuTexture);
