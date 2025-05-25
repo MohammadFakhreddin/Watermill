@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "BedrockPath.hpp"
+#include "GenerateGame.h"
 #include "LogicalDevice.hpp"
 
 using namespace MFA;
@@ -18,6 +19,8 @@ GameScene::GameScene(
     auto const * device = MFA::LogicalDevice::Instance;
 
     auto const htmlPath = MFA::Path::Instance()->Get("ui/game/Game.html");
+
+    GenerateGame generate_game(MFA::Path::Instance()->Get("levels/level1.json"));
 
     litehtml::position clip;
     clip.x = 0;

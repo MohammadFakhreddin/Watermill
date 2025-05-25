@@ -10,10 +10,6 @@ using namespace MFA;
 
 int main()
 {
-    std::filesystem::path base_path("/Users/ebiederstadt/gamedev/ArcadeJam2025/Assets/serializedObjects.json");
-    GenerateGame generate_game(base_path);
-
-
     LogicalDevice::InitParams params{.windowWidth = 1920,
                                      .windowHeight = 1080,
                                      .resizable = true,
