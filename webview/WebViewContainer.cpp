@@ -455,7 +455,7 @@ void WebViewContainer::draw_image(
     {
         imageData = _imageRenderer->AllocateImageData(
             *gpuTexture,
-            topLeftPos, bottomLeftPos, topRightPos, bottomRightPos,
+            glm::vec3{topLeftPos, 0.0f}, glm::vec3{bottomLeftPos, 0.0f}, glm::vec3{topRightPos, 0.0f}, glm::vec3{bottomRightPos, 0.0f},
             topLeftRadius, bottomLeftRadius, topRightRadius, bottomRightRadius,
             ImagePipeline::UV{0.0f, 0.0f}, ImagePipeline::UV{0.0f, 1.0f}, ImagePipeline::UV{1.0f, 0.0f}, ImagePipeline::UV{1.0f, 1.0f}
         );
@@ -467,7 +467,7 @@ void WebViewContainer::draw_image(
         _imageRenderer->UpdateImageData(
             *imageData,
             *gpuTexture,
-            topLeftPos, bottomLeftPos, topRightPos, bottomRightPos,
+            glm::vec3{topLeftPos, 0.0f}, glm::vec3{bottomLeftPos, 0.0f}, glm::vec3{topRightPos, 0.0f}, glm::vec3{bottomRightPos, 0.0f},
             topLeftRadius, bottomLeftRadius, topRightRadius, bottomRightRadius,
             ImagePipeline::UV{0.0f, 0.0f}, ImagePipeline::UV{0.0f, 1.0f}, ImagePipeline::UV{1.0f, 0.0f}, ImagePipeline::UV{1.0f, 1.0f}
         );

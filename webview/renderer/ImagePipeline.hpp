@@ -11,7 +11,7 @@ namespace MFA
     {
     public:
 
-        using Position = glm::vec2;
+        using Position = glm::vec3;
         using Radius = glm::vec2;
         using UV = glm::vec2;
 

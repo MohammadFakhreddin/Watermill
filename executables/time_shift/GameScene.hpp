@@ -3,6 +3,7 @@
 #include "IScene.hpp"
 #include "Transform.hpp"
 #include "WebViewContainer.hpp"
+#include "camera/ArcballCamera.hpp"
 
 class GameScene final : public IScene
 {
@@ -53,6 +54,9 @@ private:
 
     std::shared_ptr<MFA::ImageRenderer> _imageRenderer;
 
-    glm::vec3 _cameraPosition{};
+    // glm::vec3 _cameraPosition{};
 
+    // std::unique_ptr<MFA::ArcballCamera> _camera;
+
+    glm::mat4 _viewProjectionMatrix;
 };

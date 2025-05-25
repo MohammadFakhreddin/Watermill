@@ -1,7 +1,7 @@
 struct Input
 {
     // Per vertex
-    [[vk::location(0)]] float2 position : POSITION0;
+    [[vk::location(0)]] float3 position : POSITION0;
     [[vk::location(1)]] float2 uv : TEXCOORD0;
     // Per instance
     [[vk::location(2)]] float2 topLeftPos;
@@ -52,7 +52,12 @@ float Radius(float2 xy)
 Output main(Input input)
 {
     Output output;
-    output.position = pushConsts.model * float4(input.position.x, input.position.y, 0.0, 1.0);
+    float4 projectedPosition = pushConsts.model * float4(input.position.x, input.position.y, input.position.z, 1.0);
+////    if (projectedPosition.z == -1.0f)
+////    {
+//        projectedPosition.z = 0.0f;
+////    }
+    output.position = projectedPosition;
     output.screenPos = input.position.xy;
     output.uv = input.uv;
     // This is probably why they have separated radius into x and y component
