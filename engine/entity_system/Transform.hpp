@@ -3,6 +3,7 @@
 #include "BedrockRotation.hpp"
 #include "BedrockCommon.hpp"
 
+#include <string>
 #include <set>
 
 namespace MFA
@@ -52,6 +53,7 @@ namespace MFA
 
         void DebugUI();
 
+        std::string name;
         std::string tag;
 
     private:

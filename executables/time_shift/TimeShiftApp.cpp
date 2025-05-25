@@ -111,7 +111,7 @@ void TimeShiftApp::Run()
             _scenes.emplace_back(_scoreboardScene.get());
         }
 
-        _nextSceneIndex = 0;
+        _nextSceneIndex = 1;
         _activeSceneIndex = _nextSceneIndex;
     }
 

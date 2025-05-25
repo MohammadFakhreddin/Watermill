@@ -53,4 +53,6 @@ private:
 
     std::shared_ptr<MFA::ImageRenderer> _imageRenderer;
 
+    glm::vec3 _cameraPosition{};
+
 };
