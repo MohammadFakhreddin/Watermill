@@ -274,7 +274,7 @@ void ImagePipeline::CreatePipeline()
     pipelineOptions.cullMode = VK_CULL_MODE_NONE;
     pipelineOptions.colorBlendAttachments.blendEnable = VK_TRUE;
     pipelineOptions.polygonMode = VK_POLYGON_MODE_FILL;
-    pipelineOptions.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    pipelineOptions.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     pipelineOptions.depthStencil.depthTestEnable = false;
     pipelineOptions.depthStencil.depthWriteEnable = false;
 

@@ -9,6 +9,12 @@ struct Sprite
 {
   std::string name;
   std::vector<glm::vec2> uvs;
+  glm::vec2 spriteMin;
+  glm::vec2 spriteMax;
+  glm::vec2 worldMin;
+  glm::vec2 worldMax;
+  bool flipX = false;
+  bool flipY = false;
   MFA::Transform *transform_ptr;
 };
 

@@ -48,7 +48,7 @@ void GenerateGame::parse_objects(Transform * parent, json objects)
         transforms.emplace_back(std::make_shared<Transform>());
         auto &transform = transforms.back();
         transform->SetLocalPosition(to_vec3(object["position"]));
-        transform->SetEulerAngles(to_vec3(object["rotation"]));
+        transform->SetEulerAngles(glm::radians(to_vec3(object["rotation"])));
         transform->SetLocalScale(to_vec3(object["scale"]));
         transform->name = object["name"].get<std::string>();
         if (object["tag"] != "Untagged")
@@ -70,6 +70,12 @@ void GenerateGame::parse_objects(Transform * parent, json objects)
             {
                 sprite->uvs.push_back(to_vec2(uv));
             }
+            sprite->spriteMin = to_vec2(object["spriteMin"]);
+            sprite->spriteMax = to_vec2(object["spriteMax"]);
+            sprite->worldMin = to_vec2(object["worldMin"]);
+            sprite->worldMax = to_vec2(object["worldMax"]);
+            sprite->flipX = object["flipX"].get<bool>();
+            sprite->flipY = object["flipY"].get<bool>();
             sprite->transform_ptr = transform.get();
         }
 
