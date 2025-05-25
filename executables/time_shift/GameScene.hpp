@@ -54,9 +54,10 @@ private:
 
     std::shared_ptr<MFA::ImageRenderer> _imageRenderer;
 
-    // glm::vec3 _cameraPosition{};
-
-    // std::unique_ptr<MFA::ArcballCamera> _camera;
-
-    glm::mat4 _viewProjectionMatrix;
+    float _left{};
+    float _right{};
+    float _bottom{};
+    float _top{};
+    float _near{};
+    float _far{};
 };

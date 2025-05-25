@@ -347,15 +347,15 @@ void TimeShiftApp::InitFontPipeline()
     RB::CreateSamplerParams fontSamplerParams{};
     fontSamplerParams.magFilter = VK_FILTER_NEAREST;
     fontSamplerParams.minFilter = VK_FILTER_NEAREST;
-    fontSamplerParams.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    fontSamplerParams.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    fontSamplerParams.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    fontSamplerParams.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    fontSamplerParams.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    fontSamplerParams.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    fontSamplerParams.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    fontSamplerParams.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     fontSamplerParams.mipLodBias = 0.0f;
     fontSamplerParams.compareOp = VK_COMPARE_OP_NEVER;
     fontSamplerParams.minLod = 0.0f;
     fontSamplerParams.maxLod = 1.0f;
-    fontSamplerParams.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    fontSamplerParams.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
 
     auto const fontSampler = RB::CreateSampler(device->GetVkDevice(), fontSamplerParams);
     MFA_ASSERT(fontSampler != nullptr);
