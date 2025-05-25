@@ -196,7 +196,7 @@ void ImagePipeline::CreatePipeline()
     inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
         .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
         .binding = 0,
-        .format = VK_FORMAT_R32G32_SFLOAT,
+        .format = VK_FORMAT_R32G32B32_SFLOAT,
         .offset = offsetof(Vertex, position),
     });
     // UV

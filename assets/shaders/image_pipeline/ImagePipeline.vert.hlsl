@@ -55,7 +55,7 @@ Output main(Input input)
     float4 projectedPosition = pushConsts.model * float4(input.position.x, input.position.y, input.position.z, 1.0);
 ////    if (projectedPosition.z == -1.0f)
 ////    {
-//        projectedPosition.z = 0.0f;
+        projectedPosition.z = 0.0f;
 ////    }
     output.position = projectedPosition;
     output.screenPos = input.position.xy;
