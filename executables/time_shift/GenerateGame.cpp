@@ -50,6 +50,10 @@ void GenerateGame::parse_objects(Transform * parent, json objects)
         transform->SetLocalPosition(to_vec3(object["position"]));
         transform->SetEulerAngles(to_vec3(object["rotation"]));
         transform->SetLocalScale(to_vec3(object["scale"]));
+        if (object["tag"] != "Untagged")
+        {
+            transform->tag = object["tag"];
+        }
         if (parent != nullptr)
         {
             transform->SetParent(parent);

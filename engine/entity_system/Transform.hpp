@@ -52,6 +52,8 @@ namespace MFA
 
         void DebugUI();
 
+        std::string tag;
+
     private:
 
         void SetLocalTransformDirty();
