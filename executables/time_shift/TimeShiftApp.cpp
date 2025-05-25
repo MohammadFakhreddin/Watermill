@@ -87,7 +87,11 @@ void TimeShiftApp::Run()
         {
             GameScene::Params gameParams
             {
-
+                .BackPressed = [this]()->void
+                {
+                    MFA_LOG_INFO("Back pressed");
+                    _nextSceneIndex = 0;
+                }
             };
 
             _gameScene = std::make_unique<GameScene>(webviewParams, gameParams);
@@ -253,12 +257,12 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
                 _inputAxis.y = std::clamp(_inputAxis.y, -1.0f, 1.0f);
                 inputAxisChanged = true;
             }
-            else if(event->key.keysym.sym == SDLK_z)
+            else if(event->key.keysym.sym == SDLK_SPACE)
             {
                 _inputA = modifier > 0;
                 inputA_Changed = true;
             }
-            else if (event->key.keysym.sym == SDLK_x)
+            else if (event->key.keysym.sym == SDLK_KP_ENTER)
             {
                 _inputB = modifier > 0;
                 inputB_Changed = true;
@@ -290,12 +294,12 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
         if (event->type == SDL_JOYBUTTONDOWN || event->type == SDL_JOYBUTTONUP)
         {
             auto const modifier = (event->type == SDL_JOYBUTTONDOWN) ? 1.0f : -1.0f;
-            if (event->jbutton.button == 1 /* BUTTON A */)
+            if (event->jbutton.button == 0 /* BUTTON A */)
             {
                 _inputA = modifier > 0.0f;
                 inputA_Changed = true;
             }
-            else if (event->jbutton.button == 2 /* BUTTON B */)
+            else if (event->jbutton.button == 1 /* BUTTON B */)
             {
                 _inputB = modifier > 0.0f;
                 inputB_Changed = true;

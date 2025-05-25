@@ -1,6 +1,3 @@
-#include <__filesystem/path.h>
-
-
 #include "BedrockLog.hpp"
 #include "GenerateGame.h"
 #include "LogicalDevice.hpp"

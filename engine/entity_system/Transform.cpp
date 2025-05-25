@@ -176,17 +176,17 @@ namespace MFA
 
 	//-------------------------------------------------------------------------------------------------
 
-	Rotation const & Transform::GlobalRotation()
-	{
-		if (mGlobalRotationDirty == true)
-		{
-			mGlobalRotation.SetQuaternion(glm::quatLookAt(Forward(),Math::UpVec3));
-			mGlobalRotationDirty = false;
-		}
-		return mGlobalRotation;
-	}
+	Rotation const &Transform::GlobalRotation()
+    {
+        if (mGlobalRotationDirty == true)
+        {
+            mGlobalRotation.SetQuaternion(glm::quatLookAt(Forward(), Math::UpVec3));
+            mGlobalRotationDirty = false;
+        }
+        return mGlobalRotation;
+    }
 
-	//-------------------------------------------------------------------------------------------------
+    //-------------------------------------------------------------------------------------------------
 
 	void Transform::DebugUI()
 	{

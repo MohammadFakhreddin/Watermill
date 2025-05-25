@@ -14,13 +14,11 @@ GameScene::GameScene(
     WebViewContainer::Params const & webviewParams,
     Params gameParams
 )
-    : _gameParams(std::move(gameParams))
+    : _params(std::move(gameParams))
 {
     auto const * device = MFA::LogicalDevice::Instance;
 
     auto const htmlPath = MFA::Path::Instance()->Get("ui/game/Game.html");
-
-    GenerateGame generate_game(MFA::Path::Instance()->Get("levels/level1.json"));
 
     litehtml::position clip;
     clip.x = 0;
@@ -45,6 +43,49 @@ GameScene::GameScene(
     // };
 
     _webViewContainer = std::make_unique<WebViewContainer>(htmlPath.c_str(), clip, webviewParams);
+
+    GenerateGame const levelContent(MFA::Path::Instance()->Get("levels/level1.json"));
+    _transforms = levelContent.Transforms();
+    auto const & sprites = levelContent.Sprites();
+
+    for (auto & sprite : sprites)
+    {
+        auto const address = Path::Instance()->Get(sprite->name);
+        MFA_ASSERT(std::filesystem::exists(address));
+        auto [gpuTexture, imageSize] = webviewParams.requestImage(address.c_str());
+        MFA_ASSERT(sprite->uvs.size() == 4);
+
+        auto const matrix = sprite->transform_ptr->GlobalTransform();
+
+        auto hW = imageSize.x * 0.5f;
+        auto hH = imageSize.y * 0.5f;
+
+        glm::vec3 const topLeftPosition = matrix * glm::vec4{-hW, -hH * 0.5f, 0.0f, 1.0f};
+        glm::vec3 const topRightPosition = matrix * glm::vec4{hW, -hH * 0.5f, 0.0f, 1.0f};
+        glm::vec3 const bottomLeftPosition = matrix * glm::vec4{-hW, hH * 0.5f, 0.0f, 1.0f};
+        glm::vec3 const bottomRightPosition = matrix * glm::vec4{hW, hH * 0.5f, 0.0f, 1.0f};
+
+        ImagePipeline::UV uv0 {sprite->uvs[0].x, sprite->uvs[0].y};
+        ImagePipeline::UV uv1 {sprite->uvs[1].x, sprite->uvs[1].y};
+        ImagePipeline::UV uv2 {sprite->uvs[2].x, sprite->uvs[2].y};
+        ImagePipeline::UV uv3 {sprite->uvs[3].x, sprite->uvs[3].y};
+
+        ImagePipeline::Radius radius0 {};
+
+        auto imageData = webviewParams.imageRenderer->AllocateImageData(
+            *gpuTexture,
+            topLeftPosition, topRightPosition, bottomLeftPosition, bottomRightPosition,
+            radius0, radius0, radius0, radius0,
+            uv0, uv1, uv2, uv3
+        );
+
+        _sprites.emplace_back(std::make_shared<Sprite>());
+        auto & mySprite = _sprites.back();
+        mySprite->transform = sprite->transform_ptr;
+        mySprite->imageData = std::move(imageData);
+    }
+
+    _imageRenderer = webviewParams.imageRenderer;
 }
 
 //======================================================================================================================
@@ -65,6 +106,13 @@ void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
 
 void GameScene::Render(MFA::RT::CommandRecordState &recordState)
 {
+    ImagePipeline::PushConstants pushConstants {
+        .model = glm::identity<glm::mat4>(),
+    };
+    for (auto & sprite : _sprites)
+    {
+        _imageRenderer->Draw(recordState, pushConstants, *sprite->imageData);
+    }
     _webViewContainer->DisplayPass(recordState);
 }
 
@@ -102,6 +150,12 @@ void GameScene::Reload()
 
 void GameScene::UpdateInputAxis(const glm::vec2 &inputAxis) {}
 void GameScene::ButtonA_Changed(bool value) {}
-void GameScene::ButtonB_Pressed(bool value) {}
+void GameScene::ButtonB_Pressed(bool value)
+{
+    if (value == true)
+    {
+        _params.BackPressed();
+    }
+}
 
 //======================================================================================================================

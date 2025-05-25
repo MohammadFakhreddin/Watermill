@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IScene.hpp"
+#include "Transform.hpp"
 #include "WebViewContainer.hpp"
 
 class GameScene final : public IScene
@@ -9,7 +10,7 @@ public:
 
     struct Params
     {
-
+        std::function<void()> BackPressed;
     };
 
     explicit GameScene(
@@ -39,6 +40,17 @@ private:
     std::vector<litehtml::element::ptr> _buttons{};
     int _selectedButton = 0;
 
-    Params _gameParams;
+    Params _params;
+
+    std::vector<std::shared_ptr<MFA::Transform>> _transforms;
+
+    struct Sprite
+    {
+        MFA::Transform * transform;
+        std::shared_ptr<MFA::ImageRenderer::ImageData> imageData;
+    };
+    std::vector<std::shared_ptr<Sprite>> _sprites;
+
+    std::shared_ptr<MFA::ImageRenderer> _imageRenderer;
 
 };

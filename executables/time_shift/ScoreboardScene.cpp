@@ -88,17 +88,16 @@ void ScoreboardScene::UpdateInputAxis(const glm::vec2 &inputAxis)
 
 void ScoreboardScene::ButtonA_Changed(bool value)
 {
-    if (value == true)
-    {
-        _params.BackPressed();
-    }
 }
 
 //======================================================================================================================
 
 void ScoreboardScene::ButtonB_Pressed(bool value)
 {
-
+    if (value == true)
+    {
+        _params.BackPressed();
+    }
 }
 
 //======================================================================================================================

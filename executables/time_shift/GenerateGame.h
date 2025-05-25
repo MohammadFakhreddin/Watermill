@@ -14,7 +14,14 @@ struct Sprite
 
 class GenerateGame {
 public:
+
   explicit GenerateGame(const std::filesystem::path &json_path);
+
+  [[nodiscard]]
+  std::vector<std::shared_ptr<MFA::Transform>> const & Transforms() const {return transforms;}
+
+  [[nodiscard]]
+  std::vector<std::shared_ptr<Sprite>> const & Sprites() const {return sprites;}
 
 private:
   void parse_objects(MFA::Transform* parent, nlohmann::json objects);
