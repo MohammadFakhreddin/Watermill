@@ -62,10 +62,10 @@ GameScene::GameScene(
             auto hW = imageSize.x * 0.5f;
             auto hH = imageSize.y * 0.5f;
 
-            glm::vec3 const topLeftPosition = matrix * glm::vec4{-hW, -hH * 0.5f, 0.0f, 1.0f};
-            glm::vec3 const topRightPosition = matrix * glm::vec4{hW, -hH * 0.5f, 0.0f, 1.0f};
-            glm::vec3 const bottomLeftPosition = matrix * glm::vec4{-hW, hH * 0.5f, 0.0f, 1.0f};
-            glm::vec3 const bottomRightPosition = matrix * glm::vec4{hW, hH * 0.5f, 0.0f, 1.0f};
+            glm::vec2 const topLeftPosition = matrix * glm::vec4{-hW, -hH * 0.5f, 0.0f, 1.0f};
+            glm::vec2 const topRightPosition = matrix * glm::vec4{hW, -hH * 0.5f, 0.0f, 1.0f};
+            glm::vec2 const bottomLeftPosition = matrix * glm::vec4{-hW, hH * 0.5f, 0.0f, 1.0f};
+            glm::vec2 const bottomRightPosition = matrix * glm::vec4{hW, hH * 0.5f, 0.0f, 1.0f};
 
             ImagePipeline::UV uv0 {sprite->uvs[0].x, sprite->uvs[0].y};
             ImagePipeline::UV uv1 {sprite->uvs[1].x, sprite->uvs[1].y};
@@ -74,17 +74,17 @@ GameScene::GameScene(
 
             ImagePipeline::Radius radius0 {};
 
-            auto imageData = webviewParams.imageRenderer->AllocateImageData(
+            std::shared_ptr imageData = webviewParams.imageRenderer->AllocateImageData(
                 *gpuTexture,
-                topLeftPosition, topRightPosition, bottomLeftPosition, bottomRightPosition,
+                topLeftPosition, bottomLeftPosition, topRightPosition, bottomRightPosition,
                 radius0, radius0, radius0, radius0,
-                uv0, uv1, uv2, uv3
+                uv0, uv2, uv1, uv3
             );
 
             _sprites.emplace_back(std::make_shared<Sprite>());
             auto & mySprite = _sprites.back();
             mySprite->transform = sprite->transform_ptr;
-            mySprite->imageData = std::move(imageData);
+            mySprite->imageData = imageData;
         }
     }
 
@@ -117,9 +117,24 @@ void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
 
 void GameScene::Render(MFA::RT::CommandRecordState &recordState)
 {
-    auto const cameraModel = glm::translate(glm::mat4(1), _cameraPosition);
+    auto * device = LogicalDevice::Instance;
+    auto const windowWidth = static_cast<float>(device->GetWindowWidth());
+    auto const windowHeight = static_cast<float>(device->GetWindowHeight());
+
+    float scaleFactor = 1.0f;
+
+    float halfWidth = windowWidth * 0.5f;
+    float halfHeight = windowHeight * 0.5f;
+    float scaleX = (1.0f / halfWidth) * scaleFactor;
+    float scaleY = (1.0f / halfHeight) * scaleFactor;
+
+    auto modelMat = glm::transpose(
+        glm::scale(glm::identity<glm::mat4>(), glm::vec3{scaleX, scaleY, 1.0f}) *
+        glm::translate(glm::identity<glm::mat4>(), glm::vec3{-halfWidth, -halfHeight, 0.0f} - _cameraPosition)
+    );
+
     ImagePipeline::PushConstants pushConstants {
-        .model = cameraModel,
+        .model = modelMat,
     };
     for (auto & sprite : _sprites)
     {
