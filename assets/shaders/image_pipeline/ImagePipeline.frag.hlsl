@@ -31,40 +31,40 @@ float4 main(Input input) : SV_TARGET
 {
     float4 color = imageTexture.Sample(imageSampler, input.uv);
 
-    if (input.screenPos.x < input.topLeftInnerPos.x)
-    {
-        if (input.screenPos.y < input.topLeftInnerPos.y)
-        {
-            if (Distance(input.screenPos, input.topLeftInnerPos) > input.topLeftRadius)
-            {
-                discard;
-            }
-        }
-        else if (input.screenPos.y > input.bottomLeftInnerPos.y)
-        {
-            if (Distance(input.screenPos, input.bottomLeftInnerPos) > input.bottomLeftRadius)
-            {
-                discard;
-            }
-        }
-    }
-    if (input.screenPos.x > input.topRightInnerPos.x)
-    {
-        if (input.screenPos.y < input.topRightInnerPos.y)
-        {
-            if (Distance(input.screenPos, input.topRightInnerPos) > input.topRightRadius)
-            {
-                discard;
-            }
-        }
-        else if (input.screenPos.y > input.bottomRightInnerPos.y)
-        {
-            if (Distance(input.screenPos, input.bottomRightInnerPos) > input.bottomRightRadius)
-            {
-                discard;
-            }
-        }
-    }
+//    if (input.screenPos.x < input.topLeftInnerPos.x)
+//    {
+//        if (input.screenPos.y < input.topLeftInnerPos.y)
+//        {
+//            if (Distance(input.screenPos, input.topLeftInnerPos) > input.topLeftRadius)
+//            {
+//                discard;
+//            }
+//        }
+//        else if (input.screenPos.y > input.bottomLeftInnerPos.y)
+//        {
+//            if (Distance(input.screenPos, input.bottomLeftInnerPos) > input.bottomLeftRadius)
+//            {
+//                discard;
+//            }
+//        }
+//    }
+//    if (input.screenPos.x > input.topRightInnerPos.x)
+//    {
+//        if (input.screenPos.y < input.topRightInnerPos.y)
+//        {
+//            if (Distance(input.screenPos, input.topRightInnerPos) > input.topRightRadius)
+//            {
+//                discard;
+//            }
+//        }
+//        else if (input.screenPos.y > input.bottomRightInnerPos.y)
+//        {
+//            if (Distance(input.screenPos, input.bottomRightInnerPos) > input.bottomRightRadius)
+//            {
+//                discard;
+//            }
+//        }
+//    }
     
     return color;
 }

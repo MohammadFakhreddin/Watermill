@@ -50,77 +50,84 @@ GameScene::GameScene(
         {
             auto [gpuTexture, imageSize] = webviewParams.requestImage(address.c_str());
 
-            // if (sprite->uvs.size() == 4)
+            auto & spriteMin = sprite->spriteMin;
+            auto & spriteMax = sprite->spriteMax;
+
+            float uvLeft = spriteMin.x / imageSize.x;
+            float uvRight = spriteMax.x / imageSize.x;
+            float uvTop = 1.0f - (spriteMin.y / imageSize.y);
+            float uvBottom = 1.0f - (spriteMax.y / imageSize.y);
+
+            if (sprite->flipX == true)
             {
-
-                auto & spriteMin = sprite->spriteMin;
-                auto & spriteMax = sprite->spriteMax;
-
-                float uvLeft = spriteMin.x / imageSize.x;
-                float uvRight = spriteMax.x / imageSize.x;
-                float uvTop = 1.0f - (spriteMin.y / imageSize.y);
-                float uvBottom = 1.0f - (spriteMax.y / imageSize.y);
-
-                if (sprite->flipX == true)
-                {
-                    std::swap(uvLeft, uvRight);
-                }
-                if (sprite->flipY == true)
-                {
-                    std::swap(uvTop, uvBottom);
-                }
-
-                ImagePipeline::UV topLeftUV {uvLeft, uvTop};
-                ImagePipeline::UV topRightUV {uvRight, uvTop};
-                ImagePipeline::UV bottomLeftUV {uvLeft, uvBottom};
-                ImagePipeline::UV bottomRightUV {uvRight, uvBottom};
-
-                auto const uvCenter = glm::vec2(uvLeft + uvRight, uvTop + uvBottom) * 0.5f;
-                auto const centerMat = glm::translate(glm::mat4(1), glm::vec3{uvCenter.x, uvCenter.y, 0.0f});
-                auto const centerInvMat = glm::translate(glm::mat4(1), glm::vec3{-uvCenter.x, -uvCenter.y, 0.0f});
-
-                auto const eulerAngles =  sprite->transform_ptr->GetLocalRotation().GetEulerAngles();
-                auto rotationMat = glm::toMat4(glm::angleAxis(eulerAngles.z, glm::vec3(0, 0, 1)));
-
-                topLeftUV = centerMat * rotationMat * centerInvMat * glm::vec4{topLeftUV, 0.0f, 1.0f};
-                topRightUV = centerMat * rotationMat * centerInvMat * glm::vec4{topRightUV, 0.0f, 1.0f};
-                bottomLeftUV = centerMat * rotationMat * centerInvMat * glm::vec4{bottomLeftUV, 0.0f, 1.0f};
-                bottomRightUV = centerMat * rotationMat * centerInvMat * glm::vec4{bottomRightUV, 0.0f, 1.0f};
-
-                auto & worldMin = sprite->worldMin;
-                auto & worldMax = sprite->worldMax;
-
-                float worldLeft = worldMin.x;
-                float worldRight = worldMax.x;
-                float worldTop = worldMin.y;
-                float worldBottom = worldMax.y;
-
-                ImagePipeline::Position topLeftPosition = glm::vec4{worldLeft, worldTop, 0.0f, 1.0f};
-                ImagePipeline::Position topRightPosition = glm::vec4{worldRight, worldTop, 0.0f, 1.0f};
-                ImagePipeline::Position bottomLeftPosition = glm::vec4{worldLeft, worldBottom, 0.0f, 1.0f};
-                ImagePipeline::Position bottomRightPosition = glm::vec4{worldRight, worldBottom, 0.0f, 1.0f};
-
-                ImagePipeline::Radius radius0 {};
-
-                std::shared_ptr imageData = webviewParams.imageRenderer->AllocateImageData(
-                    *gpuTexture,
-                    topLeftPosition, bottomLeftPosition, topRightPosition, bottomRightPosition,
-                    radius0, radius0, radius0, radius0,
-                    topLeftUV, bottomLeftUV, topRightUV, bottomRightUV
-                );
-
-                std::shared_ptr mySprite = std::make_shared<Sprite>();
-                mySprite->transform = sprite->transform_ptr;
-                mySprite->imageData = imageData;
-                _sprites.emplace_back(mySprite);
-
-                left = std::min(left, bottomLeftPosition.x);
-                right = std::max(right, topRightPosition.x);
-                top = std::min(top, topLeftPosition.y);
-                bottom = std::max(bottom, bottomLeftPosition.y);
-                front = std::max(front, bottomLeftPosition.z);
-                back = std::min(back, bottomRightPosition.z);
+                std::swap(uvLeft, uvRight);
             }
+            if (sprite->flipY == true)
+            {
+                std::swap(uvTop, uvBottom);
+            }
+
+            ImagePipeline::UV topLeftUV {uvLeft, uvTop};
+            ImagePipeline::UV topRightUV {uvRight, uvTop};
+            ImagePipeline::UV bottomLeftUV {uvLeft, uvBottom};
+            ImagePipeline::UV bottomRightUV {uvRight, uvBottom};
+
+            // auto const uvCenter = glm::vec2(uvLeft + uvRight, uvTop + uvBottom) * 0.5f;
+            // auto const centerMat = glm::translate(glm::mat4(1), glm::vec3{uvCenter.x, uvCenter.y, 0.0f});
+            // auto const centerInvMat = glm::translate(glm::mat4(1), glm::vec3{-uvCenter.x, -uvCenter.y, 0.0f});
+
+            // auto const eulerAngles =  sprite->transform_ptr->GetLocalRotation().GetEulerAngles();
+            // auto rotationMat = glm::toMat4(glm::angleAxis(eulerAngles.z, glm::vec3(0, 0, 1)));
+
+            // topLeftUV = centerMat * rotationMat * centerInvMat * glm::vec4{topLeftUV, 0.0f, 1.0f};
+            // topRightUV = centerMat * rotationMat * centerInvMat * glm::vec4{topRightUV, 0.0f, 1.0f};
+            // bottomLeftUV = centerMat * rotationMat * centerInvMat * glm::vec4{bottomLeftUV, 0.0f, 1.0f};
+            // bottomRightUV = centerMat * rotationMat * centerInvMat * glm::vec4{bottomRightUV, 0.0f, 1.0f};
+
+            auto & worldMin = sprite->worldMin;
+            auto & worldMax = sprite->worldMax;
+
+            float worldLeft = worldMin.x;
+            float worldRight = worldMax.x;
+            float worldTop = worldMin.y;
+            float worldBottom = worldMax.y;
+
+            glm::vec4 topLeftPosition = glm::vec4{worldLeft, worldTop, 0.0f, 1.0f};
+            glm::vec4 topRightPosition = glm::vec4{worldRight, worldTop, 0.0f, 1.0f};
+            glm::vec4 bottomLeftPosition = glm::vec4{worldLeft, worldBottom, 0.0f, 1.0f};
+            glm::vec4 bottomRightPosition = glm::vec4{worldRight, worldBottom, 0.0f, 1.0f};
+
+            glm::vec2 const worldCenter ((worldLeft + worldRight) * 0.5f, (worldTop + worldBottom) * 0.5f);
+            auto const centerMat = glm::translate(glm::mat4(1), glm::vec3{worldCenter.x, worldCenter.y, 0.0f});
+            auto const centerInvMat = glm::translate(glm::mat4(1), glm::vec3{-worldCenter.x, -worldCenter.y, 0.0f});
+            auto const eulerAngles =  sprite->transform_ptr->GetLocalRotation().GetEulerAngles();
+            auto rotationMat = glm::toMat4(glm::angleAxis(eulerAngles.z, glm::vec3(0, 0, 1)));
+
+            topLeftPosition = centerMat * rotationMat * centerInvMat * topLeftPosition;
+            topRightPosition = centerMat * rotationMat * centerInvMat * topRightPosition;
+            bottomLeftPosition = centerMat * rotationMat * centerInvMat * bottomLeftPosition;
+            bottomRightPosition = centerMat * rotationMat * centerInvMat * bottomRightPosition;
+
+            ImagePipeline::Radius radius0 {};
+
+            std::shared_ptr imageData = webviewParams.imageRenderer->AllocateImageData(
+                *gpuTexture,
+                topLeftPosition, bottomLeftPosition, topRightPosition, bottomRightPosition,
+                radius0, radius0, radius0, radius0,
+                topLeftUV, bottomLeftUV, topRightUV, bottomRightUV
+            );
+
+            std::shared_ptr mySprite = std::make_shared<Sprite>();
+            mySprite->transform = sprite->transform_ptr;
+            mySprite->imageData = imageData;
+            _sprites.emplace_back(mySprite);
+
+            left = std::min(left, bottomLeftPosition.x);
+            right = std::max(right, topRightPosition.x);
+            top = std::min(top, topLeftPosition.y);
+            bottom = std::max(bottom, bottomLeftPosition.y);
+            front = std::max(front, bottomLeftPosition.z);
+            back = std::min(back, bottomRightPosition.z);
         }
         else
         {
