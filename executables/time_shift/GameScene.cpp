@@ -81,10 +81,10 @@ GameScene::GameScene(
                 uv0, uv2, uv1, uv3
             );
 
-            _sprites.emplace_back(std::make_shared<Sprite>());
-            auto & mySprite = _sprites.back();
+            std::shared_ptr mySprite = std::make_shared<Sprite>();
             mySprite->transform = sprite->transform_ptr;
             mySprite->imageData = imageData;
+            _sprites.emplace_back(mySprite);
         }
     }
 
@@ -111,6 +111,10 @@ void GameScene::Update(float deltaTime)
 void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
 {
     _webViewContainer->UpdateBuffer(recordState);
+    for (auto & sprite : _sprites)
+    {
+        sprite->imageData->vertexData->Update(recordState);
+    }
 }
 
 //======================================================================================================================
