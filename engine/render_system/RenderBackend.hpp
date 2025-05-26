@@ -1,5 +1,9 @@
 #pragma once
 
+#include "AssetShader.hpp"
+#include "AssetTexture.hpp"
+#include "BedrockPlatforms.hpp"
+#include "RenderTypes.hpp"
 
 #include <vulkan/vulkan.h>
 #include <vector>
@@ -12,11 +16,7 @@
 #include <SDL2/SDL.h>
 #undef main
 
-
-#include "BedrockPlatforms.hpp"
-#include "RenderTypes.hpp"
-#include "AssetShader.hpp"
-#include "AssetTexture.hpp"
+#include <glm/glm.hpp>
 
 namespace MFA::RenderBackend
 {
@@ -784,7 +784,7 @@ namespace MFA::RenderBackend
 VkVertexInputAttributeDescription{                                                                  \
     .location = static_cast<uint32_t>(locationValue),                                               \
     .binding = bindingValue,                                                                        \
-    .format = RB::VkFormatFromTypeAndSize<decltype(Instance::bottomRightRadius)>(),                 \
+    .format = RB::VkFormatFromTypeAndSize<decltype(structName::memberName)>(),                      \
     .offset = offsetof(structName, memberName)                                                      \
 }                                                                                                   \
 
