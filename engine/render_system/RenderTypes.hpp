@@ -2,9 +2,9 @@
 
 #include "BedrockPlatforms.hpp"
 
-#include <vulkan/vulkan.h>
-#include <vector>
 #include <memory>
+#include <vector>
+#include <vulkan/vulkan.h>
 
 namespace MFA
 {

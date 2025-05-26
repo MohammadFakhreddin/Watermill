@@ -681,7 +681,112 @@ namespace MFA::RenderBackend
 
     void DestroyTexture(VkDevice device, RT::GpuTexture& gpuTexture);
 
+    // Default template (unrecognized type = undefined format)
+	template<typename T>
+    constexpr VkFormat ToVkFormat() {
+	    static_assert(sizeof(T) == 0, "Unsupported type for VkFormat conversion");
+	    return VK_FORMAT_UNDEFINED;
+	}
+
+	// Specializations
+	template<>
+    constexpr VkFormat ToVkFormat<float>() {
+	    return VK_FORMAT_R32_SFLOAT;
+	}
+
+	template<>
+    constexpr VkFormat ToVkFormat<glm::vec2>() {
+	    return VK_FORMAT_R32G32_SFLOAT;
+	}
+
+	template<>
+    constexpr VkFormat ToVkFormat<glm::vec3>() {
+	    return VK_FORMAT_R32G32B32_SFLOAT;
+	}
+
+	template<>
+    constexpr VkFormat ToVkFormat<glm::vec4>() {
+	    return VK_FORMAT_R32G32B32A32_SFLOAT;
+	}
+
+	template<>
+    constexpr VkFormat ToVkFormat<int>() {
+	    return VK_FORMAT_R32_SINT;
+	}
+
+	template<>
+    constexpr VkFormat ToVkFormat<glm::ivec2>() {
+	    return VK_FORMAT_R32G32_SINT;
+	}
+
+	template<>
+    constexpr VkFormat ToVkFormat<glm::ivec3>() {
+	    return VK_FORMAT_R32G32B32_SINT;
+	}
+
+	template<>
+    constexpr VkFormat ToVkFormat<glm::ivec4>() {
+	    return VK_FORMAT_R32G32B32A32_SINT;
+	}
+
+	template<>
+    constexpr VkFormat ToVkFormat<uint32_t>() {
+	    return VK_FORMAT_R32_UINT;
+	}
+
+	template<>
+    constexpr VkFormat ToVkFormat<glm::uvec2>() {
+	    return VK_FORMAT_R32G32_UINT;
+	}
+
+	template<>
+    constexpr VkFormat ToVkFormat<glm::uvec3>() {
+	    return VK_FORMAT_R32G32B32_UINT;
+	}
+
+	template<>
+    constexpr VkFormat ToVkFormat<glm::uvec4>() {
+	    return VK_FORMAT_R32G32B32A32_UINT;
+	}
+
+	template<typename T>
+    constexpr VkFormat VkFormatFromTypeAndSize() {
+	    // float types
+	    if constexpr (std::is_same_v<T, float>)        return VK_FORMAT_R32_SFLOAT;
+	    if constexpr (std::is_same_v<T, glm::vec2>)    return VK_FORMAT_R32G32_SFLOAT;
+	    if constexpr (std::is_same_v<T, glm::vec3>)    return VK_FORMAT_R32G32B32_SFLOAT;
+	    if constexpr (std::is_same_v<T, glm::vec4>)    return VK_FORMAT_R32G32B32A32_SFLOAT;
+
+	    // int32 types
+	    else if constexpr (std::is_same_v<T, int32_t>)     return VK_FORMAT_R32_SINT;
+	    else if constexpr (std::is_same_v<T, glm::ivec2>)  return VK_FORMAT_R32G32_SINT;
+	    else if constexpr (std::is_same_v<T, glm::ivec3>)  return VK_FORMAT_R32G32B32_SINT;
+	    else if constexpr (std::is_same_v<T, glm::ivec4>)  return VK_FORMAT_R32G32B32A32_SINT;
+
+	    // uint32 types
+	    else if constexpr (std::is_same_v<T, uint32_t>)     return VK_FORMAT_R32_UINT;
+	    else if constexpr (std::is_same_v<T, glm::uvec2>)   return VK_FORMAT_R32G32_UINT;
+	    else if constexpr (std::is_same_v<T, glm::uvec3>)   return VK_FORMAT_R32G32B32_UINT;
+	    else if constexpr (std::is_same_v<T, glm::uvec4>)   return VK_FORMAT_R32G32B32A32_UINT;
+
+	    // double types (if you plan to use them — Vulkan support is limited)
+	    else if constexpr (std::is_same_v<T, double>)         return VK_FORMAT_R64_SFLOAT;
+	    else if constexpr (std::is_same_v<T, glm::dvec2>)     return VK_FORMAT_R64G64_SFLOAT;
+	    else if constexpr (std::is_same_v<T, glm::dvec3>)     return VK_FORMAT_R64G64B64_SFLOAT;
+	    else if constexpr (std::is_same_v<T, glm::dvec4>)     return VK_FORMAT_R64G64B64A64_SFLOAT;
+
+	    // fallback
+	    else return VK_FORMAT_UNDEFINED;
+	}
 };
+
+#define MFA_VERTEX_INPUT_ATTRIBUTE(locationValue, bindingValue, structName, memberName)             \
+VkVertexInputAttributeDescription{                                                                  \
+    .location = static_cast<uint32_t>(locationValue),                                               \
+    .binding = bindingValue,                                                                        \
+    .format = RB::VkFormatFromTypeAndSize<decltype(Instance::bottomRightRadius)>(),                 \
+    .offset = offsetof(structName, memberName)                                                      \
+}                                                                                                   \
 
 namespace MFA
 {

@@ -193,79 +193,71 @@ void ImagePipeline::CreatePipeline()
 
     std::vector<VkVertexInputAttributeDescription> inputAttributeDescriptions{};
     // Position
-    inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
-        .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = 0,
-        .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(Vertex, position),
-    });
+    inputAttributeDescriptions.emplace_back(MFA_VERTEX_INPUT_ATTRIBUTE(
+        static_cast<uint32_t>(inputAttributeDescriptions.size()),
+        0,
+        Vertex,
+        position
+    ));
     // UV
-    inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
-        .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = 0,
-        .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(Vertex, uv),
-    });
+    inputAttributeDescriptions.emplace_back(MFA_VERTEX_INPUT_ATTRIBUTE(
+        static_cast<uint32_t>(inputAttributeDescriptions.size()),
+        0,
+        Vertex,
+        uv
+    ));
     // topLeftPos
-    inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
-        .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = 1,
-        .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(Instance, topLeftPos)
-    });
+    inputAttributeDescriptions.emplace_back(MFA_VERTEX_INPUT_ATTRIBUTE(
+        static_cast<uint32_t>(inputAttributeDescriptions.size()),
+        1,
+        Instance,
+        topLeftPos
+    ));
     // topLeftRadius
-    inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
-        .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = 1,
-        .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(Instance, topLeftRadius)
-    });
-
+    inputAttributeDescriptions.emplace_back(MFA_VERTEX_INPUT_ATTRIBUTE(
+        static_cast<uint32_t>(inputAttributeDescriptions.size()),
+        1,
+        Instance,
+        topLeftRadius
+    ));
     // bottomLeftPos
-    inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
-        .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = 1,
-        .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(Instance, bottomLeftPos)
-    });
-
+    inputAttributeDescriptions.emplace_back(MFA_VERTEX_INPUT_ATTRIBUTE(
+        static_cast<uint32_t>(inputAttributeDescriptions.size()),
+        1,
+        Instance,
+        bottomLeftPos
+    ));
     // bottomLeftRadius
-    inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
-        .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = 1,
-        .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(Instance, bottomLeftRadius)
-    });
-
-    // topRightPos
-    inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
-        .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = 1,
-        .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(Instance, topRightPos)
-    });
-    // topRightRadius
-    inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
-        .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = 1,
-        .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(Instance, topRightRadius)
-    });
-
-    // bottomRightPos
-    inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
-        .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = 1,
-        .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(Instance, bottomRightPos)
-    });
-    // bottomRightRadius
-    inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
-        .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = 1,
-        .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(Instance, bottomRightRadius)
-    });
+    inputAttributeDescriptions.emplace_back(MFA_VERTEX_INPUT_ATTRIBUTE(
+        static_cast<uint32_t>(inputAttributeDescriptions.size()),
+        1,
+        Instance,
+        bottomLeftRadius
+    ));
+    inputAttributeDescriptions.emplace_back(MFA_VERTEX_INPUT_ATTRIBUTE(
+        static_cast<uint32_t>(inputAttributeDescriptions.size()),
+        1,
+        Instance,
+        topRightPos
+    ));
+    inputAttributeDescriptions.emplace_back(MFA_VERTEX_INPUT_ATTRIBUTE(
+        static_cast<uint32_t>(inputAttributeDescriptions.size()),
+        1,
+        Instance,
+        topRightRadius
+    ));
+    inputAttributeDescriptions.emplace_back(MFA_VERTEX_INPUT_ATTRIBUTE(
+        static_cast<uint32_t>(inputAttributeDescriptions.size()),
+        1,
+        Instance,
+        bottomRightPos
+    ));
+    inputAttributeDescriptions.emplace_back(MFA_VERTEX_INPUT_ATTRIBUTE(
+        static_cast<uint32_t>(inputAttributeDescriptions.size()),
+        1,
+        Instance,
+        bottomRightRadius
+    ));
 
     RB::CreateGraphicPipelineOptions pipelineOptions{};
     pipelineOptions.useStaticViewportAndScissor = false;

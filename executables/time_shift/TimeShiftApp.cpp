@@ -111,7 +111,7 @@ void TimeShiftApp::Run()
             _scenes.emplace_back(_scoreboardScene.get());
         }
 
-        _nextSceneIndex = 1;
+        _nextSceneIndex = 0;
         _activeSceneIndex = _nextSceneIndex;
     }
 
@@ -262,7 +262,7 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
                 _inputA = modifier > 0;
                 inputA_Changed = true;
             }
-            else if (event->key.keysym.sym == SDLK_KP_ENTER)
+            else if (event->key.keysym.sym == SDLK_r)
             {
                 _inputB = modifier > 0;
                 inputB_Changed = true;

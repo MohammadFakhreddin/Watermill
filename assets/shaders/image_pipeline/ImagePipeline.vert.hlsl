@@ -1,7 +1,7 @@
 struct Input
 {
     // Per vertex
-    [[vk::location(0)]] float3 position : POSITION0;
+    [[vk::location(0)]] float2 position : POSITION0;
     [[vk::location(1)]] float2 uv : TEXCOORD0;
     // Per instance
     [[vk::location(2)]] float2 topLeftPos;
@@ -53,8 +53,7 @@ Output main(Input input)
 {
     Output output;
 
-    float4 projectedPosition = pushConsts.model * float4(input.position.x, input.position.y, input.position.z, 1.0);
-//    projectedPosition.z = 0.0f;
+    float4 projectedPosition = pushConsts.model * float4(input.position.x, input.position.y, 0.0f, 1.0);
 
     output.position = projectedPosition;
     output.screenPos = input.position.xy;
