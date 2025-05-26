@@ -15,6 +15,10 @@ list(
     "${CMAKE_CURRENT_SOURCE_DIR}/ScoreboardScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ScoreboardScene.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/GenerateGame.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/SpritePipeline.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/SpritePipeline.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/SpriteRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/SpriteRenderer.hpp"
 )
 
 add_executable(${EXECUTABLE} ${EXECUTABLE_RESOURCES})
