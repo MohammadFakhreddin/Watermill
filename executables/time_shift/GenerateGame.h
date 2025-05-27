@@ -17,6 +17,27 @@ struct Sprite
   // glm::vec2 worldMax;
   bool flipX = false;
   bool flipY = false;
+  glm::vec4 color{};
+
+  float cameraTop{};
+  float cameraLeft{};
+  float cameraRight{};
+  float cameraBottom{};
+  float cameraNear{};
+  float cameraFar{};
+
+  MFA::Transform *transform_ptr;
+};
+
+struct Camera
+{
+  float cameraTop{};
+  float cameraLeft{};
+  float cameraRight{};
+  float cameraBottom{};
+  float cameraNear{};
+  float cameraFar{};
+
   MFA::Transform *transform_ptr;
 };
 
@@ -31,9 +52,13 @@ public:
   [[nodiscard]]
   std::vector<std::shared_ptr<Sprite>> const & Sprites() const {return sprites;}
 
+  [[nodiscard]]
+  std::vector<std::shared_ptr<Camera>>  const & Cameras() const {return cameras;}
+
 private:
   void parse_objects(MFA::Transform* parent, nlohmann::json objects);
 
   std::vector<std::shared_ptr<MFA::Transform>> transforms;
   std::vector<std::shared_ptr<Sprite>> sprites;
+  std::vector<std::shared_ptr<Camera>> cameras;
 };

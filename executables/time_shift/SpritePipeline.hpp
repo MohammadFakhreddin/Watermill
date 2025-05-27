@@ -11,12 +11,14 @@ public:
 
     using Position = glm::vec3;
     using UV = glm::vec2;
+    using Color = glm::vec4;
     using Index = uint16_t;
 
     struct Vertex
     {
         Position position{};
         UV uv{};
+        Color color{};
     };
 
     struct PushConstants

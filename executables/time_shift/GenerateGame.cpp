@@ -43,6 +43,16 @@ void GenerateGame::parse_objects(Transform * parent, json objects)
         return vec;
     };
 
+    auto to_color = [](json j)
+    {
+        glm::vec4 color;
+        j.at("r").get_to(color.x);
+        j.at("g").get_to(color.y);
+        j.at("b").get_to(color.z);
+        j.at("a").get_to(color.w);
+        return color;
+    };
+
     for (auto const &object : objects)
     {
         transforms.emplace_back(std::make_shared<Transform>());
@@ -81,7 +91,23 @@ void GenerateGame::parse_objects(Transform * parent, json objects)
 
             sprite->flipX = object["flipX"].get<bool>();
             sprite->flipY = object["flipY"].get<bool>();
+            sprite->color = to_color(object["color"]);
+
             sprite->transform_ptr = transform.get();
+        }
+
+        if (transform->tag == "MainCamera")
+        {
+            cameras.emplace_back(std::make_shared<Camera>());
+            auto & camera = cameras.back();
+            camera->cameraTop = object["cameraTop"].get<float>();
+            camera->cameraLeft = object["cameraLeft"].get<float>();
+            camera->cameraRight = object["cameraRight"].get<float>();
+            camera->cameraBottom = object["cameraBottom"].get<float>();
+            camera->cameraNear = object["cameraNear"].get<float>();
+            camera->cameraFar = object["cameraFar"].get<float>();
+
+            camera->transform_ptr = transform.get();
         }
 
         if (!object["children"].empty())
