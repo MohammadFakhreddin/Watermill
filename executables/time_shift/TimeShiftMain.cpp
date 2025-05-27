@@ -10,7 +10,7 @@ int main()
     LogicalDevice::InitParams params{.windowWidth = 1920,
                                      .windowHeight = 1080,
                                      .resizable = true,
-                                     .fullScreen = true,
+                                     .fullScreen = false,
                                      .applicationName = "Timeshift"};
 
     auto device = LogicalDevice::Instantiate(params);
