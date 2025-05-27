@@ -79,9 +79,8 @@ void GenerateGame::parse_objects(Transform * parent, json objects)
                 sprite->indices.emplace_back(index.get<uint16_t>());
             }
 
-            // TODO: Restore support for flip
-            sprite->flipX = false;//object["flipX"].get<bool>();
-            sprite->flipY = false;//object["flipY"].get<bool>();
+            sprite->flipX = object["flipX"].get<bool>();
+            sprite->flipY = object["flipY"].get<bool>();
             sprite->transform_ptr = transform.get();
         }
 

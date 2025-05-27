@@ -123,8 +123,12 @@ GameScene::GameScene(
     _right = right;
     _bottom = bottom;
     _top = top;
-    _near = back;
-    _far = front;
+    _near = front;
+    _far = back;
+
+    std::sort(_sprites.begin(), _sprites.end(), [](const std::shared_ptr<Sprite>& a, const std::shared_ptr<Sprite>& b) {
+        return a->transform->GlobalPosition().z > b->transform->GlobalPosition().z;
+    });
 }
 
 //======================================================================================================================
@@ -158,7 +162,7 @@ void GameScene::Render(MFA::RT::CommandRecordState &recordState)
     auto bottom = yCenter + newHeight / 2.0f;
     auto top = yCenter - newHeight / 2.0f;
 
-    auto viewProjectionMatrix = glm::ortho(_left, _right, bottom, top, -10.0f + _near, 10.0f + _far);
+    auto viewProjectionMatrix = glm::ortho(_left, _right, bottom, top, _near, _far);
     SpritePipeline::PushConstants pushConstants {
         .model = glm::transpose(viewProjectionMatrix)
     };
@@ -182,8 +186,6 @@ void GameScene::Resize()
     clip.height = device->GetWindowHeight();
 
     _webViewContainer->OnResize(clip);
-
-    // _camera->SetProjectionDirty();
 }
 
 //======================================================================================================================

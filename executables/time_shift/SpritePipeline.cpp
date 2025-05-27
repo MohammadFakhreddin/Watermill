@@ -208,14 +208,25 @@ void SpritePipeline::CreatePipeline()
 
     RB::CreateGraphicPipelineOptions pipelineOptions{};
     pipelineOptions.useStaticViewportAndScissor = false;
-    pipelineOptions.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+    pipelineOptions.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     pipelineOptions.rasterizationSamples = LogicalDevice::Instance->GetMaxSampleCount();
     pipelineOptions.cullMode = VK_CULL_MODE_NONE;
-    pipelineOptions.colorBlendAttachments.blendEnable = VK_TRUE;
     pipelineOptions.polygonMode = VK_POLYGON_MODE_FILL;
     pipelineOptions.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    pipelineOptions.depthStencil.depthTestEnable = false;
-    pipelineOptions.depthStencil.depthWriteEnable = false;
+    pipelineOptions.depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    pipelineOptions.depthStencil.depthTestEnable = VK_TRUE;
+    pipelineOptions.depthStencil.depthWriteEnable = VK_TRUE;
+    pipelineOptions.depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    pipelineOptions.depthStencil.depthBoundsTestEnable = VK_FALSE;
+    pipelineOptions.depthStencil.stencilTestEnable = VK_FALSE;
+    pipelineOptions.colorBlendAttachments.blendEnable = VK_TRUE;
+    pipelineOptions.colorBlendAttachments.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    pipelineOptions.colorBlendAttachments.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    pipelineOptions.colorBlendAttachments.colorBlendOp = VK_BLEND_OP_ADD;
+    pipelineOptions.colorBlendAttachments.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    pipelineOptions.colorBlendAttachments.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    pipelineOptions.colorBlendAttachments.alphaBlendOp = VK_BLEND_OP_ADD;
+    pipelineOptions.colorBlendAttachments.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
     std::vector<VkPushConstantRange> pushConstantRanges{};
     {
