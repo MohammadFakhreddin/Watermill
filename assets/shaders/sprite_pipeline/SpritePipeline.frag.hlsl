@@ -1,6 +1,7 @@
 struct Input
 {
     float2 uv : TEXCOORD0;
+    float4 color: COLOR0;
 };
 
 struct Output
@@ -13,6 +14,6 @@ SamplerState imageSampler : register(s0, space0);
 
 float4 main(Input input) : SV_TARGET
 {
-    float4 color = imageTexture.Sample(imageSampler, input.uv);
+    float4 color = imageTexture.Sample(imageSampler, input.uv) * input.color;
     return color;
 }

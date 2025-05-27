@@ -13,6 +13,7 @@ public:
     struct Params
     {
         std::function<void()> backPressed;
+        std::function<void()> nextLevel;
         std::shared_ptr<SpriteRenderer> spriteRenderer;
     };
 
@@ -61,4 +62,6 @@ private:
     float _top{};
     float _near{};
     float _far{};
+    glm::vec3 _mainCameraPosition{};
+
 };

@@ -205,6 +205,13 @@ void SpritePipeline::CreatePipeline()
         Vertex,
         uv
     ));
+    // Color
+    inputAttributeDescriptions.emplace_back(MFA_VERTEX_INPUT_ATTRIBUTE(
+        static_cast<uint32_t>(inputAttributeDescriptions.size()),
+        0,
+        Vertex,
+        color
+    ));
 
     RB::CreateGraphicPipelineOptions pipelineOptions{};
     pipelineOptions.useStaticViewportAndScissor = false;

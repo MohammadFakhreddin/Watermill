@@ -39,13 +39,6 @@ GameScene::GameScene(
     _transforms = levelContent.Transforms();
     auto const & sprites = levelContent.Sprites();
 
-    float left = std::numeric_limits<float>::max();
-    float right = std::numeric_limits<float>::min();
-    float top = std::numeric_limits<float>::max();
-    float bottom = std::numeric_limits<float>::min();
-    float back = std::numeric_limits<float>::max();
-    float front = std::numeric_limits<float>::min();
-
     std::vector<std::unique_ptr<SpriteRenderer::CommandBufferData>> commandBufferDataList{};
 
     device->DeviceWaitIdle();
@@ -77,18 +70,9 @@ GameScene::GameScene(
 
                 tV = sprite->transform_ptr->GlobalTransform() * scaleMat * glm::vec4{oV, 1.0f};
 
-                left = std::min(left, tV.x);
-                right = std::max(right, tV.x);
-                top = std::min(top, tV.y);
-                bottom = std::max(bottom, tV.y);
-                front = std::min(front, tV.z);
-                back = std::max(back, tV.z);
-
                 tUs[i].x = sprite->uvs[i].x;
                 tUs[i].y = 1.0f - sprite->uvs[i].y;
             }
-
-            ImagePipeline::Radius radius0 {};
 
             auto [imageData, tempData] = _spriteRenderer->Allocate(
                 commandBuffer,
@@ -96,6 +80,7 @@ GameScene::GameScene(
                 (int)sprite->vertices.size(),
                 tVs.data(),
                 tUs.data(),
+                sprite->color,
                 (int)sprite->indices.size(),
                 sprite->indices.data()
             );
@@ -119,12 +104,33 @@ GameScene::GameScene(
         commandBuffer
     );
 
-    _left = left;
-    _right = right;
-    _bottom = bottom;
-    _top = top;
-    _near = front;
-    _far = back;
+    auto const & cameras = levelContent.Cameras();
+    if (cameras.empty() == false)
+    {
+        if (cameras.size() > 1)
+        {
+            MFA_LOG_WARN("More than one camera detected");
+        }
+
+        auto & mainCamera = cameras[0];
+
+        _left = mainCamera->cameraLeft;
+        _right = mainCamera->cameraRight;
+        auto xCenter = (_left + _right) / 2.0f;
+        _left -= xCenter;
+        _right -= xCenter;
+
+        _bottom = mainCamera->cameraBottom;
+        _top = mainCamera->cameraTop;
+        auto yCenter = (_bottom + _top) / 2.0f;
+        _bottom -= yCenter;
+        _top -= yCenter;
+
+        _near = mainCamera->cameraNear;
+        _far = mainCamera->cameraFar;
+
+        _mainCameraPosition = mainCamera->transform_ptr->GlobalPosition();
+    }
 
     std::sort(_sprites.begin(), _sprites.end(), [](const std::shared_ptr<Sprite>& a, const std::shared_ptr<Sprite>& b) {
         return a->transform->GlobalPosition().z > b->transform->GlobalPosition().z;
@@ -149,22 +155,25 @@ void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
 
 void GameScene::Render(MFA::RT::CommandRecordState &recordState)
 {
-    auto worldWidth = (_right - _left);
-    auto worldHeight = (_bottom - _top);
-    auto yCenter = (worldHeight / 2) + _top;
+    auto const worldWidth = (_right - _left);
+    auto const worldHeight = (_bottom - _top);
+    auto const xCenter = (worldWidth / 2) + _left;
 
-    auto * device = LogicalDevice::Instance;
-    auto windowWidth = device->GetWindowWidth();
-    auto windowHeight = device->GetWindowHeight();
-    auto ratio = (float)windowWidth / (float)windowHeight;
+    auto const * device = LogicalDevice::Instance;
+    auto const windowWidth = device->GetWindowWidth();
+    auto const windowHeight = device->GetWindowHeight();
+    auto const ratio = (float)windowWidth / (float)windowHeight;
 
-    auto newHeight = worldWidth / ratio;
-    auto bottom = yCenter + newHeight / 2.0f;
-    auto top = yCenter - newHeight / 2.0f;
+    auto const newWidth = ratio * worldHeight ;
+    auto const left = xCenter - newWidth / 2.0f;
+    auto const right = xCenter + newWidth / 2.0f;
 
-    auto viewProjectionMatrix = glm::ortho(_left, _right, bottom, top, _near, _far);
+    auto const projection = glm::ortho(left, right, _bottom, _top, _near, _far);
+    auto const view = glm::lookAt(_mainCameraPosition, _mainCameraPosition + Math::ForwardVec3, -Math::UpVec3);
+    auto const viewProjection = projection * view;
+
     SpritePipeline::PushConstants pushConstants {
-        .model = glm::transpose(viewProjectionMatrix)
+        .model = glm::transpose(viewProjection)
     };
     for (auto & sprite : _sprites)
     {

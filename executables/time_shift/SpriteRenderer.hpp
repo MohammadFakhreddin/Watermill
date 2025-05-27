@@ -13,6 +13,7 @@ public:
     using Pipeline = SpritePipeline;
     using Position = Pipeline::Position;
     using UV = Pipeline::UV;
+    using Color = Pipeline::Color;
     using Index = Pipeline::Index;
     // TODO: This can be optimized like uvs might be per instance but vertices are per vertex
     struct SpriteData
@@ -41,6 +42,7 @@ public:
         int vertexCount,
         Position const * vertices,
         UV const * uvs,
+        Color color,
 
         int indexCount,
         Index const * indices
