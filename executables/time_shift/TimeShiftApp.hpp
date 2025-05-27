@@ -60,7 +60,9 @@ private:
     std::unordered_map<std::string, std::tuple<std::shared_ptr<MFA::RT::GpuTexture>, glm::vec2>> _imageMap;
 
     std::unique_ptr<MenuScene> _menuScene;
-    std::unique_ptr<GameScene> _gameScene;
+    std::unique_ptr<GameScene> _level1Scene;
+    std::unique_ptr<GameScene> _level2Scene;
+    std::unique_ptr<GameScene> _level3Scene;
     std::unique_ptr<ScoreboardScene> _scoreboardScene;
 
     std::vector<IScene *> _scenes {};

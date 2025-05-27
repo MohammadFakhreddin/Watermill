@@ -9,6 +9,7 @@
 #include "LogicalDevice.hpp"
 #include "camera/ArcballCamera.hpp"
 #include "camera/ObserverCamera.hpp"
+#include "litehtml/el_text.h"
 
 using namespace MFA;
 
@@ -25,7 +26,9 @@ GameScene::GameScene(
     _spriteRenderer = _params.spriteRenderer;
     MFA_ASSERT(_spriteRenderer != nullptr);
 
-    auto const htmlPath = MFA::Path::Instance()->Get("ui/game/Game.html");
+    std::string htmlAddress{};
+    MFA_STRING(htmlAddress, "ui/%s/Game.html", _params.levelName.c_str());
+    auto const htmlPath = MFA::Path::Instance()->Get(htmlAddress.c_str());
 
     litehtml::position clip;
     clip.x = 0;
@@ -34,8 +37,12 @@ GameScene::GameScene(
     clip.height = device->GetWindowHeight();
 
     _webViewContainer = std::make_unique<WebViewContainer>(htmlPath.c_str(), clip, webviewParams);
+    // TODO: Update level text and score dynamically
 
-    GenerateGame const levelContent(MFA::Path::Instance()->Get("levels/level1.json"));
+
+    auto levelPath = MFA::Path::Instance()->Get(_params.levelPath);
+    MFA_ASSERT(std::filesystem::exists(levelPath) == true);
+    GenerateGame const levelContent(levelPath);
     _transforms = levelContent.Transforms();
     auto const & sprites = levelContent.Sprites();
 
@@ -141,6 +148,24 @@ GameScene::GameScene(
 
 void GameScene::Update(float deltaTime)
 {
+    // TODO: Find the issue behind webview not getting updated
+    // auto levelNameElement = _webViewContainer->GetElementById("levelName");
+    // if (i % 2 == 0)
+    // {
+    //     _webViewContainer->AddClass(levelNameElement, "selected");
+    // }
+    // else
+    // {
+    //     _webViewContainer->RemoveClass(levelNameElement, "selected");
+    // }
+    // ++i;
+    //
+    // // std::string classAttr = levelNameElement->get_attr("class", "");
+    // ((litehtml::el_text *)levelNameElement->children().begin()->get())->set_text("dwadawdawd");
+    // std::string text;
+    // levelNameElement->get_text(text);
+    // levelNameElement->set_attr("class", classAttr.c_str());
+    // _webViewContainer->InvalidateStyles(levelNameElement);
     _webViewContainer->Update();
 }
 
@@ -215,8 +240,14 @@ void GameScene::Reload()
 //======================================================================================================================
 
 void GameScene::UpdateInputAxis(const glm::vec2 &inputAxis) {}
-void GameScene::ButtonA_Changed(bool value) {}
-void GameScene::ButtonB_Pressed(bool value)
+void GameScene::ButtonA_Changed(bool const value)
+{
+    if (value == true)
+    {
+        _params.nextLevel();
+    }
+}
+void GameScene::ButtonB_Pressed(bool const value)
 {
     if (value == true)
     {

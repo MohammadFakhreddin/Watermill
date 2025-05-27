@@ -12,6 +12,8 @@ public:
 
     struct Params
     {
+        std::string levelName{};
+        std::string levelPath{};
         std::function<void()> backPressed;
         std::function<void()> nextLevel;
         std::shared_ptr<SpriteRenderer> spriteRenderer;

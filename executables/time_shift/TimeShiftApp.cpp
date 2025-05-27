@@ -83,32 +83,17 @@ void TimeShiftApp::Run()
                 .PlayPressed = [this]()->void
                 {
                     MFA_LOG_INFO("Play pressed");
-                    _nextSceneIndex = 1;
+                    _nextSceneIndex = 2;
                 },
                 .ScoreBoardPressed = [this]()->void
                 {
                     MFA_LOG_INFO("Scoreboard pressed");
-                    _nextSceneIndex = 2;
+                    _nextSceneIndex = 1;
                 },
             };
 
             _menuScene = std::make_unique<MenuScene>(webviewParams, menuParams);
             _scenes.emplace_back(_menuScene.get());
-        }
-
-        {
-            GameScene::Params gameParams
-            {
-                .backPressed = [this]()->void
-                {
-                    MFA_LOG_INFO("Back pressed");
-                    _nextSceneIndex = 0;
-                },
-                .spriteRenderer = _spriteRenderer
-            };
-
-            _gameScene = std::make_unique<GameScene>(webviewParams, gameParams);
-            _scenes.emplace_back(_gameScene.get());
         }
 
         {
@@ -122,6 +107,69 @@ void TimeShiftApp::Run()
             };
             _scoreboardScene = std::make_unique<ScoreboardScene>(webviewParams, scoreboardParams);
             _scenes.emplace_back(_scoreboardScene.get());
+        }
+
+        {
+            GameScene::Params gameParams
+            {
+                .levelName = "level1",
+                .levelPath = "levels/level1.json",
+                .backPressed = [this]()->void
+                {
+                    MFA_LOG_INFO("Back pressed");
+                    _nextSceneIndex = 0;
+                },
+                .nextLevel = [this]()->void
+                {
+                    _nextSceneIndex = 3;
+                },
+                .spriteRenderer = _spriteRenderer
+            };
+
+            _level1Scene = std::make_unique<GameScene>(webviewParams, gameParams);
+            _scenes.emplace_back(_level1Scene.get());
+        }
+
+        {
+            GameScene::Params gameParams
+            {
+                .levelName = "level2",
+                .levelPath = "levels/Level2.json",
+                .backPressed = [this]()->void
+                {
+                    MFA_LOG_INFO("Back pressed");
+                    _nextSceneIndex = 0;
+                },
+                .nextLevel = [this]()->void
+                {
+                    _nextSceneIndex = 4;
+                },
+                .spriteRenderer = _spriteRenderer
+            };
+
+            _level2Scene = std::make_unique<GameScene>(webviewParams, gameParams);
+            _scenes.emplace_back(_level2Scene.get());
+        }
+
+        {
+            GameScene::Params gameParams
+            {
+                .levelName = "level3",
+                .levelPath = "levels/level3.json",
+                .backPressed = [this]()->void
+                {
+                    MFA_LOG_INFO("Back pressed");
+                    _nextSceneIndex = 0;
+                },
+                .nextLevel = [this]()->void
+                {
+                    _nextSceneIndex = 1;
+                },
+                .spriteRenderer = _spriteRenderer
+            };
+
+            _level3Scene = std::make_unique<GameScene>(webviewParams, gameParams);
+            _scenes.emplace_back(_level3Scene.get());
         }
 
         _nextSceneIndex = 0;

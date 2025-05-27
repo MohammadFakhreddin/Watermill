@@ -8,7 +8,7 @@
 using namespace MFA;
 
 //======================================================================================================================
-
+// TODO: There is alot of room for optimization
 SpritePipeline::SpritePipeline(
     std::shared_ptr<MFA::DisplayRenderPass> displayRenderPass,
     std::shared_ptr<MFA::RT::SamplerGroup> sampler
@@ -16,7 +16,7 @@ SpritePipeline::SpritePipeline(
     : _displayRenderPass(std::move(displayRenderPass))
     , _sampler(std::move(sampler))
 {
-    _descriptorPool = RB::CreateDescriptorPool(LogicalDevice::Instance->GetVkDevice(), 1000, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
+    _descriptorPool = RB::CreateDescriptorPool(LogicalDevice::Instance->GetVkDevice(), 10000, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
     CreateDescriptorLayout();
     CreatePipeline();
 }
