@@ -1,8 +1,8 @@
 # Watermill :)
 
 **This project goal is to practice shaders and visual effects**
-<!-- 
-<img src="assets/IK_Gif.gif"  height=400> -->
+
+<img src="assets/readme/game_map_demo.gif"  height=400>
 
 ---
 
