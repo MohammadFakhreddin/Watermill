@@ -42,10 +42,17 @@ void TimeShiftApp::Run()
         _borderRenderer = std::make_shared<BorderRenderer>(borderPipeline);
     }
 
+    auto const imageSampler = RB::CreateSampler(device->GetVkDevice(), {
+        .anisotropyEnabled = true,
+        .maxAnisotropy = device->GetPhysicalDeviceProperties().limits.maxSamplerAnisotropy
+    });
     {// Image
-        auto const imageSampler = RB::CreateSampler(device->GetVkDevice(), {});
         auto const imagePipeline = std::make_shared<ImagePipeline>(_displayRenderPass, imageSampler);
         _imageRenderer = std::make_shared<ImageRenderer>(imagePipeline);
+    }
+    {
+        auto const spritePipeline = std::make_shared<SpritePipeline>(_displayRenderPass, imageSampler);
+        _spriteRenderer = std::make_shared<SpriteRenderer>(spritePipeline);
     }
 
     {// Game scenes
@@ -87,11 +94,12 @@ void TimeShiftApp::Run()
         {
             GameScene::Params gameParams
             {
-                .BackPressed = [this]()->void
+                .backPressed = [this]()->void
                 {
                     MFA_LOG_INFO("Back pressed");
                     _nextSceneIndex = 0;
-                }
+                },
+                .spriteRenderer = _spriteRenderer
             };
 
             _gameScene = std::make_unique<GameScene>(webviewParams, gameParams);
@@ -262,7 +270,7 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
                 _inputA = modifier > 0;
                 inputA_Changed = true;
             }
-            else if (event->key.keysym.sym == SDLK_r)
+            else if (event->key.keysym.sym == SDLK_ESCAPE)
             {
                 _inputB = modifier > 0;
                 inputB_Changed = true;
@@ -345,9 +353,9 @@ void TimeShiftApp::InitFontPipeline()
     auto *device = LogicalDevice::Instance;
     // Font
     RB::CreateSamplerParams fontSamplerParams{};
-    fontSamplerParams.magFilter = VK_FILTER_NEAREST;
-    fontSamplerParams.minFilter = VK_FILTER_NEAREST;
-    fontSamplerParams.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    fontSamplerParams.magFilter = VK_FILTER_LINEAR;
+    fontSamplerParams.minFilter = VK_FILTER_LINEAR;
+    fontSamplerParams.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     fontSamplerParams.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     fontSamplerParams.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     fontSamplerParams.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
@@ -356,6 +364,7 @@ void TimeShiftApp::InitFontPipeline()
     fontSamplerParams.minLod = 0.0f;
     fontSamplerParams.maxLod = 1.0f;
     fontSamplerParams.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+    fontSamplerParams.maxAnisotropy = device->GetPhysicalDeviceProperties().limits.maxSamplerAnisotropy;
 
     auto const fontSampler = RB::CreateSampler(device->GetVkDevice(), fontSamplerParams);
     MFA_ASSERT(fontSampler != nullptr);

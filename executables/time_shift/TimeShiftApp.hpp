@@ -53,6 +53,7 @@ private:
     std::shared_ptr<MFA::BorderRenderer> _borderRenderer;
     std::shared_ptr<MFA::ImageRenderer> _imageRenderer;
     std::shared_ptr<MFA::TextOverlayPipeline> _fontPipeline;
+    std::shared_ptr<SpriteRenderer> _spriteRenderer;
 
     std::unordered_map<std::string, std::shared_ptr<MFA::Blob>> _blobMap;
     std::unordered_map<std::string, std::shared_ptr<MFA::CustomFontRenderer>> _fontMap{};

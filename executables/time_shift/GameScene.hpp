@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IScene.hpp"
+#include "SpriteRenderer.hpp"
 #include "Transform.hpp"
 #include "WebViewContainer.hpp"
 #include "camera/ArcballCamera.hpp"
@@ -11,7 +12,8 @@ public:
 
     struct Params
     {
-        std::function<void()> BackPressed;
+        std::function<void()> backPressed;
+        std::shared_ptr<SpriteRenderer> spriteRenderer;
     };
 
     explicit GameScene(
@@ -48,11 +50,10 @@ private:
     struct Sprite
     {
         MFA::Transform * transform;
-        std::shared_ptr<MFA::ImageRenderer::ImageData> imageData;
+        std::unique_ptr<SpriteRenderer::SpriteData> spriteData;
     };
     std::vector<std::shared_ptr<Sprite>> _sprites;
-
-    std::shared_ptr<MFA::ImageRenderer> _imageRenderer;
+    std::shared_ptr<SpriteRenderer> _spriteRenderer;
 
     float _left{};
     float _right{};

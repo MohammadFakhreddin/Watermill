@@ -12,7 +12,7 @@ SpriteRenderer::SpriteRenderer(std::shared_ptr<Pipeline> pipeline)
 
 //------------------------------------------------------------------------------------------------------------------
 
-std::unique_ptr<SpriteRenderer::SpriteData> SpriteRenderer::AllocateImageData(
+std::tuple<std::unique_ptr<SpriteRenderer::SpriteData>, std::unique_ptr<SpriteRenderer::CommandBufferData>> SpriteRenderer::Allocate(
     VkCommandBuffer commandBuffer,
 
     RT::GpuTexture const &gpuTexture,
@@ -36,55 +36,62 @@ std::unique_ptr<SpriteRenderer::SpriteData> SpriteRenderer::AllocateImageData(
         vertexData.uv = uvs[i];
     }
 
-    auto const vertexBuffer = RB::CreateVertexBuffer(
+    auto const vertexAlias = Alias(vertexDataList.data(), vertexDataList.size());
+    auto const indexAlias = Alias(indices, indexCount);
+
+    auto vertexStageBuffer = RB::CreateStageBuffer(
         device->GetVkDevice(),
         device->GetPhysicalDevice(),
-        sizeof(Pipeline::Vertex) * vertexCount,
+        vertexAlias.Len(),
         1
     );
 
-    auto const vertexStageBuffer = RB::CreateStageBuffer(
+    auto vertexBuffer = RB::CreateVertexBuffer(
         device->GetVkDevice(),
         device->GetPhysicalDevice(),
-        vertexBuffer->bufferSize,
+        commandBuffer,
+        *vertexStageBuffer->buffers[0],
+        vertexAlias
+    );
+
+    auto indexStageBuffer = RB::CreateStageBuffer(
+        device->GetVkDevice(),
+        device->GetPhysicalDevice(),
+        indexAlias.Len(),
         1
     );
 
-    auto const indexBuffer = RB::CreateIndexBuffer(
-        device->GetVkDevice(),
+    auto indexBuffer = RB::CreateIndexBuffer(
+    device->GetVkDevice(),
         device->GetPhysicalDevice(),
-        sizeof(Pipeline::Index) * indexCount,
-        1
-    );
-
-    auto const indexStageBuffer = RB::CreateStageBuffer(
-        device->GetVkDevice(),
-        device->GetPhysicalDevice(),
-        vertexBuffer->bufferSize,
-        1
+        commandBuffer,
+        *indexStageBuffer->buffers[0],
+        indexAlias
     );
 
     auto imageData = std::make_unique<SpriteData>(SpriteData{
-        .vertexData = LocalBufferTracker(
-            vertexBuffer,
-            vertexStageBuffer,
-            Alias(vertexDataList.data(), vertexDataList.size() * vertexCount)
-        ),
-        .indexData = LocalBufferTracker(
-            indexBuffer,
-            indexStageBuffer,
-            Alias(indices, sizeof(Index) * indexCount)
-
-        ),
-        .descriptorSet = _pipeline->CreateDescriptorSet(gpuTexture)
+        .vertexData = vertexBuffer,
+        .indexCount = (size_t)indexCount,
+        .indexData = indexBuffer,
+        .descriptorSet = _pipeline->CreateDescriptorSet(gpuTexture),
     });
 
-    return imageData;
+    auto commandBufferData = std::make_unique<CommandBufferData>(CommandBufferData{
+        .vertexStageBuffer = vertexStageBuffer,
+        .indexStageBuffer = indexStageBuffer
+    });
+
+    return std::tuple{std::move(imageData), std::move(commandBufferData)};
 }
 
 //------------------------------------------------------------------------------------------------------------------
 
-void SpriteRenderer::FreeImageData(SpriteData &imageData) {}
+// void SpriteRenderer::FreeImageData(SpriteData &imageData)
+// {
+//     imageData.vertexData.reset();
+//     imageData.indexData.reset();
+//     _pipeline->FreeDescriptorSet(imageData.descriptorSet);
+// }
 
 //------------------------------------------------------------------------------------------------------------------
 
@@ -94,6 +101,15 @@ void SpriteRenderer::Draw(
     SpriteData const &imageData
 ) const
 {
+    _pipeline->BindPipeline(recordState);
+
+    _pipeline->SetPushConstant(recordState, pushConstants);
+
+    RB::AutoBindDescriptorSet(recordState, RB::UpdateFrequency::PerPipeline, imageData.descriptorSet);
+
+    RB::BindVertexBuffer(recordState, *imageData.vertexData);
+    RB::BindIndexBuffer(recordState, *imageData.indexData, 0, RB::GetVkIndexType(sizeof(Index)));
+    vkCmdDrawIndexed(recordState.commandBuffer, imageData.indexCount, 1, 0, 0, 0);
 }
 
 //------------------------------------------------------------------------------------------------------------------

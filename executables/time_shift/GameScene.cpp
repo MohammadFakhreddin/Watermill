@@ -22,6 +22,9 @@ GameScene::GameScene(
 {
     auto const * device = MFA::LogicalDevice::Instance;
 
+    _spriteRenderer = _params.spriteRenderer;
+    MFA_ASSERT(_spriteRenderer != nullptr);
+
     auto const htmlPath = MFA::Path::Instance()->Get("ui/game/Game.html");
 
     litehtml::position clip;
@@ -43,6 +46,10 @@ GameScene::GameScene(
     float back = std::numeric_limits<float>::max();
     float front = std::numeric_limits<float>::min();
 
+    std::vector<std::unique_ptr<SpriteRenderer::CommandBufferData>> commandBufferDataList{};
+
+    device->DeviceWaitIdle();
+    auto commandBuffer = RB::BeginSingleTimeCommand(device->GetVkDevice(), device->GetGraphicCommandPool());
     for (auto & sprite : sprites)
     {
         auto const address = Path::Instance()->Get("textures/" + sprite->name);
@@ -50,90 +57,67 @@ GameScene::GameScene(
         {
             auto [gpuTexture, imageSize] = webviewParams.requestImage(address.c_str());
 
-            auto & spriteMin = sprite->spriteMin;
-            auto & spriteMax = sprite->spriteMax;
-
-            float uvLeft = spriteMin.x / imageSize.x;
-            float uvRight = spriteMax.x / imageSize.x;
-            float uvTop = 1.0f - (spriteMin.y / imageSize.y);
-            float uvBottom = 1.0f - (spriteMax.y / imageSize.y);
-
+            glm::vec3 flipScale {1.0f, 1.0f, 1.0f};
             if (sprite->flipX == true)
             {
-                std::swap(uvLeft, uvRight);
+                flipScale.x *= -1.0f;
             }
             if (sprite->flipY == true)
             {
-                std::swap(uvTop, uvBottom);
+                flipScale.y *= -1.0f;
             }
+            auto scaleMat = glm::scale(glm::mat4(1), flipScale);
 
-            ImagePipeline::UV topLeftUV {uvLeft, uvTop};
-            ImagePipeline::UV topRightUV {uvRight, uvTop};
-            ImagePipeline::UV bottomLeftUV {uvLeft, uvBottom};
-            ImagePipeline::UV bottomRightUV {uvRight, uvBottom};
+            std::vector<SpritePipeline::Position> tVs(sprite->vertices.size());
+            std::vector<SpriteRenderer::UV> tUs(sprite->vertices.size());
+            for (int i = 0; i < sprite->vertices.size(); ++i)
+            {
+                auto & oV = sprite->vertices[i];
+                auto & tV = tVs[i];
 
-            // auto const uvCenter = glm::vec2(uvLeft + uvRight, uvTop + uvBottom) * 0.5f;
-            // auto const centerMat = glm::translate(glm::mat4(1), glm::vec3{uvCenter.x, uvCenter.y, 0.0f});
-            // auto const centerInvMat = glm::translate(glm::mat4(1), glm::vec3{-uvCenter.x, -uvCenter.y, 0.0f});
+                tV = sprite->transform_ptr->GlobalTransform() * scaleMat * glm::vec4{oV, 1.0f};
 
-            // auto const eulerAngles =  sprite->transform_ptr->GetLocalRotation().GetEulerAngles();
-            // auto rotationMat = glm::toMat4(glm::angleAxis(eulerAngles.z, glm::vec3(0, 0, 1)));
+                left = std::min(left, tV.x);
+                right = std::max(right, tV.x);
+                top = std::min(top, tV.y);
+                bottom = std::max(bottom, tV.y);
+                front = std::min(front, tV.z);
+                back = std::max(back, tV.z);
 
-            // topLeftUV = centerMat * rotationMat * centerInvMat * glm::vec4{topLeftUV, 0.0f, 1.0f};
-            // topRightUV = centerMat * rotationMat * centerInvMat * glm::vec4{topRightUV, 0.0f, 1.0f};
-            // bottomLeftUV = centerMat * rotationMat * centerInvMat * glm::vec4{bottomLeftUV, 0.0f, 1.0f};
-            // bottomRightUV = centerMat * rotationMat * centerInvMat * glm::vec4{bottomRightUV, 0.0f, 1.0f};
-
-            auto & worldMin = sprite->worldMin;
-            auto & worldMax = sprite->worldMax;
-
-            float worldLeft = worldMin.x;
-            float worldRight = worldMax.x;
-            float worldTop = worldMin.y;
-            float worldBottom = worldMax.y;
-
-            glm::vec4 topLeftPosition = glm::vec4{worldLeft, worldTop, 0.0f, 1.0f};
-            glm::vec4 topRightPosition = glm::vec4{worldRight, worldTop, 0.0f, 1.0f};
-            glm::vec4 bottomLeftPosition = glm::vec4{worldLeft, worldBottom, 0.0f, 1.0f};
-            glm::vec4 bottomRightPosition = glm::vec4{worldRight, worldBottom, 0.0f, 1.0f};
-
-            glm::vec2 const worldCenter ((worldLeft + worldRight) * 0.5f, (worldTop + worldBottom) * 0.5f);
-            auto const centerMat = glm::translate(glm::mat4(1), glm::vec3{worldCenter.x, worldCenter.y, 0.0f});
-            auto const centerInvMat = glm::translate(glm::mat4(1), glm::vec3{-worldCenter.x, -worldCenter.y, 0.0f});
-            auto const eulerAngles =  sprite->transform_ptr->GetLocalRotation().GetEulerAngles();
-            auto rotationMat = glm::toMat4(glm::angleAxis(eulerAngles.z, glm::vec3(0, 0, 1)));
-
-            topLeftPosition = centerMat * rotationMat * centerInvMat * topLeftPosition;
-            topRightPosition = centerMat * rotationMat * centerInvMat * topRightPosition;
-            bottomLeftPosition = centerMat * rotationMat * centerInvMat * bottomLeftPosition;
-            bottomRightPosition = centerMat * rotationMat * centerInvMat * bottomRightPosition;
+                tUs[i].x = sprite->uvs[i].x;
+                tUs[i].y = 1.0f - sprite->uvs[i].y;
+            }
 
             ImagePipeline::Radius radius0 {};
 
-            std::shared_ptr imageData = webviewParams.imageRenderer->AllocateImageData(
+            auto [imageData, tempData] = _spriteRenderer->Allocate(
+                commandBuffer,
                 *gpuTexture,
-                topLeftPosition, bottomLeftPosition, topRightPosition, bottomRightPosition,
-                radius0, radius0, radius0, radius0,
-                topLeftUV, bottomLeftUV, topRightUV, bottomRightUV
+                (int)sprite->vertices.size(),
+                tVs.data(),
+                tUs.data(),
+                (int)sprite->indices.size(),
+                sprite->indices.data()
             );
 
             std::shared_ptr mySprite = std::make_shared<Sprite>();
             mySprite->transform = sprite->transform_ptr;
-            mySprite->imageData = imageData;
+            mySprite->spriteData = std::move(imageData);
             _sprites.emplace_back(mySprite);
 
-            left = std::min(left, bottomLeftPosition.x);
-            right = std::max(right, topRightPosition.x);
-            top = std::min(top, topLeftPosition.y);
-            bottom = std::max(bottom, bottomLeftPosition.y);
-            front = std::max(front, bottomLeftPosition.z);
-            back = std::min(back, bottomRightPosition.z);
+            commandBufferDataList.emplace_back(std::move(tempData));
         }
         else
         {
             MFA_LOG_WARN("Failed to find the asset with name: %s", address.c_str());
         }
     }
+    RB::EndAndSubmitSingleTimeCommand(
+        device->GetVkDevice(),
+        device->GetGraphicCommandPool(),
+        device->GetGraphicQueue(),
+        commandBuffer
+    );
 
     _left = left;
     _right = right;
@@ -141,8 +125,6 @@ GameScene::GameScene(
     _top = top;
     _near = back;
     _far = front;
-
-    _imageRenderer = webviewParams.imageRenderer;
 }
 
 //======================================================================================================================
@@ -157,10 +139,6 @@ void GameScene::Update(float deltaTime)
 void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
 {
     _webViewContainer->UpdateBuffer(recordState);
-    for (auto & sprite : _sprites)
-    {
-        sprite->imageData->vertexData->Update(recordState);
-    }
 }
 
 //======================================================================================================================
@@ -181,12 +159,12 @@ void GameScene::Render(MFA::RT::CommandRecordState &recordState)
     auto top = yCenter - newHeight / 2.0f;
 
     auto viewProjectionMatrix = glm::ortho(_left, _right, bottom, top, -10.0f + _near, 10.0f + _far);
-    ImagePipeline::PushConstants pushConstants {
+    SpritePipeline::PushConstants pushConstants {
         .model = glm::transpose(viewProjectionMatrix)
     };
     for (auto & sprite : _sprites)
     {
-        _imageRenderer->Draw(recordState, pushConstants, *sprite->imageData);
+        _spriteRenderer->Draw(recordState, pushConstants, *sprite->spriteData);
     }
     _webViewContainer->DisplayPass(recordState);
 }
@@ -231,7 +209,7 @@ void GameScene::ButtonB_Pressed(bool value)
 {
     if (value == true)
     {
-        _params.BackPressed();
+        _params.backPressed();
     }
 }
 

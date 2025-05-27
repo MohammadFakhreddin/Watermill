@@ -48,7 +48,7 @@ void GenerateGame::parse_objects(Transform * parent, json objects)
         transforms.emplace_back(std::make_shared<Transform>());
         auto &transform = transforms.back();
         transform->SetLocalPosition(to_vec3(object["position"]));
-        transform->SetEulerAngles(glm::radians(to_vec3(object["rotation"])));
+        transform->SetEulerAngles((to_vec3(object["rotation"])));
         transform->SetLocalScale(to_vec3(object["scale"]));
         transform->name = object["name"].get<std::string>();
         if (object["tag"] != "Untagged")
@@ -60,22 +60,28 @@ void GenerateGame::parse_objects(Transform * parent, json objects)
             transform->SetParent(parent);
         }
 
-        auto sprite_name = object["spriteName"].get<std::string>();
+        auto const sprite_name = object["spriteName"].get<std::string>();
         if (!sprite_name.empty())
         {
             sprites.emplace_back(std::make_shared<Sprite>());
-            auto sprite = sprites.back();
+            auto & sprite = sprites.back();
             sprite->name = sprite_name;
+            for (auto const & vertex : object["spriteVertices"])
+            {
+                sprite->vertices.emplace_back(glm::vec3{to_vec2(vertex), 0.0f});
+            }
             for (auto const & uv : object["spriteUVs"])
             {
                 sprite->uvs.push_back(to_vec2(uv));
             }
-            sprite->spriteMin = to_vec2(object["spriteMin"]);
-            sprite->spriteMax = to_vec2(object["spriteMax"]);
-            sprite->worldMin = to_vec2(object["worldMin"]);
-            sprite->worldMax = to_vec2(object["worldMax"]);
-            sprite->flipX = object["flipX"].get<bool>();
-            sprite->flipY = object["flipY"].get<bool>();
+            for (auto const & index : object["spriteTriangles"])
+            {
+                sprite->indices.emplace_back(index.get<uint16_t>());
+            }
+
+            // TODO: Restore support for flip
+            sprite->flipX = false;//object["flipX"].get<bool>();
+            sprite->flipY = false;//object["flipY"].get<bool>();
             sprite->transform_ptr = transform.get();
         }
 

@@ -778,6 +778,17 @@ namespace MFA::RenderBackend
 	    // fallback
 	    else return VK_FORMAT_UNDEFINED;
 	}
+
+    [[nodiscard]]
+    VkIndexType GetVkIndexType(size_t indexSize);
+
+    template<typename T>
+    [[nodiscard]]
+    VkIndexType GetVkIndexType()
+    {
+	    return GetVkIndexType(sizeof(T));
+    }
+
 };
 
 #define MFA_VERTEX_INPUT_ATTRIBUTE(locationValue, bindingValue, structName, memberName)             \

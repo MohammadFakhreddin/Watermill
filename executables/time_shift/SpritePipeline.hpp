@@ -9,7 +9,7 @@ class SpritePipeline : public MFA::IShadingPipeline
 {
 public:
 
-    using Position = glm::vec2;
+    using Position = glm::vec3;
     using UV = glm::vec2;
     using Index = uint16_t;
 

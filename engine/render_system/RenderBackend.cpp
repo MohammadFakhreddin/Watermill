@@ -3260,4 +3260,14 @@ namespace MFA::RenderBackend
 
     //-------------------------------------------------------------------------------------------------
 
+    VkIndexType GetVkIndexType(size_t const indexSize) {
+        switch (indexSize) {
+        case 2: return VK_INDEX_TYPE_UINT16;
+        case 4: return VK_INDEX_TYPE_UINT32;
+        default: throw std::runtime_error("Unsupported index size");
+        }
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
 };

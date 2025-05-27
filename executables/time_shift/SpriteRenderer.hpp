@@ -18,28 +18,35 @@ public:
     struct SpriteData
     {
         std::shared_ptr<MFA::RT::BufferAndMemory> vertexData {};
+        size_t indexCount{};
         std::shared_ptr<MFA::RT::BufferAndMemory> indexData {};
         MFA::RT::DescriptorSetGroup descriptorSet {};
+    };
+
+    struct CommandBufferData
+    {
+        std::shared_ptr<MFA::RT::BufferGroup> vertexStageBuffer{};
+        std::shared_ptr<MFA::RT::BufferGroup> indexStageBuffer{};
     };
 
     explicit SpriteRenderer(std::shared_ptr<Pipeline> pipeline);
 
     // Assumption is that sprites are not changing that frequently
     [[nodiscard]]
-    std::unique_ptr<SpriteData> AllocateImageData(
+    std::tuple<std::unique_ptr<SpriteData>, std::unique_ptr<CommandBufferData>> Allocate(
         VkCommandBuffer commandBuffer,
 
         MFA::RT::GpuTexture const & gpuTexture,
 
         int vertexCount,
-        Position * vertices,
-        UV * uvs,
+        Position const * vertices,
+        UV const * uvs,
 
         int indexCount,
-        Index * indices
+        Index const * indices
     ) const;
 
-    void FreeImageData(SpriteData &imageData);
+    // void FreeImageData(SpriteData &imageData);
 
     void Draw(
         MFA::RT::CommandRecordState & recordState,
