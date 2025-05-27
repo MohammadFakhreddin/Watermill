@@ -1644,13 +1644,13 @@ namespace MFA::RenderBackend
         if (availableFormatsCount == 1 && availableFormats[0].format == VK_FORMAT_UNDEFINED)
         {
             // return { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_PASS_THROUGH_EXT };
-            return { VK_FORMAT_R8G8B8A8_SRGB, VK_COLORSPACE_SRGB_NONLINEAR_KHR };
+            return { VK_FORMAT_R8G8B8A8_UNORM, VK_COLORSPACE_SRGB_NONLINEAR_KHR };
         }
 
         // Or go with the standard format - if available
         for (uint8_t index = 0; index < availableFormatsCount; index++)
         {
-            if (availableFormats[index].format == VK_FORMAT_R8G8B8A8_SRGB)
+            if (availableFormats[index].format == VK_FORMAT_R8G8B8A8_UNORM)
             {
                 return availableFormats[index];
             }
