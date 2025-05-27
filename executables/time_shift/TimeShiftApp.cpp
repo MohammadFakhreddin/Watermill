@@ -43,8 +43,13 @@ void TimeShiftApp::Run()
     }
 
     auto const imageSampler = RB::CreateSampler(device->GetVkDevice(), {
+        .minFilter = VK_FILTER_NEAREST,
+        .magFilter = VK_FILTER_NEAREST,
+        .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .anisotropyEnabled = true,
-        .maxAnisotropy = device->GetPhysicalDeviceProperties().limits.maxSamplerAnisotropy
+        .maxAnisotropy = device->GetPhysicalDeviceProperties().limits.maxSamplerAnisotropy,
     });
     {// Image
         auto const imagePipeline = std::make_shared<ImagePipeline>(_displayRenderPass, imageSampler);
