@@ -39,7 +39,6 @@ GameScene::GameScene(
     _webViewContainer = std::make_unique<WebViewContainer>(htmlPath.c_str(), clip, webviewParams);
     // TODO: Update level text and score dynamically
 
-
     auto levelPath = MFA::Path::Instance()->Get(_params.levelPath);
     MFA_ASSERT(std::filesystem::exists(levelPath) == true);
     GenerateGame const levelContent(levelPath);
@@ -148,24 +147,6 @@ GameScene::GameScene(
 
 void GameScene::Update(float deltaTime)
 {
-    // TODO: Find the issue behind webview not getting updated
-    // auto levelNameElement = _webViewContainer->GetElementById("levelName");
-    // if (i % 2 == 0)
-    // {
-    //     _webViewContainer->AddClass(levelNameElement, "selected");
-    // }
-    // else
-    // {
-    //     _webViewContainer->RemoveClass(levelNameElement, "selected");
-    // }
-    // ++i;
-    //
-    // // std::string classAttr = levelNameElement->get_attr("class", "");
-    // ((litehtml::el_text *)levelNameElement->children().begin()->get())->set_text("dwadawdawd");
-    // std::string text;
-    // levelNameElement->get_text(text);
-    // levelNameElement->set_attr("class", classAttr.c_str());
-    // _webViewContainer->InvalidateStyles(levelNameElement);
     _webViewContainer->Update();
 }
 

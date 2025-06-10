@@ -44,7 +44,7 @@ private:
     Params _menuParams;
 
     std::unique_ptr<WebViewContainer> _webViewContainer;
-    std::vector<litehtml::element::ptr> _buttons{};
+    std::vector<GumboNode *> _buttons{};
     int _selectedButton = 0;
 
 };

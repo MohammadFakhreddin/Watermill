@@ -22,4 +22,4 @@ namespace MFA {
     };
 }
 
-#define SCOPE_LOCK(lock)        ScopeLock MFA_UNIQUE_NAME(__scopeLock) {lock};
+#define MFA_SCOPE_LOCK(lock)        ScopeLock MFA_UNIQUE_NAME(__scopeLock) {lock};

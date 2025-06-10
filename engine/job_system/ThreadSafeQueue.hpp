@@ -60,14 +60,14 @@ public:
 
     [[nodiscard]]
     bool IsEmpty() {
-        SCOPE_LOCK(mLock)
+        MFA_SCOPE_LOCK(mLock)
         return mData.empty();
     }
 
     [[nodiscard]]
     size_t ItemCount()
     {
-        SCOPE_LOCK(mLock)
+        MFA_SCOPE_LOCK(mLock)
         return mData.size();
     }
 

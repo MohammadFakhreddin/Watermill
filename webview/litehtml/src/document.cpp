@@ -212,49 +212,151 @@ encoding get_meta_encoding(GumboNode* root)
 }
 
 // substitute for gumbo_parse that handles encodings
-GumboOutput* document::parse_html(estring str)
-{
-	// https://html.spec.whatwg.org/multipage/parsing.html#the-input-byte-stream
-	encoding_sniffing_algorithm(str);
-	// cannot store output in local variable because gumbo keeps pointers into it, 
-	// which will be accessed later in gumbo_tag_from_original_text
-	if (str.encoding == encoding::utf_8)
-		m_text = str;
-	else
-		decode(str, str.encoding, m_text);
+GumboOutput *document::parse_html(estring str) {
+  std::string m_text{};
+  // https://html.spec.whatwg.org/multipage/parsing.html#the-input-byte-stream
+  encoding_sniffing_algorithm(str);
+  // cannot store output in local variable because gumbo keeps pointers into it,
+  // which will be accessed later in gumbo_tag_from_original_text
+  if (str.encoding == encoding::utf_8)
+	m_text = str;
+  else
+	decode(str, str.encoding, m_text);
 
-	// Gumbo does not support callbacks on node creation, so we cannot change encoding while parsing.
-	// Instead, we parse entire file and then handle <meta> tags.
+  // Gumbo does not support callbacks on node creation, so we cannot change
+  // encoding while parsing. Instead, we parse entire file and then handle
+  // <meta> tags.
 
-	// Using gumbo_parse_with_options to pass string length (m_text may contain NUL chars).
-	GumboOutput* output = gumbo_parse_with_options(&kGumboDefaultOptions, m_text.data(), m_text.size());
+  // Using gumbo_parse_with_options to pass string length (m_text may contain
+  // NUL chars).
+  GumboOutput *output = gumbo_parse_with_options(&kGumboDefaultOptions,
+												 m_text.data(), m_text.size());
 
-	if (str.confidence == confidence::certain)
-		return output;
-
-	// Otherwise: confidence is tentative.
-
-	// If valid HTML encoding is specified in <meta> tag...
-	encoding meta_encoding = get_meta_encoding(output->root);
-	if (meta_encoding != encoding::null)
-	{
-		// ...and it is different from currently used encoding...
-		encoding new_encoding = adjust_meta_encoding(meta_encoding, str.encoding);
-		if (new_encoding != str.encoding)
-		{
-			// ...reparse with the new encoding.
-			gumbo_destroy_output(&kGumboDefaultOptions, output);
-			m_text.clear();
-
-			if (new_encoding == encoding::utf_8)
-				m_text = str;
-			else
-				decode(str, new_encoding, m_text);
-			output = gumbo_parse_with_options(&kGumboDefaultOptions, m_text.data(), m_text.size());
-		}
-	}
-
+  if (str.confidence == confidence::certain)
 	return output;
+
+  // Otherwise: confidence is tentative.
+
+  // If valid HTML encoding is specified in <meta> tag...
+  encoding meta_encoding = get_meta_encoding(output->root);
+  if (meta_encoding != encoding::null) {
+	// ...and it is different from currently used encoding...
+	encoding new_encoding = adjust_meta_encoding(meta_encoding, str.encoding);
+	if (new_encoding != str.encoding) {
+	  // ...reparse with the new encoding.
+	  gumbo_destroy_output(&kGumboDefaultOptions, output);
+	  m_text.clear();
+
+	  if (new_encoding == encoding::utf_8)
+		m_text = str;
+	  else
+		decode(str, new_encoding, m_text);
+	  output = gumbo_parse_with_options(&kGumboDefaultOptions, m_text.data(),
+										m_text.size());
+	}
+  }
+
+  return output;
+}
+
+void document::destroy_output(GumboOutput *output) {
+  gumbo_destroy_output(&kGumboDefaultOptions, output);
+}
+
+
+void document::update_output(GumboOutput *output) {
+  // mode must be set before doc->create_node because it is used in html_tag::set_attr
+  switch (output->document->v.document.doc_type_quirks_mode)
+  {
+  case GUMBO_DOCTYPE_NO_QUIRKS:      this->m_mode = no_quirks_mode;      break;
+  case GUMBO_DOCTYPE_QUIRKS:         this->m_mode = quirks_mode;         break;
+  case GUMBO_DOCTYPE_LIMITED_QUIRKS: this->m_mode = limited_quirks_mode; break;
+  }
+
+  // Create litehtml::elements.
+  elements_list root_elements;
+  this->create_node(output->root, root_elements, true);
+  if (!root_elements.empty())
+  {
+	  this->m_root = root_elements.back();
+  }
+
+  apply_changes();
+}
+
+void document::update_styles(const string& master_styles, const string& user_styles)
+{
+  if (master_styles != "")
+  {
+    this->m_master_css.parse_css_stylesheet(master_styles, "", shared_from_this());
+    this->m_master_css.sort_selectors();
+  }
+  if (user_styles != "")
+  {
+    this->m_user_css.parse_css_stylesheet(user_styles, "", shared_from_this());
+    this->m_user_css.sort_selectors();
+  }
+
+  apply_changes();
+}
+
+void document::apply_changes()
+{
+  // Let's process created elements tree
+  if (this->m_root)
+  {
+    this->container()->get_media_features(this->m_media);
+
+    this->m_root->set_pseudo_class(_root_, true);
+
+    // apply master CSS
+    this->m_root->apply_stylesheet(this->m_master_css);
+
+    // parse elements attributes
+    this->m_root->parse_attributes();
+
+    // parse style sheets linked in document
+    for (const auto& css : this->m_css)
+    {
+      media_query_list_list::ptr media;
+      if (css.media != "")
+      {
+        auto mq_list = parse_media_query_list(css.media, shared_from_this());
+        media = make_shared<media_query_list_list>();
+        media->add(mq_list);
+      }
+      this->m_styles.parse_css_stylesheet(css.text, css.baseurl, shared_from_this(), media);
+    }
+    // Sort css selectors using CSS rules.
+    this->m_styles.sort_selectors();
+
+    // Apply media features.
+    this->update_media_lists(this->m_media);
+
+    // Apply parsed styles.
+    this->m_root->apply_stylesheet(this->m_styles);
+
+    // Apply user styles if any
+    this->m_root->apply_stylesheet(this->m_user_css);
+
+    // Initialize element::m_css
+    this->m_root->compute_styles();
+
+    // Create rendering tree
+    this->m_root_render = this->m_root->create_render_item(nullptr);
+
+    // Now the m_tabular_elements is filled with tabular elements.
+    // We have to check the tabular elements for missing table elements
+    // and create the anonymous boxes in visual table layout
+    this->fix_tables_layout();
+
+    // Finally initialize elements
+    // init() returns pointer to the render_init element because it can change its type
+    if(this->m_root_render)
+    {
+      this->m_root_render = this->m_root_render->init();
+    }
+  }
 }
 
 void document::create_node(void* gnode, elements_list& elements, bool parseTextNode)
@@ -315,7 +417,7 @@ void document::create_node(void* gnode, elements_list& elements, bool parseTextN
 	{
 		if (!parseTextNode)
 		{
-			elements.push_back(std::make_shared<el_text>(node->v.text.text, shared_from_this()));
+		  elements.push_back(std::make_shared<el_text>(node->v.text.text, shared_from_this()));
 		}
 		else
 		{
@@ -1141,7 +1243,7 @@ void document::append_children_from_string(element& parent, const char* str)
 		fix_tables_layout();
 
 		// Finally initialize elements
-		//child->init();
+		// child->init();
 	}
 }
 

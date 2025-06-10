@@ -7,6 +7,11 @@
 #include "WebViewContainer.hpp"
 #include "render_pass/DisplayRenderPass.hpp"
 
+// TODO: Resource manager
+// TODO: Optimized json
+// TODO: User interface fix
+// TODO: Sprite renderer resource allocation fix
+
 class TimeShiftApp
 {
 public:
@@ -59,15 +64,24 @@ private:
     std::unordered_map<std::string, std::shared_ptr<MFA::CustomFontRenderer>> _fontMap{};
     std::unordered_map<std::string, std::tuple<std::shared_ptr<MFA::RT::GpuTexture>, glm::vec2>> _imageMap;
 
-    std::unique_ptr<MenuScene> _menuScene;
-    std::unique_ptr<GameScene> _level1Scene;
-    std::unique_ptr<GameScene> _level2Scene;
-    std::unique_ptr<GameScene> _level3Scene;
-    std::unique_ptr<ScoreboardScene> _scoreboardScene;
+    enum class SceneID : int
+    {
+        Invalid = -1,
+        Menu = 0,
+        Scoreboard = 1,
+        Level1 = 2,
+        Level2 = 3,
+        Level3 = 4,
+        Count = 5
+    };
 
-    std::vector<IScene *> _scenes {};
-    int _activeSceneIndex = 0;
-    int _nextSceneIndex = 0;
+    using SceneRecipe = std::function<std::unique_ptr<IScene>()>;
+    std::vector<SceneRecipe> _sceneRecipes {};
+
+    std::unique_ptr<IScene> _currentScene;
+    std::vector<std::tuple<std::unique_ptr<IScene>, int>> _previousScenes {};
+    SceneID _activeSceneID = SceneID::Invalid;
+    SceneID _nextSceneID = SceneID::Invalid;
 
     glm::vec2 _inputAxis{};
     bool _inputA{};

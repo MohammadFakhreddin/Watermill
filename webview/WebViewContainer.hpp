@@ -1,13 +1,22 @@
 #pragma once
 
-#include "renderer/BorderRenderer.hpp"
 #include "renderer/CustomFontRenderer.hpp"
 #include "renderer/ImageRenderer.hpp"
-#include "renderer/SolidFillPipeline.hpp"
-#include "renderer/SolidFillRenderer.hpp"
 
+#include <gumbo.h>
 #include "litehtml.h"
 
+#include <glm/glm.hpp>
+
+namespace MFA
+{
+    struct LocalBufferTracker;
+    class Blob;
+    class BorderRenderer;
+    class ImageRenderer;
+    class SolidFillRenderer;
+    class CustomFontRenderer;
+}
 // TODO: Feature request, ID for items.
 // Idea: I can port this for unity
 class WebViewContainer : public litehtml::document_container
@@ -22,7 +31,7 @@ public:
     using RequestBlob = std::function<std::shared_ptr<MFA::Blob>(char const * address, bool force)>;
     using RequestFont = std::function<std::shared_ptr<FontRenderer>(char const * font)>;
     using RequestImage = std::function<std::tuple<std::shared_ptr<MFA::RT::GpuTexture>, glm::vec2>(char const * path)>;
-    
+
     struct Params
     {
         std::shared_ptr<SolidFillRenderer> solidFillRenderer{};
@@ -48,41 +57,43 @@ public:
 
 	void DisplayPass(MFA::RT::CommandRecordState& recordState);
 
-	[[nodiscard]]
-	litehtml::element::ptr GetElementById(char const * id) const;
-
-	[[nodiscard]]
-	static litehtml::element::ptr GetElementById(char const * id, litehtml::element::ptr element);
+    [[nodiscard]]
+    GumboNode * GetElementById(const char *id);
 
     [[nodiscard]]
-    litehtml::element::ptr GetElementByTag(char const * tag) const;
+    GumboNode * GetElementByTag(const char* tag);
 
-    [[nodiscard]]
-    static litehtml::element::ptr GetElementByTag(char const * tag, litehtml::element::ptr element);
+    void SetText(GumboNode * node, char const * text);
 
-	void InvalidateStyles(litehtml::element::ptr element);
+    void AddClass(GumboNode * node, char const * keyword);
+
+    void RemoveClass(GumboNode * node, char const * keyword);
+
+    // TODO: Modify style!
 
     void OnReload(litehtml::position clip);
 
     void OnResize(litehtml::position clip);
 
-    void AddClass(litehtml::element::ptr element, char const *keyword);
-
-    void RemoveClass(litehtml::element::ptr element, char const *keyword);
-
 protected:
 
+    [[nodiscard]]
+    GumboNode * GetElementById(const char *id, GumboNode *node);
+
+    [[nodiscard]]
+    GumboNode * GetElementByTag(const char* tag, GumboNode* node);
+
 	litehtml::element::ptr create_element(
-		const char* tag_name, 
-		const litehtml::string_map& attributes, 
+		const char* tag_name,
+		const litehtml::string_map& attributes,
 		const std::shared_ptr<litehtml::document>& doc
 	) override;
 
-	litehtml::uint_ptr create_font(const char* faceName, 
-		int size, 
-		int weight, 
-		litehtml::font_style italic, 
-		unsigned int decoration, 
+	litehtml::uint_ptr create_font(const char* faceName,
+		int size,
+		int weight,
+		litehtml::font_style italic,
+		unsigned int decoration,
 		litehtml::font_metrics* fm
 	) override;
 
@@ -91,52 +102,52 @@ protected:
 	void delete_font(litehtml::uint_ptr hFont) override;
 
 	void draw_borders(
-		litehtml::uint_ptr hdc, 
-		const litehtml::borders& borders, 
-		const litehtml::position& draw_pos, 
+		litehtml::uint_ptr hdc,
+		const litehtml::borders& borders,
+		const litehtml::position& draw_pos,
 		bool root
 	) override;
 
 	void draw_conic_gradient(
-		litehtml::uint_ptr hdc, 
-		const litehtml::background_layer& layer, 
+		litehtml::uint_ptr hdc,
+		const litehtml::background_layer& layer,
 		const litehtml::background_layer::conic_gradient& gradient
 	) override;
 
 	void draw_image(
-		litehtml::uint_ptr hdc, 
-		const litehtml::background_layer& layer, 
-		const std::string& url, 
+		litehtml::uint_ptr hdc,
+		const litehtml::background_layer& layer,
+		const std::string& url,
 		const std::string& base_url
 	) override;
 
 	void draw_linear_gradient(
-		litehtml::uint_ptr hdc, 
-		const litehtml::background_layer& layer, 
+		litehtml::uint_ptr hdc,
+		const litehtml::background_layer& layer,
 		const litehtml::background_layer::linear_gradient& gradient
 	) override;
 
 	void draw_list_marker(
-		litehtml::uint_ptr hdc, 
+		litehtml::uint_ptr hdc,
 		const litehtml::list_marker& marker
 	) override;
 
 	void draw_radial_gradient(
-		litehtml::uint_ptr hdc, 
-		const litehtml::background_layer& layer, 
+		litehtml::uint_ptr hdc,
+		const litehtml::background_layer& layer,
 		const litehtml::background_layer::radial_gradient& gradient
 	) override;
 
 	void draw_solid_fill(
-		litehtml::uint_ptr hdc, 
-		const litehtml::background_layer& layer, 
+		litehtml::uint_ptr hdc,
+		const litehtml::background_layer& layer,
 		const litehtml::web_color& color
 	) override;
 
-	void draw_text(litehtml::uint_ptr hdc, 
-		const char* text, 
-		litehtml::uint_ptr hFont, 
-		litehtml::web_color color, 
+	void draw_text(litehtml::uint_ptr hdc,
+		const char* text,
+		litehtml::uint_ptr hFont,
+		litehtml::web_color color,
 		const litehtml::position& pos
 	) override;
 
@@ -147,8 +158,8 @@ protected:
 	int get_default_font_size() const override;
 
 	void get_image_size(
-		const char* src, 
-		const char* baseurl, 
+		const char* src,
+		const char* baseurl,
 		litehtml::size& sz
 	) override;
 
@@ -208,14 +219,17 @@ private:
     };
     std::vector<FontData> _fontList{};
 
-	litehtml::document::ptr _html = nullptr;
+private:
+
+    litehtml::document::ptr _html = nullptr;
+    GumboOutput* _gumboOutput{};
 
     float _bodyWidth{};
     float _bodyHeight{};
     glm::mat4 _modelMat{};
 
 	bool _isDirty = true;
-    bool _freeData = false;
+    // bool _freeData = false;
 
     template<typename Value>
     using StateMap = std::unordered_map<size_t, std::shared_ptr<Value>>;

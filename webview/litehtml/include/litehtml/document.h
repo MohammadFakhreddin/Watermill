@@ -65,7 +65,7 @@ namespace litehtml
 		media_features						m_media;
 		string								m_lang;
 		string								m_culture;
-		string								m_text;
+		// string								m_text;
 		document_mode						m_mode = no_quirks_mode;
 	public:
 		document(document_container* objContainer);
@@ -109,11 +109,16 @@ namespace litehtml
 			document_container*  container,
 			const string&        master_styles = litehtml::master_css,
 			const string&        user_styles = "");
-	
+
+	    static GumboOutput *parse_html(estring str);
+		static void destroy_output(GumboOutput *output);
+		void update_output(GumboOutput* gumbo);
+	    void update_styles(const string& master_styles, const string& user_styles);
+
 	private:
 		uint_ptr	add_font(const char* name, int size, const char* weight, const char* style, const char* decoration, font_metrics* fm);
 
-		GumboOutput* parse_html(estring str);
+		void apply_changes();
 		void create_node(void* gnode, elements_list& elements, bool parseTextNode);
 		bool update_media_lists(const media_features& features);
 		void fix_tables_layout();

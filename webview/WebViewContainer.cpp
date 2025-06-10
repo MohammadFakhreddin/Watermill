@@ -6,6 +6,11 @@
 #include "BedrockFile.hpp"
 #include "BedrockPath.hpp"
 #include "ScopeProfiler.hpp"
+#include "renderer/BorderRenderer.hpp"
+#include "renderer/CustomFontRenderer.hpp"
+#include "renderer/ImageRenderer.hpp"
+#include "renderer/SolidFillPipeline.hpp"
+#include "renderer/SolidFillRenderer.hpp"
 
 #include "litehtml/render_item.h"
 
@@ -89,7 +94,6 @@ bool operator==(const litehtml::background_layer &lhs, const litehtml::backgroun
         lhs.is_root == rhs.is_root;
 }
 
-
 // TODO: For image rendering we have to use set Scissor and viewport.
 
 //=========================================================================================
@@ -121,12 +125,28 @@ WebViewContainer::WebViewContainer(
 
 //=========================================================================================
 
-WebViewContainer::~WebViewContainer() = default;
+WebViewContainer::~WebViewContainer()
+{
+    litehtml::document::destroy_output(_gumboOutput);
+    _gumboOutput = nullptr;
+}
 
 //=========================================================================================
 
 void WebViewContainer::Update()
 {
+    if (_isDirty == true)
+    {
+        //SCOPE_Profiler("Invalidate took");
+        _isDirty = false;
+        SwitchActiveState();
+
+        _html = std::make_shared<litehtml::document>(this);
+        _html->update_output(_gumboOutput);
+        _html->render(_clip.width, litehtml::render_all);
+        _html->draw(_activeIdx, _clip.x, _clip.y, &_clip);
+    }
+
     for (auto &state : _states)
     {
         if (state.lifeTime > 0)
@@ -134,7 +154,7 @@ void WebViewContainer::Update()
             state.lifeTime -= 1;
         }
 
-        if (_freeData == true)
+        if (state.lifeTime <= 0)
         {
             std::vector<size_t> invalidKeys{};
             for (auto &[key, value] : state.imageMap)
@@ -195,17 +215,9 @@ void WebViewContainer::Update()
             invalidKeys.clear();
         }
     }
-    _freeData = false;
+    // _freeData = false;
 
-    if (_isDirty == true)
-    {
-        //SCOPE_Profiler("Invalidate took");
-        _isDirty = false;
-        SwitchActiveState();
-        // We don't need to call render everytime
-        _html->render(_clip.width, litehtml::render_all);
-        _html->draw(_activeIdx, _clip.x, _clip.y, &_clip);
-    }
+
 }
 
 //=========================================================================================
@@ -220,12 +232,12 @@ void WebViewContainer::UpdateBuffer(RT::CommandRecordState & recordState)
 
 //=========================================================================================
 
-void WebViewContainer::DisplayPass(RT::CommandRecordState & recordState)
+void WebViewContainer::DisplayPass(RT::CommandRecordState &recordState)
 {
     for (auto &drawCall : _activeState->drawCalls)
-	{
-		drawCall(recordState);
-	}
+    {
+        drawCall(recordState);
+    }
 }
 
 //=========================================================================================
@@ -282,7 +294,7 @@ void WebViewContainer::delete_font(litehtml::uint_ptr hFont)
 }
 
 //=========================================================================================
-
+// TODO: Rewrite lithtml to pass id
 void WebViewContainer::draw_borders(
 	litehtml::uint_ptr hdc,
 	const litehtml::borders& borders,
@@ -850,91 +862,157 @@ void WebViewContainer::SwitchActiveState()
 
 //=========================================================================================
 
-//size_t std::hash<litehtml::background_layer>::operator()(const litehtml::background_layer &layer) const
-//{
-//    auto const h1 = std::hash<int>()(layer.border_box.x);
-//    auto const h2 = std::hash<int>()(layer.border_box.y);
-//    auto const h3 = std::hash<int>()(layer.border_box.width);
-//    auto const h4 = std::hash<int>()(layer.border_box.height);
-//    auto const h5 = std::hash<int>()(layer.border_radius.bottom_left_x);
-//    auto const h6 = std::hash<int>()(layer.border_radius.bottom_left_y);
-//    auto const h7 = std::hash<int>()(layer.border_radius.bottom_right_x);
-//    auto const h8 = std::hash<int>()(layer.border_radius.bottom_right_y);
-//    auto const h9 = std::hash<int>()(layer.border_radius.top_left_x);
-//    auto const h10 = std::hash<int>()(layer.border_radius.top_left_y);
-//    auto const h11 = std::hash<int>()(layer.border_radius.top_right_x);
-//    auto const h12 = std::hash<int>()(layer.border_radius.top_right_y);
-//    auto const h13 = std::hash<int>()(layer.clip_box.x);
-//    auto const h14 = std::hash<int>()(layer.clip_box.y);
-//    auto const h15 = std::hash<int>()(layer.clip_box.width);
-//    auto const h16 = std::hash<int>()(layer.clip_box.height);
-//    auto const h17 = std::hash<int>()(layer.origin_box.x);
-//    auto const h18 = std::hash<int>()(layer.origin_box.y);
-//    auto const h19 = std::hash<int>()(layer.origin_box.width);
-//    auto const h20 = std::hash<int>()(layer.origin_box.height);
-//    auto const h21 = std::hash<int>()(layer.attachment);
-//    auto const h22 = std::hash<int>()(layer.repeat);
-//    auto const h23 = std::hash<bool>()(layer.is_root);
-//
-//    // Combine hashes
-//    return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3) ^ (h5 << 4) ^ (h6 << 5) ^ (h7 << 6) ^ (h8 << 7) ^ (h9 << 8) ^
-//        (h10 << 9) ^ (h11 << 10) ^ (h12 << 11) ^ (h13 << 12) ^ (h14 << 13) ^ (h15 << 14) ^ (h16 << 15) ^ (h17 << 16) ^
-//        (h18 << 17) ^ (h19 << 18) ^ (h20 << 19) ^ (h21 << 20) ^ (h22 << 21) ^ (h23 << 22);
-//}
+GumboNode *WebViewContainer::GetElementById(const char *id) { return GetElementById(id, _gumboOutput->root); }
+GumboNode *WebViewContainer::GetElementByTag(const char *tag) {return GetElementByTag(tag, _gumboOutput->root); }
 
 //=========================================================================================
 
-litehtml::element::ptr WebViewContainer::GetElementById(char const * id) const
+void WebViewContainer::SetText(GumboNode *node, char const *text)
 {
-	return GetElementById(id, _html->root());
-}
-
-//=========================================================================================
-
-litehtml::element::ptr WebViewContainer::GetElementById(char const * id, litehtml::element::ptr element)
-{
-	auto const * elementId = element->get_attr("id");
-	if (elementId != nullptr && strcmp(elementId, id) == 0)
-	{
-		return element;
-	}
-
-	for (auto & child : element->children())
-	{
-		auto const result = GetElementById(id, child);
-		if (result != nullptr)
-		{
-			return result;
-		}
-	}
-
-	return nullptr;
-}
-
-//=========================================================================================
-
-litehtml::element::ptr WebViewContainer::GetElementByTag(char const* tag) const
-{
-    return GetElementByTag(tag, _html->root());
-}
-
-//=========================================================================================
-
-litehtml::element::ptr WebViewContainer::GetElementByTag(char const * tag, litehtml::element::ptr element)
-{
-    auto const * tagName = element->get_tagName();
-    if (tagName != nullptr && strcmp(tagName, tag) == 0)
+    if (node && node->type == GUMBO_NODE_ELEMENT)
     {
-        return element;
+        GumboVector *children = &node->v.element.children;
+
+        for (unsigned int i = 0; i < children->length; ++i)
+        {
+            GumboNode *child = static_cast<GumboNode *>(children->data[i]);
+
+            if (child->type == GUMBO_NODE_TEXT)
+            {
+                if (child->v.text.text != nullptr)
+                {
+                    free((void *)child->v.text.text);
+                }
+                // Replace the text by modifying the C string (not ideal)
+                child->v.text.text = _strdup(text); // Replace with your own string
+                _isDirty = true;
+                break;
+            }
+        }
+    }
+}
+
+//=========================================================================================
+
+void WebViewContainer::AddClass(GumboNode *node, char const *keyword)
+{
+    // _isDirty = true;
+    // return;
+    if (node == nullptr || node->type != GUMBO_NODE_ELEMENT || keyword == nullptr || strlen(keyword) == 0)
+        return;
+
+    GumboVector *attributes = &node->v.element.attributes;
+    GumboAttribute *class_attr = gumbo_get_attribute(attributes, "class");
+
+    if (class_attr == nullptr)
+    {
+        // Class doesn't exist, so we create a new one
+        class_attr = (GumboAttribute *)malloc(sizeof(GumboAttribute));
+        class_attr->name = strdup("class");
+        class_attr->value = strdup(keyword);
+        // Allocate new array for attributes (length + 1)
+        void** new_data = (void**)malloc(sizeof(void*) * (attributes->length + 1));
+
+        // Copy existing attribute pointers
+        for (unsigned int i = 0; i < attributes->length; ++i) {
+            new_data[i] = attributes->data[i];
+        }
+
+        // Add new attribute pointer
+        new_data[attributes->length] = class_attr;
+
+        // Free old attributes->data array (not the attributes themselves!)
+        free(attributes->data);
+
+        // Assign new array and update length
+        attributes->data = new_data;
+        attributes->length += 1;
+
+        _isDirty = true;
+    }
+    else
+    {
+        // Check if keyword already exists
+        std::string existing = class_attr->value;
+        std::istringstream iss(existing);
+        std::string word;
+        bool found = false;
+        while (iss >> word)
+        {
+            if (word == keyword)
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            // Append the keyword to existing class list
+            std::string updated = existing + " " + keyword;
+
+            free((void *)class_attr->value);  // Free old value
+            class_attr->value = strdup(updated.c_str());
+
+            _isDirty = true;
+        }
+    }
+}
+
+//=========================================================================================
+
+void WebViewContainer::RemoveClass(GumboNode *node, char const *keyword)
+{
+    if (node == nullptr || node->type != GUMBO_NODE_ELEMENT || keyword == nullptr)
+        return;
+
+    auto keywordLength = strlen(keyword);
+    if (keywordLength == 0)
+    {
+        return;
     }
 
-    for (auto & child : element->children())
+    GumboVector *attributes = &node->v.element.attributes;
+    GumboAttribute *class_attr = gumbo_get_attribute(attributes, "class");
+
+    if (class_attr != nullptr)
     {
-        auto const result = GetElementByTag(tag, child);
-        if (result != nullptr)
+        // Check if keyword already exists
+        std::string value = class_attr->value;
+        auto const startPos = value.find(keyword);
+        if (startPos != std::string::npos)
         {
-            return result;
+            value.erase(startPos, keywordLength);
+            free((void *)class_attr->value);  // Free old value
+            class_attr->value = strdup(value.c_str());
+
+            _isDirty = true;
         }
+    }
+}
+
+//=========================================================================================
+
+GumboNode *WebViewContainer::GetElementById(const char *id, GumboNode *node)
+{
+    if (GUMBO_NODE_ELEMENT != node->type)
+    {
+        return nullptr;
+    }
+
+    GumboAttribute *node_id = gumbo_get_attribute(&node->v.element.attributes, "id");
+    if (node_id && 0 == strcmp(id, node_id->value))
+    {
+        return node;
+    }
+
+    // iterate all children
+    GumboVector *children = &node->v.element.children;
+    for (unsigned int i = 0; i < children->length; i++)
+    {
+        GumboNode *node = GetElementById(id, (GumboNode *)children->data[i]);
+        if (node)
+            return node;
     }
 
     return nullptr;
@@ -942,32 +1020,50 @@ litehtml::element::ptr WebViewContainer::GetElementByTag(char const * tag, liteh
 
 //=========================================================================================
 
-void WebViewContainer::InvalidateStyles(litehtml::element::ptr element)
+GumboNode *WebViewContainer::GetElementByTag(const char *tag, GumboNode *node)
 {
-    element->apply_stylesheet(_html->m_styles);
-	element->compute_styles();
-    _isDirty = true;
+    if (!node || GUMBO_NODE_ELEMENT != node->type)
+        return nullptr;
+
+    if (strcmp(gumbo_normalized_tagname(node->v.element.tag), tag) == 0)
+        return node;
+
+    GumboVector* children = &node->v.element.children;
+    for (unsigned int i = 0; i < children->length; ++i) {
+        GumboNode* found = GetElementByTag(tag, static_cast<GumboNode*>(children->data[i]));
+        if (found)
+            return found;
+    }
+
+    return nullptr;
 }
 
 //=========================================================================================
 
 void WebViewContainer::OnReload(litehtml::position clip)
 {
+    if (_gumboOutput != nullptr)
+    {
+        litehtml::document::destroy_output(_gumboOutput);
+        _gumboOutput = nullptr;
+    }
     _htmlBlob = _requestBlob(_htmlAddress.c_str(), true);
     char const *htmlText = _htmlBlob->As<char const>();
-    _html = litehtml::document::createFromString(htmlText, this);
+    _gumboOutput = litehtml::document::parse_html(htmlText);
 
     auto const bodyTag = GetElementByTag("body");
     if (bodyTag != nullptr)
     {
-        try
-        {
-            _bodyWidth = std::stoi(bodyTag->get_attr("width", "-1"));
-            _bodyHeight = std::stoi(bodyTag->get_attr("height", "-1"));
+        GumboAttribute* widthAttr = gumbo_get_attribute(&bodyTag->v.element.attributes, "width");
+        GumboAttribute* heightAttr = gumbo_get_attribute(&bodyTag->v.element.attributes, "height");
+
+        try {
+            _bodyWidth = widthAttr ? std::stoi(widthAttr->value) : -1;
+            _bodyHeight = heightAttr ? std::stoi(heightAttr->value) : -1;
         }
-        catch (const std::exception &e)
+        catch (const std::exception& e)
         {
-            MFA_LOG_WARN("Failed to parse body width and height with error\n %s", e.what());
+            MFA_LOG_WARN("Failed to parse body width and height: %s", e.what());
         }
     }
 
@@ -981,28 +1077,7 @@ void WebViewContainer::OnResize(litehtml::position clip)
     auto *device = LogicalDevice::Instance;
     auto const windowWidth = static_cast<float>(device->GetWindowWidth());
     auto const windowHeight = static_cast<float>(device->GetWindowHeight());
-    
-     /*float scaleFactorX = 1.0f;
-     float scaleFactorY = 1.0f;
-    
-     float bodyWidth = _bodyWidth;
-     if (bodyWidth <= 0)
-     {
-         bodyWidth = windowWidth;
-     }
-     float wScale = (float)windowWidth / bodyWidth;
-     scaleFactorX = wScale;
-    
-     float bodyHeight = _bodyHeight;
-     if (bodyHeight <= 0)
-     {
-         bodyHeight = windowHeight;
-     }
-     float hScale = (float)windowHeight / bodyHeight;
-     scaleFactorY = hScale;*/
 
-    //float scaleFactor = std::min(scaleFactorX, scaleFactorY);
-     //scaleFactor = std::max(scaleFactor, 1.0f);
     float scaleFactor = 1.0f;
 
     float halfWidth = windowWidth * 0.5f;
@@ -1011,68 +1086,11 @@ void WebViewContainer::OnResize(litehtml::position clip)
     float scaleY = (1.0f / halfHeight) * scaleFactor;
 
     _clip = std::move(clip);
-   
-    _modelMat = glm::transpose(
-        glm::scale(glm::identity<glm::mat4>(), glm::vec3{scaleX, scaleY, 1.0f}) *
-        glm::translate(glm::identity<glm::mat4>(), glm::vec3{-halfWidth, -halfHeight, 0.0f})
-    );
-    
-    // It is not working as expected at the moment
-    _html->media_changed();
+
+    _modelMat = glm::transpose(glm::scale(glm::identity<glm::mat4>(), glm::vec3{scaleX, scaleY, 1.0f}) *
+                               glm::translate(glm::identity<glm::mat4>(), glm::vec3{-halfWidth, -halfHeight, 0.0f}));
 
     _isDirty = true;
-
-    InvalidateStyles(_html->root());
-
-    _freeData = true;
-
-    //_html->render(_clip.width, litehtml::render_all);
-}
-
-//=========================================================================================
-
-void WebViewContainer::AddClass(litehtml::element::ptr element, char const *keyword)
-{
-    char charBufer[1024]{};
-    sprintf(charBufer, "\\b%s\\b", keyword);
-    std::regex wordRegex(charBufer);
-
-    std::string classAttr = element->get_attr("class", "");
-    {
-        std::smatch match;
-        auto const findResult = std::regex_search(classAttr, match, wordRegex);
-        if (findResult == false)
-        {
-            if (classAttr.ends_with(" ") == false)
-            {
-                classAttr += " ";
-            }
-            classAttr = classAttr.append(keyword);
-        }
-    }
-    element->set_attr("class", classAttr.c_str());
-    InvalidateStyles(element);
-}
-
-//=========================================================================================
-
-void WebViewContainer::RemoveClass(litehtml::element::ptr element, char const *keyword)
-{
-    const size_t keywordSize = strlen(keyword);
-    char charBufer[1024]{};
-    sprintf(charBufer, "\\b%s\\b", keyword);
-    std::regex wordRegex(charBufer);
-    std::string classAttr = element->get_attr("class", "");
-
-    std::smatch match;
-    auto const findResult = std::regex_search(classAttr, match, wordRegex);
-    if (findResult == true)
-    {
-        classAttr.erase(match.position(), keywordSize);
-    }
-
-    element->set_attr("class", classAttr.c_str());
-    InvalidateStyles(element);
 }
 
 //=========================================================================================

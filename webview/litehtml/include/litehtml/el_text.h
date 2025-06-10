@@ -5,6 +5,7 @@
 
 namespace litehtml
 {
+// TODO: We can define a unique ID here
 	class el_text : public element
 	{
 	protected:

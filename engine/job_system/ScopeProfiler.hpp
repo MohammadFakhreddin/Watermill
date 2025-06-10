@@ -25,4 +25,4 @@ namespace MFA {
     };
 }
 
-#define SCOPE_Profiler(lock)        ScopeProfiler MFA_UNIQUE_NAME(__scopeProfiler) {lock};
+#define MFA_SCOPE_Profiler(lock)        ScopeProfiler MFA_UNIQUE_NAME(__scopeProfiler) {lock};

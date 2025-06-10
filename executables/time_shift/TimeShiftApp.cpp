@@ -4,8 +4,13 @@
 #include "BedrockPath.hpp"
 #include "ImportTexture.hpp"
 #include "LogicalDevice.hpp"
+#include "ScopeLock.hpp"
 #include "ScoreboardScene.hpp"
 #include "Time.hpp"
+#include "renderer/BorderPipeline.hpp"
+#include "renderer/BorderRenderer.hpp"
+#include "renderer/SolidFillPipeline.hpp"
+#include "renderer/SolidFillRenderer.hpp"
 
 using namespace MFA;
 
@@ -77,38 +82,42 @@ void TimeShiftApp::Run()
             .requestImage = [this](char const * image) {return RequestImage(image);}
         };
 
+        _sceneRecipes.resize((int)SceneID::Count);
+
+        _sceneRecipes[(int)SceneID::Menu] = [this, webviewParams]()->std::unique_ptr<IScene>
         {
             MenuScene::Params menuParams
             {
                 .PlayPressed = [this]()->void
                 {
                     MFA_LOG_INFO("Play pressed");
-                    _nextSceneIndex = 2;
+                    _nextSceneID = SceneID::Level1;
                 },
                 .ScoreBoardPressed = [this]()->void
                 {
                     MFA_LOG_INFO("Scoreboard pressed");
-                    _nextSceneIndex = 1;
+                    _nextSceneID = SceneID::Scoreboard;
                 },
             };
 
-            _menuScene = std::make_unique<MenuScene>(webviewParams, menuParams);
-            _scenes.emplace_back(_menuScene.get());
-        }
+            return std::make_unique<MenuScene>(webviewParams, menuParams);
+        };
 
+        _sceneRecipes[(int)SceneID::Scoreboard] = [this, webviewParams]()->std::unique_ptr<IScene>
         {
             ScoreboardScene::Params scoreboardParams
             {
                 .BackPressed = [this]()->void
                 {
                     MFA_LOG_INFO("Back pressed");
-                    _nextSceneIndex = 0;
+                    _nextSceneID = SceneID::Menu;
                 }
             };
-            _scoreboardScene = std::make_unique<ScoreboardScene>(webviewParams, scoreboardParams);
-            _scenes.emplace_back(_scoreboardScene.get());
-        }
 
+            return std::make_unique<ScoreboardScene>(webviewParams, scoreboardParams);
+        };
+
+        _sceneRecipes[(int)SceneID::Level1] = [this, webviewParams]()->std::unique_ptr<IScene>
         {
             GameScene::Params gameParams
             {
@@ -117,19 +126,19 @@ void TimeShiftApp::Run()
                 .backPressed = [this]()->void
                 {
                     MFA_LOG_INFO("Back pressed");
-                    _nextSceneIndex = 0;
+                    _nextSceneID = SceneID::Menu;
                 },
                 .nextLevel = [this]()->void
                 {
-                    _nextSceneIndex = 3;
+                    _nextSceneID = SceneID::Level2;
                 },
                 .spriteRenderer = _spriteRenderer
             };
 
-            _level1Scene = std::make_unique<GameScene>(webviewParams, gameParams);
-            _scenes.emplace_back(_level1Scene.get());
-        }
+            return std::make_unique<GameScene>(webviewParams, gameParams);
+        };
 
+        _sceneRecipes[(int)SceneID::Level2] = [this, webviewParams]()->std::unique_ptr<IScene>
         {
             GameScene::Params gameParams
             {
@@ -138,19 +147,19 @@ void TimeShiftApp::Run()
                 .backPressed = [this]()->void
                 {
                     MFA_LOG_INFO("Back pressed");
-                    _nextSceneIndex = 0;
+                    _nextSceneID = SceneID::Menu;
                 },
                 .nextLevel = [this]()->void
                 {
-                    _nextSceneIndex = 4;
+                    _nextSceneID = SceneID::Level3;;
                 },
                 .spriteRenderer = _spriteRenderer
             };
 
-            _level2Scene = std::make_unique<GameScene>(webviewParams, gameParams);
-            _scenes.emplace_back(_level2Scene.get());
-        }
+            return std::make_unique<GameScene>(webviewParams, gameParams);
+        };
 
+        _sceneRecipes[(int)SceneID::Level3] = [this, webviewParams]()->std::unique_ptr<IScene>
         {
             GameScene::Params gameParams
             {
@@ -159,21 +168,19 @@ void TimeShiftApp::Run()
                 .backPressed = [this]()->void
                 {
                     MFA_LOG_INFO("Back pressed");
-                    _nextSceneIndex = 0;
+                    _nextSceneID = SceneID::Menu;
                 },
                 .nextLevel = [this]()->void
                 {
-                    _nextSceneIndex = 1;
+                    _nextSceneID = SceneID::Scoreboard;
                 },
                 .spriteRenderer = _spriteRenderer
             };
 
-            _level3Scene = std::make_unique<GameScene>(webviewParams, gameParams);
-            _scenes.emplace_back(_level3Scene.get());
-        }
+            return std::make_unique<GameScene>(webviewParams, gameParams);
+        };
 
-        _nextSceneIndex = 0;
-        _activeSceneIndex = _nextSceneIndex;
+        _nextSceneID = SceneID::Menu;
     }
 
     SDL_GL_SetSwapInterval(0);
@@ -219,8 +226,26 @@ void TimeShiftApp::Run()
 
 void TimeShiftApp::Update(float const deltaTime)
 {
-    _activeSceneIndex = _nextSceneIndex;
-    _scenes[_activeSceneIndex]->Update(deltaTime);
+    if (_activeSceneID != _nextSceneID)
+    {
+        // TODO: We have to load stuff in another thread
+        _previousScenes.emplace_back(std::tuple{std::move(_currentScene), LogicalDevice::Instance->GetMaxFramePerFlight() + 1});
+        _currentScene = _sceneRecipes[(int)_nextSceneID]();
+        _activeSceneID = _nextSceneID;
+    }
+
+    _currentScene->Update(deltaTime);
+
+    for (int i = (int)_previousScenes.size() - 1; i >= 0; i--)
+    {
+        auto & [oldScene, counter] = _previousScenes[i];
+        --counter;
+        if (counter <= 0)
+        {
+            _previousScenes.erase(_previousScenes.begin() + i);
+        }
+    }
+
     //
     // MFA_LOG_INFO(
     //     "Input axis: %f, %f\nInput A: %d, Input B: %d"
@@ -247,9 +272,9 @@ void TimeShiftApp::Render(RT::CommandRecordState & recordState)
         RT::CommandBufferType::Graphic
     );
 
-    _scenes[_activeSceneIndex]->UpdateBuffer(recordState);
+    _currentScene->UpdateBuffer(recordState);
     _displayRenderPass->Begin(recordState);
-    _scenes[_activeSceneIndex]->Render(recordState);
+    _currentScene->Render(recordState);
     _displayRenderPass->End(recordState);
 
     device->EndCommandBuffer(recordState);
@@ -262,9 +287,13 @@ void TimeShiftApp::Resize()
     auto const * device = LogicalDevice::Instance;
     RB::DeviceWaitIdle(device->GetVkDevice());
 
-    for (auto * scene : _scenes)
+    // for (auto * scene : _scenes)
+    // {
+    //     scene->Resize();
+    // }
+    if (_currentScene != nullptr)
     {
-        scene->Resize();
+        _currentScene->Resize();
     }
 }
 
@@ -280,7 +309,7 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
         }
         else if (event->key.keysym.sym == SDLK_F1)
         {
-            _nextSceneIndex = 0;
+            _nextSceneID = SceneID::Menu;
         }
     }
 
@@ -370,17 +399,17 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
 
     if (inputAxisChanged == true)
     {
-        _scenes[_activeSceneIndex]->UpdateInputAxis(_inputAxis);
+        _currentScene->UpdateInputAxis(_inputAxis);
     }
 
     if (inputA_Changed == true)
     {
-        _scenes[_activeSceneIndex]->ButtonA_Changed(_inputA);
+        _currentScene->ButtonA_Changed(_inputA);
     }
 
     if (inputB_Changed == true)
     {
-        _scenes[_activeSceneIndex]->ButtonB_Pressed(_inputB);
+        _currentScene->ButtonB_Pressed(_inputB);
     }
 }
 
@@ -393,10 +422,11 @@ void TimeShiftApp::Reload()
 
     // TODO: Reload shaders too
 
-    for (auto * scene : _scenes)
-    {
-        scene->Reload();
-    }
+    // for (auto * scene : _scenes)
+    // {
+    //     scene->Reload();
+    // }
+    _currentScene->Reload();
 }
 
 //=============================================================
@@ -406,8 +436,8 @@ void TimeShiftApp::InitFontPipeline()
     auto *device = LogicalDevice::Instance;
     // Font
     RB::CreateSamplerParams fontSamplerParams{};
-    fontSamplerParams.magFilter = VK_FILTER_LINEAR;
-    fontSamplerParams.minFilter = VK_FILTER_LINEAR;
+    fontSamplerParams.magFilter = VK_FILTER_NEAREST;
+    fontSamplerParams.minFilter = VK_FILTER_NEAREST;
     fontSamplerParams.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     fontSamplerParams.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     fontSamplerParams.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
@@ -467,7 +497,7 @@ std::shared_ptr<CustomFontRenderer> TimeShiftApp::RequestFont(char const *font)
     {
         return findResult->second;
     }
-    MFA_LOG_WARN("Failed to find font with name %s", font);
+    // MFA_LOG_WARN("Failed to find font with name %s", font);
     return _fontMap.begin()->second;
 }
 
