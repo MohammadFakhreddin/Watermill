@@ -881,10 +881,10 @@ void WebViewContainer::SetText(GumboNode *node, char const *text)
             {
                 if (child->v.text.text != nullptr)
                 {
-                    free((void *)child->v.text.text);
+                    SDL_free((void *)child->v.text.text);
                 }
                 // Replace the text by modifying the C string (not ideal)
-                child->v.text.text = _strdup(text); // Replace with your own string
+                child->v.text.text = SDL_strdup(text); // Replace with your own string
                 _isDirty = true;
                 break;
             }
@@ -908,8 +908,8 @@ void WebViewContainer::AddClass(GumboNode *node, char const *keyword)
     {
         // Class doesn't exist, so we create a new one
         class_attr = (GumboAttribute *)malloc(sizeof(GumboAttribute));
-        class_attr->name = strdup("class");
-        class_attr->value = strdup(keyword);
+        class_attr->name = SDL_strdup("class");
+        class_attr->value = SDL_strdup(keyword);
         // Allocate new array for attributes (length + 1)
         void** new_data = (void**)malloc(sizeof(void*) * (attributes->length + 1));
 
@@ -922,7 +922,7 @@ void WebViewContainer::AddClass(GumboNode *node, char const *keyword)
         new_data[attributes->length] = class_attr;
 
         // Free old attributes->data array (not the attributes themselves!)
-        free(attributes->data);
+        SDL_free(attributes->data);
 
         // Assign new array and update length
         attributes->data = new_data;
@@ -951,7 +951,7 @@ void WebViewContainer::AddClass(GumboNode *node, char const *keyword)
             // Append the keyword to existing class list
             std::string updated = existing + " " + keyword;
 
-            free((void *)class_attr->value);  // Free old value
+            SDL_free((void *)class_attr->value);  // Free old value
             class_attr->value = strdup(updated.c_str());
 
             _isDirty = true;
@@ -983,7 +983,7 @@ void WebViewContainer::RemoveClass(GumboNode *node, char const *keyword)
         if (startPos != std::string::npos)
         {
             value.erase(startPos, keywordLength);
-            free((void *)class_attr->value);  // Free old value
+            SDL_free((void *)class_attr->value);  // Free old value
             class_attr->value = strdup(value.c_str());
 
             _isDirty = true;
