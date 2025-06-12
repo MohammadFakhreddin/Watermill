@@ -29,7 +29,7 @@ MenuScene::MenuScene(
     clip.height = device->GetWindowHeight();
 
     _webViewContainer = std::make_unique<WebViewContainer>(htmlPath.c_str(), clip, webviewParams);
-    _webViewContainer->SetText(_webViewContainer->GetElementById("title"), "Fuck yeah");
+    _webViewContainer->SetText(_webViewContainer->GetElementById("title"), "The tragedy of fallen game engine! 2");
 
     QueryButtons();
 }

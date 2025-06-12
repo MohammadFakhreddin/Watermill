@@ -1,15 +1,13 @@
 #include "GameScene.hpp"
 
-#include <iostream>
-#include <utility>
-
 #include "BedrockMath.hpp"
 #include "BedrockPath.hpp"
 #include "GenerateGame.h"
 #include "LogicalDevice.hpp"
-#include "camera/ArcballCamera.hpp"
 #include "camera/ObserverCamera.hpp"
-#include "litehtml/el_text.h"
+
+#include <iostream>
+#include <utility>
 
 using namespace MFA;
 
@@ -26,9 +24,7 @@ GameScene::GameScene(
     _spriteRenderer = _params.spriteRenderer;
     MFA_ASSERT(_spriteRenderer != nullptr);
 
-    std::string htmlAddress{};
-    MFA_STRING(htmlAddress, "ui/%s/Game.html", _params.levelName.c_str());
-    auto const htmlPath = MFA::Path::Instance()->Get(htmlAddress.c_str());
+    auto const htmlPath = MFA::Path::Instance()->Get("ui/game/Game.html");
 
     litehtml::position clip;
     clip.x = 0;
@@ -37,6 +33,9 @@ GameScene::GameScene(
     clip.height = device->GetWindowHeight();
 
     _webViewContainer = std::make_unique<WebViewContainer>(htmlPath.c_str(), clip, webviewParams);
+
+    _webViewContainer->SetText(_webViewContainer->GetElementById("level"), _params.levelName.c_str());
+    _webViewContainer->SetText(_webViewContainer->GetElementById("score"), "Score: 0");
     // TODO: Update level text and score dynamically
 
     auto levelPath = MFA::Path::Instance()->Get(_params.levelPath);

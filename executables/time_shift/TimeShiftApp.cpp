@@ -121,7 +121,7 @@ void TimeShiftApp::Run()
         {
             GameScene::Params gameParams
             {
-                .levelName = "level1",
+                .levelName = "Level 1",
                 .levelPath = "levels/level1.json",
                 .backPressed = [this]()->void
                 {
@@ -142,7 +142,7 @@ void TimeShiftApp::Run()
         {
             GameScene::Params gameParams
             {
-                .levelName = "level2",
+                .levelName = "Level 2",
                 .levelPath = "levels/Level2.json",
                 .backPressed = [this]()->void
                 {
@@ -163,7 +163,7 @@ void TimeShiftApp::Run()
         {
             GameScene::Params gameParams
             {
-                .levelName = "level3",
+                .levelName = "Level 3",
                 .levelPath = "levels/level3.json",
                 .backPressed = [this]()->void
                 {
