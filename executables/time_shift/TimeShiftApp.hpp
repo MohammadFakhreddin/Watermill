@@ -1,16 +1,29 @@
 #pragma once
 
-#include "GameScene.hpp"
-#include "MenuScene.hpp"
 #include "RenderTypes.hpp"
-#include "ScoreboardScene.hpp"
-#include "WebViewContainer.hpp"
 #include "render_pass/DisplayRenderPass.hpp"
+#include "IScene.hpp"
+
+#include <SDL_events.h>
+#include <functional>
+#include <unordered_map>
 
 // TODO: Resource manager
 // TODO: Optimized json
 // TODO: User interface fix
 // TODO: Sprite renderer resource allocation fix
+
+namespace MFA
+{
+    class TextOverlayPipeline;
+    class ImageRenderer;
+    class BorderRenderer;
+    class SolidFillRenderer;
+    class CustomFontRenderer;
+    class Blob;
+}
+
+class SpriteRenderer;
 
 class TimeShiftApp
 {

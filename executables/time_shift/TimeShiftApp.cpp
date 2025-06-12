@@ -2,15 +2,21 @@
 
 #include "BedrockFile.hpp"
 #include "BedrockPath.hpp"
+#include "GameScene.hpp"
 #include "ImportTexture.hpp"
 #include "LogicalDevice.hpp"
+#include "MenuScene.hpp"
+#include "ResourceManager.hpp"
 #include "ScopeLock.hpp"
 #include "ScoreboardScene.hpp"
+#include "SpritePipeline.hpp"
+#include "SpriteRenderer.hpp"
 #include "Time.hpp"
 #include "renderer/BorderPipeline.hpp"
 #include "renderer/BorderRenderer.hpp"
 #include "renderer/SolidFillPipeline.hpp"
 #include "renderer/SolidFillRenderer.hpp"
+
 
 using namespace MFA;
 
@@ -261,6 +267,7 @@ void TimeShiftApp::Update(float const deltaTime)
 void TimeShiftApp::Render(RT::CommandRecordState & recordState)
 {
     auto* device = LogicalDevice::Instance;
+
     // device->BeginCommandBuffer(
     //     recordState,
     //     RT::CommandBufferType::Compute
@@ -272,6 +279,7 @@ void TimeShiftApp::Render(RT::CommandRecordState & recordState)
         RT::CommandBufferType::Graphic
     );
 
+    ResourceManager::Instance()->UpdateBuffers(recordState);
     _currentScene->UpdateBuffer(recordState);
     _displayRenderPass->Begin(recordState);
     _currentScene->Render(recordState);
@@ -505,6 +513,7 @@ std::shared_ptr<CustomFontRenderer> TimeShiftApp::RequestFont(char const *font)
 
 std::tuple<std::shared_ptr<RT::GpuTexture>, glm::vec2> TimeShiftApp::RequestImage(char const *imageName)
 {
+    // TODO: This should call the resource manager
     auto const findResult = _imageMap.find(imageName);
     if (findResult != _imageMap.end())
     {

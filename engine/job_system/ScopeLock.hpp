@@ -6,6 +6,11 @@
 #include <atomic>
 
 namespace MFA {
+
+    void Lock(std::atomic<bool>& lock);
+
+    void Unlock(std::atomic<bool>& lock);
+
     class ScopeLock
     {
     public:
@@ -20,6 +25,7 @@ namespace MFA {
     private:
         std::atomic<bool> & mLock;
     };
+
 }
 
-#define MFA_SCOPE_LOCK(lock)        ScopeLock MFA_UNIQUE_NAME(__scopeLock) {lock};
+#define MFA_SCOPE_LOCK(lock)        MFA::ScopeLock MFA_UNIQUE_NAME(__scopeLock) {lock};

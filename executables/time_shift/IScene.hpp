@@ -3,7 +3,6 @@
 #include "RenderTypes.hpp"
 
 #include <glm/glm.hpp>
-#include <functional>
 
 class IScene
 {

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <future>
+
+
+#include "GenerateGame.h"
 #include "IScene.hpp"
 #include "SpriteRenderer.hpp"
 #include "Transform.hpp"
@@ -54,8 +58,11 @@ private:
     {
         MFA::Transform * transform;
         std::unique_ptr<SpriteRenderer::SpriteData> spriteData;
+        std::shared_ptr<MFA::RT::GpuTexture> gpuTexture;
     };
     std::vector<std::shared_ptr<Sprite>> _sprites;
+    std::vector<std::shared_ptr<SpriteRenderer::CommandBufferData>> _temps;
+
     std::shared_ptr<SpriteRenderer> _spriteRenderer;
 
     float _left{};
@@ -65,5 +72,9 @@ private:
     float _near{};
     float _far{};
     glm::vec3 _mainCameraPosition{};
+
+    // Temporary
+    std::optional<GenerateGame> levelContent;
+    std::vector<std::tuple<int,std::future<std::shared_ptr<MFA::RT::GpuTexture>>>> _imageFutures{};
 
 };

@@ -19,6 +19,8 @@ list(
     "${CMAKE_CURRENT_SOURCE_DIR}/SpritePipeline.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/SpriteRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/SpriteRenderer.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ResourceManager.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ResourceManager.hpp"
 )
 
 add_executable(${EXECUTABLE} ${EXECUTABLE_RESOURCES})

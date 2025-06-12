@@ -1,6 +1,9 @@
 #include "BedrockLog.hpp"
+#include "BedrockPath.hpp"
 #include "GenerateGame.h"
+#include "JobSystem.hpp"
 #include "LogicalDevice.hpp"
+#include "ResourceManager.hpp"
 #include "TimeShiftApp.hpp"
 
 using namespace MFA;
@@ -17,8 +20,12 @@ int main()
 
     if (SDL_JoystickOpen(0) != nullptr) SDL_JoystickEventState(SDL_ENABLE);
 
-    assert(device->IsValid() == true);
+    MFA_ASSERT(device->IsValid() == true);
     {
+        auto path = MFA::Path::Instance();
+        auto jobSystem = MFA::JobSystem::Instance();
+        auto resourceManager = ResourceManager::Instance();
+
         TimeShiftApp app{};
         app.Run();
     }

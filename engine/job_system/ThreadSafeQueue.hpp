@@ -59,6 +59,18 @@ public:
     }
 
     [[nodiscard]]
+    T Pop()
+    {
+        MFA_ASSERT(IsEmpty() == false);
+
+        bool isEmpty;
+        T outData;
+        while (TryToPop(outData, isEmpty) == false);
+
+        return outData;
+    }
+
+    [[nodiscard]]
     bool IsEmpty() {
         MFA_SCOPE_LOCK(mLock)
         return mData.empty();

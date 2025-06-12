@@ -3,31 +3,18 @@
 #include "ThreadPool.hpp"
 
 #include <future>
-// #include <omp.h>
 
 namespace MFA
 {
     class JobSystem
     {
     public:
-        static std::unique_ptr<JobSystem> Instantiate() { return std::make_unique<JobSystem>(); }
 
-        explicit JobSystem()
-        {
-            MFA_ASSERT(Instance == nullptr);
+        static std::shared_ptr<JobSystem> Instance();
 
-            // 80 percent is the best ratio
-            // omp_set_num_threads(static_cast<int>(static_cast<float>(std::thread::hardware_concurrency()) * 0.8f));
-            // MFA_LOG_INFO("Number of available workers are: %d", omp_get_max_threads());
+        explicit JobSystem();
 
-            Instance = this;
-        }
-
-        ~JobSystem()
-        {
-            MFA_ASSERT(Instance != nullptr);
-            Instance = nullptr;
-        }
+        ~JobSystem();
 
         std::future<void> AssignTask(std::function<void()> task)
         {
@@ -38,17 +25,18 @@ namespace MFA
             auto params = std::make_shared<Params>();
 
             threadPool.AssignTask(
-                [task, params]()
-                {
-                    task();
-                    params->promise.set_value();
-                });
+            [task, params]()
+            {
+                task();
+                params->promise.set_value();
+            });
             return params->promise.get_future();
         }
 
         template <typename T>
         std::future<T> AssignTask(std::function<T()> task)
         {
+            std::promise<T> promise{};
             struct Params
             {
                 std::promise<T> promise{};
@@ -71,10 +59,12 @@ namespace MFA
             return threadPool.IsMainThread();
         }
 
-        inline static JobSystem *Instance = nullptr;
-
     private:
+
+		inline static std::weak_ptr<JobSystem> _instance {};
+
         ThreadPool threadPool{};
+
     };
 } // namespace MFA
 

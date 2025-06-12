@@ -4,7 +4,33 @@
 
 #include <thread>
 
-namespace MFA {
+namespace MFA
+{
+
+    //==================================================================================================================
+
+    void Lock(std::atomic<bool> &lock)
+    {
+        while (true)
+        {
+            bool expectedValue = false;
+            bool const desiredValue = true;
+            if (lock.compare_exchange_strong(expectedValue, desiredValue) == true)
+            {
+                break;
+            }
+            std::this_thread::yield();
+        }
+        MFA_ASSERT(lock == true);
+    }
+
+    void Unlock(std::atomic<bool> &lock)
+    {
+        MFA_ASSERT(lock == true);
+        lock = false;
+    }
+
+    //==================================================================================================================
 
     ScopeLock::ScopeLock(std::atomic<bool> & lock)
         : mLock(lock)
@@ -27,4 +53,7 @@ namespace MFA {
         MFA_ASSERT(mLock == true);
         mLock = false;
     }
+
+    //==================================================================================================================
+
 }

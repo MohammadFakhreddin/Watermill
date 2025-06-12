@@ -671,9 +671,19 @@ namespace MFA::RenderBackend
     void DestroySampler(VkDevice device, RT::SamplerGroup const& sampler);
 
     using CreateTextureResult = std::tuple<std::shared_ptr<RT::GpuTexture>, std::shared_ptr<RT::BufferAndMemory>>;
+
     [[nodiscard]]
     CreateTextureResult CreateTexture(
         AS::Texture const& cpuTexture,
+        VkDevice device,
+        VkPhysicalDevice physicalDevice,
+        VkCommandBuffer commandBuffer
+    );
+
+    [[nodiscard]]
+    CreateTextureResult CreateTexture(
+        AS::Texture const& cpuTexture,
+        std::shared_ptr<RT::BufferAndMemory> const& uploadBufferGroup,
         VkDevice device,
         VkPhysicalDevice physicalDevice,
         VkCommandBuffer commandBuffer
