@@ -673,11 +673,32 @@ namespace MFA::RenderBackend
     using CreateTextureResult = std::tuple<std::shared_ptr<RT::GpuTexture>, std::shared_ptr<RT::BufferAndMemory>>;
 
     [[nodiscard]]
+    VkFormat ConvertCpuTextureFormatToGpu(AS::Texture::Format cpuFormat);
+
+    [[nodiscard]]
     CreateTextureResult CreateTexture(
         AS::Texture const& cpuTexture,
         VkDevice device,
         VkPhysicalDevice physicalDevice,
         VkCommandBuffer commandBuffer
+    );
+
+    void TransferImageLayout(
+        VkDevice device,
+        VkCommandBuffer commandBuffer,
+        VkImage image,
+        VkImageLayout oldLayout,
+        VkImageLayout newLayout,
+        uint32_t levelCount,
+        uint32_t layerCount
+    );
+
+    void CopyBufferToImage(
+        VkDevice device,
+        VkCommandBuffer commandBuffer,
+        VkBuffer buffer,
+        VkImage image,
+        AS::Texture const& cpuTexture
     );
 
     [[nodiscard]]

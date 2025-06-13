@@ -75,6 +75,10 @@ private:
 
     // Temporary
     std::optional<GenerateGame> levelContent;
-    std::vector<std::tuple<int,std::future<std::shared_ptr<MFA::RT::GpuTexture>>>> _imageFutures{};
+    std::vector<std::tuple<int, std::shared_ptr<MFA::RT::GpuTexture>>> _loadedImages{};
+
+    GumboNode * _timeText = nullptr;
+
+    float _passedTime{};
 
 };

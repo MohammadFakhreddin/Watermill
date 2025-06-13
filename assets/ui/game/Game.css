@@ -78,6 +78,13 @@
     top: 2vmin;
     right: 2vmin
 }
+.timeText
+{
+    color: white;
+    font-size: 5vmin;
+    position: absolute;
+    top: 2vmin;
+}
 .levelText
 {
     color: white;

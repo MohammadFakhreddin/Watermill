@@ -90,7 +90,7 @@ namespace MFA
 
         ThreadSafeQueue<std::string> mExceptions{};
 
-        std::vector<ThreadSafeQueue<Task>> mTasks{};
+        ThreadSafeQueue<Task> mTasks{};
         int mNextTaskIdx {};
 
         std::thread::id mMainThreadId{};

@@ -25,9 +25,8 @@ public:
 
     static std::shared_ptr<ResourceManager> Instance();
 
-    using ImageFuture = std::future<std::shared_ptr<MFA::RT::GpuTexture>>;
-    [[nodiscard]]
-    ImageFuture RequestImage(char const * name, bool forceReload = false);
+    using ImageCallback = std::function<void(std::shared_ptr<MFA::RT::GpuTexture>)>;
+    void RequestImage(char const * name, const ImageCallback & callback, bool forceReload = false);
 
     // TODO
     // std::future<std::shared_ptr<MFA::Blob>> RequestBlob(char const * name, bool forceReload = false);
@@ -44,15 +43,15 @@ private:
     MFA::ThreadSafeQueue<std::function<void(MFA::RenderTypes::CommandRecordState & recordState)>> _nextUpdateTasks{};
 
     std::unordered_map<std::string, std::tuple<std::atomic<bool>, std::weak_ptr<MFA::RenderTypes::GpuTexture>>> _imageMap{};
-    std::unordered_map<std::string, MFA::ThreadSafeQueue<std::shared_ptr<ImagePromise>>> _imagePromises{};
+    std::unordered_map<std::string, MFA::ThreadSafeQueue<ImageCallback>> _imageCallbacks{};
 
-    struct QueuedBuffers
+    struct QueuedImages
     {
         std::shared_ptr<MFA::RenderTypes::GpuTexture> gpuTexture;
         std::shared_ptr<MFA::RenderTypes::BufferAndMemory> stageBuffer;
         int lifeTime = 0;
     };
     // Holding the buffers until we are sure they are fully processed
-    std::vector<QueuedBuffers> _activeBuffers{};
+    std::vector<QueuedImages> _activeBuffers{};
 
 };

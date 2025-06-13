@@ -37,6 +37,7 @@ GameScene::GameScene(
 
     _webViewContainer->SetText(_webViewContainer->GetElementById("level"), _params.levelName.c_str());
     _webViewContainer->SetText(_webViewContainer->GetElementById("score"), "Score: 0");
+    _timeText = _webViewContainer->GetElementById("time");
     // TODO: Update level text and score dynamically
 
     auto levelPath = MFA::Path::Instance()->Get(_params.levelPath);
@@ -58,51 +59,11 @@ GameScene::GameScene(
         if(std::filesystem::exists(address))
         {
             std::string name = "textures/" + sprites[i]->name;
-            auto imageFuture = ResourceManager::Instance()->RequestImage(name.c_str());
-            _imageFutures.emplace_back(i, std::move(imageFuture));
-            // auto [gpuTexture, imageSize] = webviewParams.requestImage(address.c_str());
-            //
-            // glm::vec3 flipScale {1.0f, 1.0f, 1.0f};
-            // if (sprite->flipX == true)
-            // {
-            //     flipScale.x *= -1.0f;
-            // }
-            // if (sprite->flipY == true)
-            // {
-            //     flipScale.y *= -1.0f;
-            // }
-            // auto scaleMat = glm::scale(glm::mat4(1), flipScale);
-            //
-            // std::vector<SpritePipeline::Position> tVs(sprite->vertices.size());
-            // std::vector<SpriteRenderer::UV> tUs(sprite->vertices.size());
-            // for (int i = 0; i < sprite->vertices.size(); ++i)
-            // {
-            //     auto & oV = sprite->vertices[i];
-            //     auto & tV = tVs[i];
-            //
-            //     tV = sprite->transform_ptr->GlobalTransform() * scaleMat * glm::vec4{oV, 1.0f};
-            //
-            //     tUs[i].x = sprite->uvs[i].x;
-            //     tUs[i].y = 1.0f - sprite->uvs[i].y;
-            // }
-            //
-            // auto [imageData, tempData] = _spriteRenderer->Allocate(
-            //     commandBuffer,
-            //     *gpuTexture,
-            //     (int)sprite->vertices.size(),
-            //     tVs.data(),
-            //     tUs.data(),
-            //     sprite->color,
-            //     (int)sprite->indices.size(),
-            //     sprite->indices.data()
-            // );
-            //
-            // std::shared_ptr mySprite = std::make_shared<Sprite>();
-            // mySprite->transform = sprite->transform_ptr;
-            // mySprite->spriteData = std::move(imageData);
-            // _sprites.emplace_back(mySprite);
-
-            // commandBufferDataList.emplace_back(std::move(tempData));
+            int spriteIndex = i;
+            ResourceManager::Instance()->RequestImage(name.c_str(), [spriteIndex, this](std::shared_ptr<RT::GpuTexture> gpuTexture)->void
+            {
+                _loadedImages.emplace_back(std::tuple{spriteIndex, std::move(gpuTexture)});
+            });
         }
         else
         {
@@ -154,6 +115,13 @@ GameScene::GameScene(
 void GameScene::Update(float deltaTime)
 {
     _webViewContainer->Update();
+
+    _passedTime += deltaTime;
+    {
+        std::string text{};
+        MFA_STRING(text, "Time: %d", (int)_passedTime);
+        _webViewContainer->SetText(_timeText, text.c_str());
+    }
 }
 
 //======================================================================================================================
@@ -161,74 +129,69 @@ void GameScene::Update(float deltaTime)
 void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
 {
     _webViewContainer->UpdateBuffer(recordState);
-    for (int i = (int)_imageFutures.size() - 1; i >= 0; i--)
+    for (int i = (int)_loadedImages.size() - 1; i >= 0; i--)
     {
-        auto & [spriteIndex, future] = _imageFutures[i];
-        auto result = future.wait_for(std::chrono::milliseconds(0));
-        if (result == std::future_status::ready)
+        auto & [spriteIndex, gpuTexture] = _loadedImages[i];
+        auto sprite = levelContent->Sprites()[spriteIndex];
+
+        glm::vec3 flipScale {1.0f, 1.0f, 1.0f};
+        if (sprite->flipX == true)
         {
-            auto sprite = levelContent->Sprites()[spriteIndex];
-            glm::vec3 flipScale {1.0f, 1.0f, 1.0f};
-            if (sprite->flipX == true)
-            {
-                flipScale.x *= -1.0f;
-            }
-            if (sprite->flipY == true)
-            {
-                flipScale.y *= -1.0f;
-            }
-            auto scaleMat = glm::scale(glm::mat4(1), flipScale);
-
-            std::vector<SpritePipeline::Position> tVs(sprite->vertices.size());
-            std::vector<SpriteRenderer::UV> tUs(sprite->vertices.size());
-            for (int i = 0; i < sprite->vertices.size(); ++i)
-            {
-                auto & oV = sprite->vertices[i];
-                auto & tV = tVs[i];
-
-                tV = sprite->transform_ptr->GlobalTransform() * scaleMat * glm::vec4{oV, 1.0f};
-
-                tUs[i].x = sprite->uvs[i].x;
-                tUs[i].y = 1.0f - sprite->uvs[i].y;
-            }
-
-            auto gpuTexture = future.get();
-
-            auto [imageData, tempData] = _spriteRenderer->Allocate(
-                recordState.commandBuffer,
-                *gpuTexture,
-                (int)sprite->vertices.size(),
-                tVs.data(),
-                tUs.data(),
-                sprite->color,
-                (int)sprite->indices.size(),
-                sprite->indices.data()
-            );
-
-            std::shared_ptr mySprite = std::make_shared<Sprite>();
-            mySprite->transform = sprite->transform_ptr;
-            mySprite->spriteData = std::move(imageData);
-            mySprite->gpuTexture = gpuTexture;
-
-            bool inserted = false;
-            for (int i = 0; i < _sprites.size(); i++)
-            {
-                if (_sprites[i]->transform->GlobalPosition().z < mySprite->transform->GlobalPosition().z)
-                {
-                    _sprites.insert(_sprites.begin() + i, mySprite);
-                    inserted = true;
-                    break;
-                }
-            }
-            if (inserted == false)
-            {
-                _sprites.emplace_back(mySprite);
-            }
-
-            _temps.emplace_back(std::move(tempData));
-
-            _imageFutures.erase(_imageFutures.begin() + i);
+            flipScale.x *= -1.0f;
         }
+        if (sprite->flipY == true)
+        {
+            flipScale.y *= -1.0f;
+        }
+        auto scaleMat = glm::scale(glm::mat4(1), flipScale);
+
+        std::vector<SpritePipeline::Position> tVs(sprite->vertices.size());
+        std::vector<SpriteRenderer::UV> tUs(sprite->vertices.size());
+        for (int i = 0; i < sprite->vertices.size(); ++i)
+        {
+            auto & oV = sprite->vertices[i];
+            auto & tV = tVs[i];
+
+            tV = sprite->transform_ptr->GlobalTransform() * scaleMat * glm::vec4{oV, 1.0f};
+
+            tUs[i].x = sprite->uvs[i].x;
+            tUs[i].y = 1.0f - sprite->uvs[i].y;
+        }
+
+        auto [imageData, tempData] = _spriteRenderer->Allocate(
+            recordState.commandBuffer,
+            *gpuTexture,
+            (int)sprite->vertices.size(),
+            tVs.data(),
+            tUs.data(),
+            sprite->color,
+            (int)sprite->indices.size(),
+            sprite->indices.data()
+        );
+
+        std::shared_ptr mySprite = std::make_shared<Sprite>();
+        mySprite->transform = sprite->transform_ptr;
+        mySprite->spriteData = std::move(imageData);
+        mySprite->gpuTexture = gpuTexture;
+
+        bool inserted = false;
+        for (int i = 0; i < _sprites.size(); i++)
+        {
+            if (_sprites[i]->transform->GlobalPosition().z < mySprite->transform->GlobalPosition().z)
+            {
+                _sprites.insert(_sprites.begin() + i, mySprite);
+                inserted = true;
+                break;
+            }
+        }
+        if (inserted == false)
+        {
+            _sprites.emplace_back(mySprite);
+        }
+
+        _temps.emplace_back(std::move(tempData));
+
+        _loadedImages.erase(_loadedImages.begin() + i);
     }
 }
 

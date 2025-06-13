@@ -8,22 +8,15 @@ namespace MFA
     ThreadPool::ThreadPool()
     {
         mMainThreadId = std::this_thread::get_id();
-        mNumberOfThreads = static_cast<int>(std::thread::hardware_concurrency() * 0.75f);
+        mNumberOfThreads = std::min<int>(4, static_cast<int>(std::thread::hardware_concurrency() * 0.5f));
         MFA_LOG_INFO("Job system is running on %d threads. Available threads are: %d", mNumberOfThreads, static_cast<int>(std::thread::hardware_concurrency()));
-        if (mNumberOfThreads < 2)
-        {
-            mIsAlive = false;
-        }
-        else
-        {
-            mIsAlive = true;
-            mTasks = std::vector<ThreadSafeQueue<Task>>(mNumberOfThreads);
-        	for (int threadIndex = 0; threadIndex < mNumberOfThreads; threadIndex++)
-            {
-                mThreadObjects.emplace_back(std::make_unique<ThreadObject>(threadIndex, *this));
-            }
-        }
 
+        mIsAlive = true;
+
+        for (int threadIndex = 0; threadIndex < mNumberOfThreads; threadIndex++)
+        {
+            mThreadObjects.emplace_back(std::make_unique<ThreadObject>(threadIndex, *this));
+        }
     }
 
     //-------------------------------------------------------------------------------------------------
@@ -56,7 +49,7 @@ namespace MFA
 
         if (mIsAlive == true)
         {
-            mTasks[mNextTaskIdx].Push(task);
+            mTasks.Push(task);
             mThreadObjects[mNextTaskIdx]->Notify();
             mNextTaskIdx = (mNextTaskIdx + 1) % mThreadObjects.size();
         }
@@ -90,7 +83,7 @@ namespace MFA
 
     bool ThreadPool::ThreadObject::AwakeCondition(int idx)
     {
-        return mParent.mTasks[idx].IsEmpty() == false || mParent.mIsAlive == false;
+        return mParent.mTasks.IsEmpty() == false || mParent.mIsAlive == false;
     }
 
     //-------------------------------------------------------------------------------------------------
@@ -140,11 +133,12 @@ namespace MFA
                 }
             );
             mIsBusy = true;
-            while (mParent.mIsAlive)
+            while (mParent.mIsAlive == true)
             {
                 Task currentTask;
                 bool isEmpty = false;
-                while (mParent.mTasks[mThreadNumber].TryToPop(currentTask, isEmpty) == false);
+
+                while (mParent.mTasks.TryToPop(currentTask, isEmpty) == false);
                 if (isEmpty == true)
                 {
 	                break;

@@ -78,33 +78,6 @@ namespace MFA::RenderBackend
         VkDeviceSize const size
     );
 
-
-    //-------------------------------------------------------------------------------------------------
-
-	static void TransferImageLayout(
-        VkDevice device,
-        VkCommandBuffer commandBuffer,
-        VkImage image,
-        VkImageLayout oldLayout,
-        VkImageLayout newLayout,
-        uint32_t levelCount,
-        uint32_t layerCount
-    );
-
-    //-------------------------------------------------------------------------------------------------
-
-	static void CopyBufferToImage(
-        VkDevice device,
-        VkCommandBuffer commandBuffer,
-        VkBuffer buffer,
-        VkImage image,
-        AS::Texture const& cpuTexture
-    );
-
-    //-------------------------------------------------------------------------------------------------
-
-    static VkFormat ConvertCpuTextureFormatToGpu(AS::Texture::Format const cpuFormat);
-
     //-------------------------------------------------------------------------------------------------
 
     static void VK_Check(VkResult const result)
@@ -3048,7 +3021,7 @@ namespace MFA::RenderBackend
 
     //-------------------------------------------------------------------------------------------------
 
-    static void CopyBufferToImage(
+    void CopyBufferToImage(
         VkDevice device,
         VkCommandBuffer commandBuffer,
         VkBuffer buffer,
@@ -3105,7 +3078,7 @@ namespace MFA::RenderBackend
 
     //-------------------------------------------------------------------------------------------------
 
-    static VkFormat ConvertCpuTextureFormatToGpu(AS::Texture::Format const cpuFormat)
+    VkFormat ConvertCpuTextureFormatToGpu(AS::Texture::Format const cpuFormat)
     {
         using Format = AS::Texture::Format;
         switch (cpuFormat)
