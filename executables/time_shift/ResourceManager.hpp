@@ -11,6 +11,11 @@ namespace MFA::RenderTypes
 }
 namespace MFA
 {
+    namespace Asset
+    {
+        class Texture;
+    }
+
     class Blob;
     namespace RenderTypes
     {
@@ -24,6 +29,8 @@ class ResourceManager
 public:
 
     static std::shared_ptr<ResourceManager> Instance();
+
+    ~ResourceManager();
 
     using ImageCallback = std::function<void(std::shared_ptr<MFA::RT::GpuTexture>)>;
     void RequestImage(char const * name, const ImageCallback & callback, bool forceReload = false);
@@ -44,6 +51,9 @@ private:
 
     std::unordered_map<std::string, std::tuple<std::atomic<bool>, std::weak_ptr<MFA::RenderTypes::GpuTexture>>> _imageMap{};
     std::unordered_map<std::string, MFA::ThreadSafeQueue<ImageCallback>> _imageCallbacks{};
+    
+    std::unordered_map<std::string, std::shared_ptr<MFA::RenderTypes::BufferAndMemory>> _stageBufferMap{};
+    std::unordered_map<std::string, std::shared_ptr<MFA::Asset::Texture>> _cpuTextureMap{};
 
     struct QueuedImages
     {

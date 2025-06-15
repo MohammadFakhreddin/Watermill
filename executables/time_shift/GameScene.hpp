@@ -46,6 +46,10 @@ public:
 
 private:
 
+    void ReadLevelFromJson();
+
+    std::future<GenerateGame> _jsonTask{};
+
     std::unique_ptr<WebViewContainer> _webViewContainer;
     std::vector<litehtml::element::ptr> _buttons{};
     int _selectedButton = 0;

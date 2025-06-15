@@ -24,6 +24,10 @@ std::shared_ptr<ResourceManager> ResourceManager::Instance()
 
 //======================================================================================================================
 
+ResourceManager::~ResourceManager() = default;
+
+//======================================================================================================================
+
 void ResourceManager::RequestImage(char const * name_, const ImageCallback & callback, bool const forceReload)
 {
     auto & [lock, imageWeak] = _imageMap[name_];
@@ -40,6 +44,11 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
     }
 
     _imageCallbacks[name_].Push(callback);
+    // To make sure we are not requesting things multiple times
+    if (_imageCallbacks[name_].ItemCount() != 1)
+    {
+        return;
+    }
 
     JobSystem::Instance()->AssignTask([this, name = std::string(name_)]()
     {
@@ -51,6 +60,8 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
 
         auto const buffer = cpuTexture->GetBuffer();
         MFA_ASSERT(buffer != nullptr && buffer->IsValid() == true);
+
+        // TODO: Memory pool to reuse upload buffer groups
         // Create upload buffer
         auto const uploadBufferGroup = RB::CreateBuffer(    // TODO: We can cache this buffer
             device,
@@ -63,8 +74,19 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
         // Map texture data to buffer
         RB::CopyDataToHostVisibleBuffer(device, uploadBufferGroup->memory, *buffer);
 
-        _nextUpdateTasks.Push([this, name, uploadBufferGroup, cpuTexture](const RT::CommandRecordState & recordState)
+        if (_instance.lock() == nullptr)
         {
+            return;
+        }
+
+        _stageBufferMap[name] = uploadBufferGroup;
+        _cpuTextureMap[name] = cpuTexture;
+
+        _nextUpdateTasks.Push([this, name](const RT::CommandRecordState & recordState)
+        {
+            auto cpuTexture = _cpuTextureMap[name];
+            auto stageBuffer = _stageBufferMap[name];
+
             auto * device = LogicalDevice::Instance->GetVkDevice();
             auto * physicalDevice = LogicalDevice::Instance->GetPhysicalDevice();
 
@@ -106,7 +128,7 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
             RB::CopyBufferToImage(
                 device,
                 recordState.commandBuffer,
-                uploadBufferGroup->buffer,
+                stageBuffer->buffer,
                 imageGroup->image,
                 *cpuTexture
             );
@@ -139,7 +161,7 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
             _activeBuffers.emplace_back();
             auto & item = _activeBuffers.back();
             item.gpuTexture = gpuTexture;
-            item.stageBuffer = uploadBufferGroup;
+            item.stageBuffer = stageBuffer;
             item.lifeTime = (int)LogicalDevice::Instance->GetMaxFramePerFlight() + 1;
 
             imageWeak = gpuTexture;
@@ -150,6 +172,10 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
                 auto callback = imageCallbacks.Pop();
                 callback(gpuTexture);
             }
+
+            _imageCallbacks.erase(name);
+            _stageBufferMap.erase(name);
+            _cpuTextureMap.erase(name);
         });
     });
 }

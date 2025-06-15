@@ -6,6 +6,7 @@
 #include "LogicalDevice.hpp"
 #include "camera/ObserverCamera.hpp"
 #include "ResourceManager.hpp"
+#include "JobSystem.hpp"
 
 #include <iostream>
 #include <utility>
@@ -38,89 +39,40 @@ GameScene::GameScene(
     _webViewContainer->SetText(_webViewContainer->GetElementById("level"), _params.levelName.c_str());
     _webViewContainer->SetText(_webViewContainer->GetElementById("score"), "Score: 0");
     _timeText = _webViewContainer->GetElementById("time");
-    // TODO: Update level text and score dynamically
 
+    // TODO: We can sort images based on size and load the largest ones last as well
     auto levelPath = MFA::Path::Instance()->Get(_params.levelPath);
     MFA_ASSERT(std::filesystem::exists(levelPath) == true);
 
-    levelContent = GenerateGame(levelPath);
-    _transforms = levelContent->Transforms();
-    auto const & sprites = levelContent->Sprites();
-
-    // std::vector<std::unique_ptr<SpriteRenderer::CommandBufferData>> commandBufferDataList{};
-
-    // device->DeviceWaitIdle();
-    // auto commandBuffer = RB::BeginSingleTimeCommand(device->GetVkDevice(), device->GetGraphicCommandPool());
-    // We can do bindless image loading instead, Also we don't need all the images right away.
-    // TODO: We can sort images based on size and load the largest ones last as well
-    for (int i = 0; i < (int)sprites.size(); ++i)
+    _jsonTask = JobSystem::Instance()->AssignTask<GenerateGame>([levelPath]()
     {
-        auto const address = Path::Instance()->Get("textures/" + sprites[i]->name);
-        if(std::filesystem::exists(address))
-        {
-            std::string name = "textures/" + sprites[i]->name;
-            int spriteIndex = i;
-            ResourceManager::Instance()->RequestImage(name.c_str(), [spriteIndex, this](std::shared_ptr<RT::GpuTexture> gpuTexture)->void
-            {
-                _loadedImages.emplace_back(std::tuple{spriteIndex, std::move(gpuTexture)});
-            });
-        }
-        else
-        {
-            MFA_LOG_WARN("Failed to find the asset with name: %s", address.c_str());
-        }
-    }
-    // RB::EndAndSubmitSingleTimeCommand(
-    //     device->GetVkDevice(),
-    //     device->GetGraphicCommandPool(),
-    //     device->GetGraphicQueue(),
-    //     commandBuffer
-    // );
-
-    auto const & cameras = levelContent->Cameras();
-    if (cameras.empty() == false)
-    {
-        if (cameras.size() > 1)
-        {
-            MFA_LOG_WARN("More than one camera detected");
-        }
-
-        auto & mainCamera = cameras[0];
-
-        _left = mainCamera->cameraLeft;
-        _right = mainCamera->cameraRight;
-        auto xCenter = (_left + _right) / 2.0f;
-        _left -= xCenter;
-        _right -= xCenter;
-
-        _bottom = mainCamera->cameraBottom;
-        _top = mainCamera->cameraTop;
-        auto yCenter = (_bottom + _top) / 2.0f;
-        _bottom -= yCenter;
-        _top -= yCenter;
-
-        _near = mainCamera->cameraNear;
-        _far = mainCamera->cameraFar;
-
-        _mainCameraPosition = mainCamera->transform_ptr->GlobalPosition();
-    }
-
-    // std::sort(_sprites.begin(), _sprites.end(), [](const std::shared_ptr<Sprite>& a, const std::shared_ptr<Sprite>& b) {
-    //     return a->transform->GlobalPosition().z > b->transform->GlobalPosition().z;
-    // });
+        return GenerateGame(levelPath);
+    });
 }
 
 //======================================================================================================================
 
-void GameScene::Update(float deltaTime)
+void GameScene::Update(float const deltaTime)
 {
     _webViewContainer->Update();
 
     _passedTime += deltaTime;
+
     {
         std::string text{};
         MFA_STRING(text, "Time: %d", (int)_passedTime);
         _webViewContainer->SetText(_timeText, text.c_str());
+    }
+
+    if (_jsonTask.valid() == true)
+    {
+        auto status = _jsonTask.wait_for(std::chrono::nanoseconds(0));
+        if (status == std::future_status::ready)
+        {
+            levelContent = _jsonTask.get();
+            ReadLevelFromJson();
+        }
+
     }
 }
 
@@ -271,6 +223,61 @@ void GameScene::ButtonB_Pressed(bool const value)
     if (value == true)
     {
         _params.backPressed();
+    }
+}
+
+//======================================================================================================================
+
+void GameScene::ReadLevelFromJson()
+{
+    _transforms = levelContent->Transforms();
+    auto const & sprites = levelContent->Sprites();
+
+
+    for (int i = 0; i < (int)sprites.size(); ++i)
+    {
+        auto const address = Path::Instance()->Get("textures/" + sprites[i]->name);
+        if (std::filesystem::exists(address))
+        {
+            std::string name = "textures/" + sprites[i]->name;
+            int spriteIndex = i;
+            ResourceManager::Instance()->RequestImage(name.c_str(), [spriteIndex, this](std::shared_ptr<RT::GpuTexture> gpuTexture)->void
+            {
+                _loadedImages.emplace_back(std::tuple{spriteIndex, std::move(gpuTexture)});
+            });
+        }
+        else
+        {
+            MFA_LOG_WARN("Failed to find the asset with name: %s", address.c_str());
+        }
+    }
+
+    auto const & cameras = levelContent->Cameras();
+    if (cameras.empty() == false)
+    {
+        if (cameras.size() > 1)
+        {
+            MFA_LOG_WARN("More than one camera detected");
+        }
+
+        auto & mainCamera = cameras[0];
+
+        _left = mainCamera->cameraLeft;
+        _right = mainCamera->cameraRight;
+        auto xCenter = (_left + _right) / 2.0f;
+        _left -= xCenter;
+        _right -= xCenter;
+
+        _bottom = mainCamera->cameraBottom;
+        _top = mainCamera->cameraTop;
+        auto yCenter = (_bottom + _top) / 2.0f;
+        _bottom -= yCenter;
+        _top -= yCenter;
+
+        _near = mainCamera->cameraNear;
+        _far = mainCamera->cameraFar;
+
+        _mainCameraPosition = mainCamera->transform_ptr->GlobalPosition();
     }
 }
 

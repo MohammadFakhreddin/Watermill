@@ -128,6 +128,7 @@ namespace MFA::Importer
 
                 auto* pixels_array = outImageData.pixels->As<uint8_t>();
                 auto const* stbi_pixels_array = outImageData.stbi_pixels->As<uint8_t>();
+                // This can be parallized using openMP
                 for (int pixel_index = 0; pixel_index < outImageData.width * outImageData.height; pixel_index++)
                 {
                     for (uint32_t component_index = 0; component_index < outImageData.components; component_index++)

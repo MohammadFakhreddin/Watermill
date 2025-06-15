@@ -73,10 +73,10 @@ std::string MFA::Path::Get(std::string const& address) const
 
 std::string MFA::Path::Get(char const *address) const
 {
-    if (std::filesystem::exists(address) == true)
+    /*if (std::filesystem::exists(address) == true)
     {
         return address;
-    }
+    }*/
     if (std::strncmp(address, "./", 2) == 0 || std::strncmp(address, "/", 1) == 0)
     {
         return address;
@@ -88,10 +88,10 @@ std::string MFA::Path::Get(char const *address) const
 
 std::string MFA::Path::Get(char const *address, char const *relativePath)
 {
-    if (std::filesystem::exists(address) == true)
+    /*if (std::filesystem::exists(address) == true)
     {
         return address;
-    }
+    }*/
     if (std::strncmp(address, "./", 2) == 0 || std::strncmp(address, "/", 1) == 0)
     {
         return address;
