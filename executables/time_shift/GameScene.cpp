@@ -82,10 +82,7 @@ void GameScene::Update(float const deltaTime)
 void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
 {
     _webViewContainer->UpdateBuffer(recordState);
-    if (_loadedImages.empty() == false)
-    {
-        MFA_LOG_INFO("Loaded image count is : %d", _loadedImages.size());
-    }
+
     for (int i = (int)_loadedImages.size() - 1; i >= 0; i--)
     {
         // This process must be done in another thread
@@ -182,6 +179,7 @@ void GameScene::Render(MFA::RT::CommandRecordState &recordState)
     auto const worldWidth = (_cameraRight - _cameraLeft);
     auto const worldHeight = (_cameraTop - _cameraBottom);
     auto const xCenter = (worldWidth / 2) + _cameraLeft;
+    // auto const yCenter = (worldHeight / 2) + _cameraBottom;
 
     auto const * device = LogicalDevice::Instance;
     auto const windowWidth = device->GetWindowWidth();
@@ -191,8 +189,11 @@ void GameScene::Render(MFA::RT::CommandRecordState &recordState)
     auto const newWidth = ratio * worldHeight ;
     auto const left = xCenter - newWidth / 2.0f;
     auto const right = xCenter + newWidth / 2.0f;
+    // auto const newHeight = worldWidth / ratio;
+    // auto const bottom = yCenter - newHeight * 0.5f;
+    // auto const top = yCenter + newHeight * 0.5f;
 
-    auto const projection = glm::ortho(right, left, _cameraBottom, _cameraTop, _cameraNear, _cameraFar);
+    auto const projection = glm::ortho(left, right, _cameraBottom, _cameraTop, _cameraNear, _cameraFar);
     auto const view = glm::lookAt(_mainCameraPosition, _mainCameraPosition + Math::ForwardVec3, -Math::UpVec3);
     auto const viewProjection = projection * view;
 
@@ -292,8 +293,8 @@ void GameScene::ReadLevelFromJson()
 
         auto & mainCamera = cameras[0];
 
-        _cameraLeft = mainCamera->left;
-        _cameraRight = mainCamera->right;
+        _cameraLeft = mainCamera->right;
+        _cameraRight = mainCamera->left;
         auto xCenter = (_cameraLeft + _cameraRight) / 2.0f;
         _cameraLeft -= xCenter;
         _cameraRight -= xCenter;
