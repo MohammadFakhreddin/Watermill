@@ -48,7 +48,7 @@ private:
 
     void ReadLevelFromJson();
 
-    std::future<GenerateGame> _jsonTask{};
+    std::future<LevelParser> _jsonTask{};
 
     std::unique_ptr<WebViewContainer> _webViewContainer;
     std::vector<litehtml::element::ptr> _buttons{};
@@ -60,25 +60,40 @@ private:
 
     struct Sprite
     {
-        MFA::Transform * transform;
         std::unique_ptr<SpriteRenderer::SpriteData> spriteData;
         std::shared_ptr<MFA::RT::GpuTexture> gpuTexture;
     };
     std::vector<std::shared_ptr<Sprite>> _sprites;
-    std::vector<std::shared_ptr<SpriteRenderer::CommandBufferData>> _temps;
+
+    struct SpriteInstance
+    {
+        Sprite * sprite;
+        MFA::Transform * transform;
+        glm::mat4 scaleMat;
+        glm::vec4 color;
+    };
+    std::vector<std::shared_ptr<SpriteInstance>> _instances;
+    // TODO: Instance rendering
+
+    struct TemporaryMemory
+    {
+        int lifeTime = 0;
+        std::shared_ptr<SpriteRenderer::CommandBufferData> memory;
+    };
+    std::vector<TemporaryMemory> _temporaryMemories;
 
     std::shared_ptr<SpriteRenderer> _spriteRenderer;
 
-    float _left{};
-    float _right{};
-    float _bottom{};
-    float _top{};
-    float _near{};
-    float _far{};
+    float _cameraLeft{};
+    float _cameraRight{};
+    float _cameraBottom{};
+    float _cameraTop{};
+    float _cameraNear{};
+    float _cameraFar{};
     glm::vec3 _mainCameraPosition{};
 
     // Temporary
-    std::optional<GenerateGame> levelContent;
+    std::optional<LevelParser> levelContent;
     std::vector<std::tuple<int, std::shared_ptr<MFA::RT::GpuTexture>>> _loadedImages{};
 
     GumboNode * _timeText = nullptr;

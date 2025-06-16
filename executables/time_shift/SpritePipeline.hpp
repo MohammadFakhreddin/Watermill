@@ -18,12 +18,13 @@ public:
     {
         Position position{};
         UV uv{};
-        Color color{};
     };
 
     struct PushConstants
     {
+        glm::vec4 color{};
         glm::mat4 model{};
+        glm::mat4 viewProjection{};
     };
 
     explicit SpritePipeline(
@@ -64,4 +65,6 @@ private:
     std::shared_ptr<MFA::RT::DescriptorSetLayoutGroup> _descriptorLayout{};
 
     std::shared_ptr<MFA::RT::PipelineGroup> _pipeline{};
+
+    VkShaderStageFlags _pushConstantsStageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 };

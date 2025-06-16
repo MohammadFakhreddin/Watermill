@@ -189,6 +189,8 @@ void TimeShiftApp::Run()
         _nextSceneID = SceneID::Menu;
     }
 
+    MFA_LOG_INFO("Initializing game loop");
+
     SDL_GL_SetSwapInterval(0);
     SDL_Event e;
 
@@ -234,6 +236,8 @@ void TimeShiftApp::Update(float const deltaTime)
 {
     if (_activeSceneID != _nextSceneID)
     {
+        MFA_LOG_INFO("Switching to next scene");
+        ResourceManager::Instance()->ForceCleanUp();
         // TODO: We have to load stuff in another thread
         _previousScenes.emplace_back(std::tuple{std::move(_currentScene), LogicalDevice::Instance->GetMaxFramePerFlight() + 1});
         _currentScene = _sceneRecipes[(int)_nextSceneID]();

@@ -1,7 +1,6 @@
 #include "GenerateGame.h"
 
 #include <fstream>
-#include <iostream>
 #include <json.hpp>
 
 #include "BedrockLog.hpp"
@@ -9,57 +8,67 @@
 using namespace nlohmann;
 using namespace MFA;
 
-GenerateGame::GenerateGame(const std::filesystem::path &json_path)
+static glm::vec3 ToVec3(json const & j)
 {
-    std::ifstream file(json_path);
-    json data = json::parse(file);
-    if (data.is_discarded())
-    {
-        MFA_LOG_ERROR("JSON file is invalid");
-        return;
-    }
+    glm::vec3 vec;
+    j.at("x").get_to(vec.x);
+    j.at("y").get_to(vec.y);
+    j.at("z").get_to(vec.z);
+    return vec;
+};
 
-    auto objects = data["objects"];
-    parse_objects(nullptr, objects);
-    MFA_LOG_DEBUG("Finished parsing file");
+static glm::vec2 ToVec2(json const & j)
+{
+    glm::vec2 vec;
+    j.at("x").get_to(vec.x);
+    j.at("y").get_to(vec.y);
+    return vec;
 }
 
-void GenerateGame::parse_objects(Transform * parent, json objects)
+static glm::vec4 ToColor(json const & j)
 {
-    auto to_vec3 = [](json j)
-    {
-        glm::vec3 vec;
-        j.at("x").get_to(vec.x);
-        j.at("y").get_to(vec.y);
-        j.at("z").get_to(vec.z);
-        return vec;
-    };
+    glm::vec4 color;
+    j.at("r").get_to(color.x);
+    j.at("g").get_to(color.y);
+    j.at("b").get_to(color.z);
+    j.at("a").get_to(color.w);
+    return color;
+};
 
-    auto to_vec2 = [](json j)
+LevelParser::LevelParser(const std::filesystem::path &json_path)
+{
+    try
     {
-        glm::vec2 vec;
-        j.at("x").get_to(vec.x);
-        j.at("y").get_to(vec.y);
-        return vec;
-    };
+        MFA_LOG_INFO("Started parsing file");
 
-    auto to_color = [](json j)
+        std::ifstream file(json_path);
+        json data = json::parse(file);
+        if (data.is_discarded())
+        {
+            MFA_LOG_ERROR("JSON file is invalid");
+            return;
+        }
+
+        ParseSprites(data["sprites"]);
+        ParseTransforms(nullptr, data["transforms"]);
+
+        MFA_LOG_INFO("Finished parsing file");
+
+    } catch (std::exception &e)
     {
-        glm::vec4 color;
-        j.at("r").get_to(color.x);
-        j.at("g").get_to(color.y);
-        j.at("b").get_to(color.z);
-        j.at("a").get_to(color.w);
-        return color;
-    };
+        MFA_LOG_ERROR(e.what());
+    }
+}
 
-    for (auto const &object : objects)
+void LevelParser::ParseTransforms(Transform *parent, json const & rawChildren)
+{
+    for (auto const &object : rawChildren)
     {
         transforms.emplace_back(std::make_shared<Transform>());
         auto &transform = transforms.back();
-        transform->SetLocalPosition(to_vec3(object["position"]));
-        transform->SetEulerAngles((to_vec3(object["rotation"])));
-        transform->SetLocalScale(to_vec3(object["scale"]));
+        transform->SetLocalPosition(ToVec3(object["position"]));
+        transform->SetEulerAngles((ToVec3(object["rotation"])));
+        transform->SetLocalScale(ToVec3(object["scale"]));
         transform->name = object["name"].get<std::string>();
         if (object["tag"] != "Untagged")
         {
@@ -70,49 +79,86 @@ void GenerateGame::parse_objects(Transform * parent, json objects)
             transform->SetParent(parent);
         }
 
-        auto const sprite_name = object["spriteName"].get<std::string>();
-        if (!sprite_name.empty())
         {
-            sprites.emplace_back(std::make_shared<Sprite>());
-            auto & sprite = sprites.back();
-            sprite->name = sprite_name;
-            for (auto const & vertex : object["spriteVertices"])
+            auto const findResult = object.find("spriteRenderer");
+            if (findResult != object.end())
             {
-                sprite->vertices.emplace_back(glm::vec3{to_vec2(vertex), 0.0f});
+                ParseSpriteRenderer(transform.get(), *findResult);
             }
-            for (auto const & uv : object["spriteUVs"])
-            {
-                sprite->uvs.push_back(to_vec2(uv));
-            }
-            for (auto const & index : object["spriteTriangles"])
-            {
-                sprite->indices.emplace_back(index.get<uint16_t>());
-            }
-
-            sprite->flipX = object["flipX"].get<bool>();
-            sprite->flipY = object["flipY"].get<bool>();
-            sprite->color = to_color(object["color"]);
-
-            sprite->transform_ptr = transform.get();
         }
-
-        if (transform->tag == "MainCamera")
         {
-            cameras.emplace_back(std::make_shared<Camera>());
-            auto & camera = cameras.back();
-            camera->cameraTop = object["cameraTop"].get<float>();
-            camera->cameraLeft = object["cameraLeft"].get<float>();
-            camera->cameraRight = object["cameraRight"].get<float>();
-            camera->cameraBottom = object["cameraBottom"].get<float>();
-            camera->cameraNear = object["cameraNear"].get<float>();
-            camera->cameraFar = object["cameraFar"].get<float>();
-
-            camera->transform_ptr = transform.get();
+            auto const findResult = object.find("camera");
+            if (findResult != object.end())
+            {
+                ParseCamera(transform.get(), *findResult);
+            }
         }
 
         if (!object["children"].empty())
         {
-            parse_objects(transform.get(), object["children"]);
+            ParseTransforms(transform.get(), object["children"]);
         }
     }
+}
+
+void LevelParser::ParseCamera(MFA::Transform * transform, nlohmann::json const & object)
+{
+    auto isValid = object["isValid"].get<bool>();
+    if (isValid == false)
+    {
+        return;
+    }
+    cameras.emplace_back(std::make_shared<Camera>());
+    auto const & camera = cameras.back();
+    camera->top = object["top"].get<float>();
+    camera->left = object["left"].get<float>();
+    camera->right = object["right"].get<float>();
+    camera->bottom = object["bottom"].get<float>();
+    camera->near = object["near"].get<float>();
+    camera->far = object["far"].get<float>();
+    camera->transform = transform;
+}
+
+void LevelParser::ParseSprites(nlohmann::json const &objects)
+{
+    for (auto const & object : objects)
+    {
+        sprites.emplace_back(std::make_shared<Sprite>());
+        auto const & sprite = sprites.back();
+        sprite->textureName = object["textureName"];
+        sprite->spriteName = object["spriteName"];
+        MFA_ASSERT(object.find("vertices") != object.end());
+        for (auto const &vertex : object["vertices"])
+        {
+            sprite->vertices.emplace_back(ToVec2(vertex), 0.0f);
+        }
+        MFA_ASSERT(object.find("uvs") != object.end());
+        for (auto const &uv : object["uvs"])
+        {
+            sprite->uvs.push_back(ToVec2(uv));
+        }
+        MFA_ASSERT(object.find("triangles") != object.end());
+        for (auto const &index : object["triangles"])
+        {
+            sprite->indices.emplace_back(index.get<uint16_t>());
+        }
+    }
+}
+
+void LevelParser::ParseSpriteRenderer(Transform * transform, json const & object)
+{
+    // TODO: Import Json utils into this project
+    bool const isValid = object["isValid"].get<bool>();
+    if (isValid == false)
+    {
+        return;
+    }
+    auto spriteInstance = std::make_shared<SpriteInstance>();
+    spriteInstance->transform = transform;
+    spriteInstance->spriteIndex = object["spriteIndex"];
+    spriteInstance->flipX = object["flipX"];
+    spriteInstance->flipY = object["flipY"];
+    spriteInstance->color = ToColor(object["color"]);
+
+    spriteInstanceMap[spriteInstance->spriteIndex].emplace_back(spriteInstance);
 }

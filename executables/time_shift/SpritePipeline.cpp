@@ -111,7 +111,7 @@ void SpritePipeline::SetPushConstant(MFA::RT::CommandRecordState &recordState, P
     RB::PushConstants(
         recordState,
         _pipeline->pipelineLayout,
-        VK_SHADER_STAGE_VERTEX_BIT,
+        _pushConstantsStageFlags,
         0, Alias{pushConstant}
     );
 }
@@ -191,6 +191,7 @@ void SpritePipeline::CreatePipeline()
 	};
 
     std::vector<VkVertexInputAttributeDescription> inputAttributeDescriptions{};
+    // TODO: Automate this: Check how donut does this
     // Position
     inputAttributeDescriptions.emplace_back(MFA_VERTEX_INPUT_ATTRIBUTE(
         static_cast<uint32_t>(inputAttributeDescriptions.size()),
@@ -204,13 +205,6 @@ void SpritePipeline::CreatePipeline()
         0,
         Vertex,
         uv
-    ));
-    // Color
-    inputAttributeDescriptions.emplace_back(MFA_VERTEX_INPUT_ATTRIBUTE(
-        static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        0,
-        Vertex,
-        color
     ));
 
     RB::CreateGraphicPipelineOptions pipelineOptions{};
@@ -241,7 +235,7 @@ void SpritePipeline::CreatePipeline()
         auto &pushConstant = pushConstantRanges.back();
         pushConstant.size = sizeof(PushConstants);
         pushConstant.offset = 0;
-        pushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        pushConstant.stageFlags = _pushConstantsStageFlags;        // This should be read from shader as reflection
     }
 
     // pipeline layout

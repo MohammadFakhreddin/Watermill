@@ -20,6 +20,8 @@ int main()
 
     if (SDL_JoystickOpen(0) != nullptr) SDL_JoystickEventState(SDL_ENABLE);
 
+    MFA_LOG_INFO("Beginning of a legend");
+
     MFA_ASSERT(device->IsValid() == true);
     {
         auto path = MFA::Path::Instance();
@@ -29,7 +31,8 @@ int main()
         TimeShiftApp app{};
         app.Run();
     }
-    MFA_LOG_INFO("Beginning of a legend");
+
+    MFA_LOG_INFO("End of a legend");
 
     return 0;
 }

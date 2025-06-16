@@ -21,6 +21,8 @@ GameScene::GameScene(
 )
     : _params(std::move(gameParams))
 {
+    MFA_LOG_INFO("Loading level %s", _params.levelName.c_str());
+
     auto const * device = MFA::LogicalDevice::Instance;
 
     _spriteRenderer = _params.spriteRenderer;
@@ -44,9 +46,9 @@ GameScene::GameScene(
     auto levelPath = MFA::Path::Instance()->Get(_params.levelPath);
     MFA_ASSERT(std::filesystem::exists(levelPath) == true);
 
-    _jsonTask = JobSystem::Instance()->AssignTask<GenerateGame>([levelPath]()
+    _jsonTask = JobSystem::Instance()->AssignTask<LevelParser>([levelPath]()
     {
-        return GenerateGame(levelPath);
+        return LevelParser(levelPath);
     });
 }
 
@@ -72,7 +74,6 @@ void GameScene::Update(float const deltaTime)
             levelContent = _jsonTask.get();
             ReadLevelFromJson();
         }
-
     }
 }
 
@@ -81,21 +82,15 @@ void GameScene::Update(float const deltaTime)
 void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
 {
     _webViewContainer->UpdateBuffer(recordState);
+    if (_loadedImages.empty() == false)
+    {
+        MFA_LOG_INFO("Loaded image count is : %d", _loadedImages.size());
+    }
     for (int i = (int)_loadedImages.size() - 1; i >= 0; i--)
     {
+        // This process must be done in another thread
         auto & [spriteIndex, gpuTexture] = _loadedImages[i];
-        auto sprite = levelContent->Sprites()[spriteIndex];
-
-        glm::vec3 flipScale {1.0f, 1.0f, 1.0f};
-        if (sprite->flipX == true)
-        {
-            flipScale.x *= -1.0f;
-        }
-        if (sprite->flipY == true)
-        {
-            flipScale.y *= -1.0f;
-        }
-        auto scaleMat = glm::scale(glm::mat4(1), flipScale);
+        auto sprite = levelContent->GetSprites()[spriteIndex];
 
         std::vector<SpritePipeline::Position> tVs(sprite->vertices.size());
         std::vector<SpriteRenderer::UV> tUs(sprite->vertices.size());
@@ -104,7 +99,7 @@ void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
             auto & oV = sprite->vertices[i];
             auto & tV = tVs[i];
 
-            tV = sprite->transform_ptr->GlobalTransform() * scaleMat * glm::vec4{oV, 1.0f};
+            tV = glm::vec4{oV, 1.0f};
 
             tUs[i].x = sprite->uvs[i].x;
             tUs[i].y = 1.0f - sprite->uvs[i].y;
@@ -113,37 +108,70 @@ void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
         auto [imageData, tempData] = _spriteRenderer->Allocate(
             recordState.commandBuffer,
             *gpuTexture,
-            (int)sprite->vertices.size(),
+            (int)tVs.size(),
             tVs.data(),
             tUs.data(),
-            sprite->color,
             (int)sprite->indices.size(),
             sprite->indices.data()
         );
 
+        _temporaryMemories.emplace_back(TemporaryMemory{
+            .lifeTime = (int)LogicalDevice::Instance->GetMaxFramePerFlight() + 1,
+            .memory = std::move(tempData)
+        });
+
         std::shared_ptr mySprite = std::make_shared<Sprite>();
-        mySprite->transform = sprite->transform_ptr;
         mySprite->spriteData = std::move(imageData);
         mySprite->gpuTexture = gpuTexture;
 
-        bool inserted = false;
-        for (int i = 0; i < _sprites.size(); i++)
+        _sprites.emplace_back(mySprite);
+
+        auto const & instances = levelContent->GetSpriteInstances(spriteIndex);
+        for (auto const & instance : instances)
         {
-            if (_sprites[i]->transform->GlobalPosition().z < mySprite->transform->GlobalPosition().z)
+            glm::vec3 flipScale {1.0f, 1.0f, 1.0f};
+            if (instance->flipX == true)
             {
-                _sprites.insert(_sprites.begin() + i, mySprite);
-                inserted = true;
-                break;
+                flipScale.x *= -1.0f;
+            }
+            if (instance->flipY == true)
+            {
+                flipScale.y *= -1.0f;
+            }
+            auto scaleMat = glm::scale(glm::mat4(1), flipScale);
+
+            auto myInstance = std::make_shared<SpriteInstance>();
+            myInstance->scaleMat = scaleMat;
+            myInstance->sprite = mySprite.get();
+            myInstance->transform = instance->transform;
+            myInstance->color = instance->color;
+
+            bool inserted = false;
+            for (int i = 0 ; i < _instances.size(); i++)
+            {
+                if (_instances[i]->transform->GlobalPosition().z < myInstance->transform->GlobalPosition().z)
+                {
+                    _instances.insert(_instances.begin() + i, myInstance);
+                    inserted = true;
+                    break;
+                }
+            }
+            if (inserted == false)
+            {
+                _instances.emplace_back(std::move(myInstance));
             }
         }
-        if (inserted == false)
-        {
-            _sprites.emplace_back(mySprite);
-        }
-
-        _temps.emplace_back(std::move(tempData));
 
         _loadedImages.erase(_loadedImages.begin() + i);
+    }
+
+    for (int i = _temporaryMemories.size() - 1; i >= 0; i--)
+    {
+        --_temporaryMemories[i].lifeTime;
+        if (_temporaryMemories[i].lifeTime <= 0)
+        {
+            _temporaryMemories.erase(_temporaryMemories.begin() + i);
+        }
     }
 }
 
@@ -151,9 +179,9 @@ void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
 
 void GameScene::Render(MFA::RT::CommandRecordState &recordState)
 {
-    auto const worldWidth = (_right - _left);
-    auto const worldHeight = (_bottom - _top);
-    auto const xCenter = (worldWidth / 2) + _left;
+    auto const worldWidth = (_cameraRight - _cameraLeft);
+    auto const worldHeight = (_cameraTop - _cameraBottom);
+    auto const xCenter = (worldWidth / 2) + _cameraLeft;
 
     auto const * device = LogicalDevice::Instance;
     auto const windowWidth = device->GetWindowWidth();
@@ -164,16 +192,18 @@ void GameScene::Render(MFA::RT::CommandRecordState &recordState)
     auto const left = xCenter - newWidth / 2.0f;
     auto const right = xCenter + newWidth / 2.0f;
 
-    auto const projection = glm::ortho(left, right, _bottom, _top, _near, _far);
+    auto const projection = glm::ortho(right, left, _cameraBottom, _cameraTop, _cameraNear, _cameraFar);
     auto const view = glm::lookAt(_mainCameraPosition, _mainCameraPosition + Math::ForwardVec3, -Math::UpVec3);
     auto const viewProjection = projection * view;
 
-    SpritePipeline::PushConstants pushConstants {
-        .model = glm::transpose(viewProjection)
-    };
-    for (auto & sprite : _sprites)
+    for (auto & instance : _instances)
     {
-        _spriteRenderer->Draw(recordState, pushConstants, *sprite->spriteData);
+        SpritePipeline::PushConstants pushConstants {
+            .color = instance->color,
+            .model = glm::transpose(instance->transform->GlobalTransform() * instance->scaleMat),
+            .viewProjection = glm::transpose(viewProjection),
+        };
+        _spriteRenderer->Draw(recordState, pushConstants, *instance->sprite->spriteData);
     }
     _webViewContainer->DisplayPass(recordState);
 }
@@ -230,18 +260,18 @@ void GameScene::ButtonB_Pressed(bool const value)
 
 void GameScene::ReadLevelFromJson()
 {
-    _transforms = levelContent->Transforms();
-    auto const & sprites = levelContent->Sprites();
+    MFA_LOG_INFO("ReadLevelFromJson start");
 
+    _transforms = levelContent->GetTransforms();
+    auto const & sprites = levelContent->GetSprites();
 
     for (int i = 0; i < (int)sprites.size(); ++i)
     {
-        auto const address = Path::Instance()->Get("textures/" + sprites[i]->name);
+        auto const address = Path::Instance()->Get("textures/" + sprites[i]->textureName);
         if (std::filesystem::exists(address))
         {
-            std::string name = "textures/" + sprites[i]->name;
             int spriteIndex = i;
-            ResourceManager::Instance()->RequestImage(name.c_str(), [spriteIndex, this](std::shared_ptr<RT::GpuTexture> gpuTexture)->void
+            ResourceManager::Instance()->RequestImage(address.c_str(), [spriteIndex, this](std::shared_ptr<RT::GpuTexture> gpuTexture)->void
             {
                 _loadedImages.emplace_back(std::tuple{spriteIndex, std::move(gpuTexture)});
             });
@@ -252,7 +282,7 @@ void GameScene::ReadLevelFromJson()
         }
     }
 
-    auto const & cameras = levelContent->Cameras();
+    auto const & cameras = levelContent->GetCameras();
     if (cameras.empty() == false)
     {
         if (cameras.size() > 1)
@@ -262,22 +292,22 @@ void GameScene::ReadLevelFromJson()
 
         auto & mainCamera = cameras[0];
 
-        _left = mainCamera->cameraLeft;
-        _right = mainCamera->cameraRight;
-        auto xCenter = (_left + _right) / 2.0f;
-        _left -= xCenter;
-        _right -= xCenter;
+        _cameraLeft = mainCamera->left;
+        _cameraRight = mainCamera->right;
+        auto xCenter = (_cameraLeft + _cameraRight) / 2.0f;
+        _cameraLeft -= xCenter;
+        _cameraRight -= xCenter;
 
-        _bottom = mainCamera->cameraBottom;
-        _top = mainCamera->cameraTop;
-        auto yCenter = (_bottom + _top) / 2.0f;
-        _bottom -= yCenter;
-        _top -= yCenter;
+        _cameraBottom = mainCamera->bottom;
+        _cameraTop = mainCamera->top;
+        auto yCenter = (_cameraBottom + _cameraTop) / 2.0f;
+        _cameraBottom -= yCenter;
+        _cameraTop -= yCenter;
 
-        _near = mainCamera->cameraNear;
-        _far = mainCamera->cameraFar;
+        _cameraNear = mainCamera->near;
+        _cameraFar = mainCamera->far;
 
-        _mainCameraPosition = mainCamera->transform_ptr->GlobalPosition();
+        _mainCameraPosition = mainCamera->transform->GlobalPosition();
     }
 }
 

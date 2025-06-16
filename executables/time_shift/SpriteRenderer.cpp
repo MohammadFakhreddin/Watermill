@@ -20,13 +20,15 @@ std::tuple<std::unique_ptr<SpriteRenderer::SpriteData>, std::unique_ptr<SpriteRe
     int const vertexCount,
     Position const * vertices,
     UV const * uvs,
-    Color color,
 
     int const indexCount,
     Index const * indices
 ) const
 {
     auto const device = LogicalDevice::Instance;
+
+    // TODO: Part of this process can be done in the secondary thread.
+    // TODO: What if I define a subcommand buffer and then execute it in the main thread? That would be so sick! and much cleaner
 
     std::vector<Pipeline::Vertex> vertexDataList{};
     for (int i = 0; i < vertexCount; ++i)
@@ -35,7 +37,6 @@ std::tuple<std::unique_ptr<SpriteRenderer::SpriteData>, std::unique_ptr<SpriteRe
         auto & vertexData = vertexDataList.back();
         vertexData.position = vertices[i];
         vertexData.uv = uvs[i];
-        vertexData.color = color;
     }
 
     auto const vertexAlias = Alias(vertexDataList.data(), vertexDataList.size());

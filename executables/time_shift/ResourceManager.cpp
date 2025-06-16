@@ -49,7 +49,7 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
     {
         return;
     }
-
+    // TODO: In the new design, our functions should return a command buffer that they have allocated themselves and we just combine them together for execution
     JobSystem::Instance()->AssignTask([this, name = std::string(name_)]()
     {
         auto * device = LogicalDevice::Instance->GetVkDevice();
@@ -84,6 +84,10 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
 
         _nextUpdateTasks.Push([this, name](const RT::CommandRecordState & recordState)
         {
+            if (_cpuTextureMap.contains(name) == false || _stageBufferMap.contains(name) == false)
+            {
+                return;
+            }
             auto cpuTexture = _cpuTextureMap[name];
             auto stageBuffer = _stageBufferMap[name];
 
@@ -206,6 +210,21 @@ void ResourceManager::UpdateBuffers(RT::CommandRecordState & recordState)
             _activeBuffers.erase(_activeBuffers.begin() + i);
         }
     }
+}
+
+//======================================================================================================================
+
+void ResourceManager::ForceCleanUp()
+{
+    while (_nextUpdateTasks.IsEmpty() == false)
+    {
+        _nextUpdateTasks.Pop();
+    }
+
+    _imageMap.clear();
+    _imageCallbacks.clear();
+    _stageBufferMap.clear();
+    _cpuTextureMap.clear();
 }
 
 //======================================================================================================================

@@ -40,6 +40,9 @@ public:
 
     void UpdateBuffers(MFA::RenderTypes::CommandRecordState & recordState);
 
+    // Temporary we should not need this
+    void ForceCleanUp();
+
 private:
 
     using ImagePromise = std::promise<std::shared_ptr<MFA::RT::GpuTexture>>;

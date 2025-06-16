@@ -1,10 +1,9 @@
 #pragma once
 
 #include "SpritePipeline.hpp"
+#include "BufferTracker.hpp"
 
 #include <memory>
-
-#include "BufferTracker.hpp"
 
 class SpriteRenderer
 {
@@ -42,7 +41,6 @@ public:
         int vertexCount,
         Position const * vertices,
         UV const * uvs,
-        Color color,
 
         int indexCount,
         Index const * indices
