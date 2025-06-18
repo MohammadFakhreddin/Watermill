@@ -119,14 +119,25 @@ namespace MFA::RenderTypes
 		, swapChainImageViews(std::move(swapChainImageViews_))
 	{}
 
-	//-------------------------------------------------------------------------------------------------
+	SwapChainGroup::~SwapChainGroup() { RB::DestroySwapChain(LogicalDevice::Instance->GetVkDevice(), *this); }
 
-	SwapChainGroup::~SwapChainGroup()
+    //-------------------------------------------------------------------------------------------------
+
+    CommandBufferGroup::CommandBufferGroup(
+        std::vector<VkCommandBuffer> commandBuffers_,
+        VkCommandPool commandPool_
+    )
+        : commandBuffers(std::move(commandBuffers_))
+        , commandPool(commandPool_)
+    {}
+
+    CommandBufferGroup::~CommandBufferGroup()
 	{
-		RB::DestroySwapChain(LogicalDevice::Instance->GetVkDevice(), *this);
+	    auto logicalDevice = LogicalDevice::Instance;
+	    RB::DestroyCommandBuffers(logicalDevice->GetVkDevice(), commandPool, commandBuffers.size(), commandBuffers.data());
 	}
 
-	//-------------------------------------------------------------------------------------------------
+    //-------------------------------------------------------------------------------------------------
 
 	ColorImageGroup::ColorImageGroup(std::shared_ptr<ImageGroup> 
 		imageGroup_,

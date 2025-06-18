@@ -11,7 +11,7 @@ namespace MFA
 	{
 	public:
 
-		static std::shared_ptr<Path> Instance();
+		static std::shared_ptr<Path> Instance(bool makeNewIfNotExists = false);
 
 		explicit Path();
 

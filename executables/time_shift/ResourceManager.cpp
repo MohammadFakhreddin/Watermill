@@ -11,10 +11,10 @@ using namespace MFA;
 
 //======================================================================================================================
 
-std::shared_ptr<ResourceManager> ResourceManager::Instance()
+std::shared_ptr<ResourceManager> ResourceManager::Instance(bool const createNewIfNotExists)
 {
     std::shared_ptr<ResourceManager> shared_ptr = _instance.lock();
-    if (shared_ptr == nullptr)
+    if (shared_ptr == nullptr && createNewIfNotExists == true)
     {
         shared_ptr = std::make_shared<ResourceManager>();
         _instance = shared_ptr;
@@ -49,11 +49,21 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
     {
         return;
     }
+
     // TODO: In the new design, our functions should return a command buffer that they have allocated themselves and we just combine them together for execution
-    JobSystem::Instance()->AssignTask([this, name = std::string(name_)]()
+    JobSystem::Instance()->AssignTask([name = std::string(name_)]()
     {
-        auto * device = LogicalDevice::Instance->GetVkDevice();
-        auto * physicalDevice = LogicalDevice::Instance->GetPhysicalDevice();
+        auto * logicalDevice = LogicalDevice::Instance;
+        auto * device = logicalDevice->GetVkDevice();
+        auto * commandPool = logicalDevice->GetGraphicCommandPool();
+        auto * physicalDevice = logicalDevice->GetPhysicalDevice();
+
+        auto commandBufferGroup = RB::BeginSecondaryCommand(
+            device,
+            commandPool
+        );
+
+        auto commandBuffer = commandBufferGroup->commandBuffers[0];
 
         auto const path = Path::Instance()->Get(name);
         auto const cpuTexture = Importer::UncompressedImage(path);
@@ -61,125 +71,48 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
         auto const buffer = cpuTexture->GetBuffer();
         MFA_ASSERT(buffer != nullptr && buffer->IsValid() == true);
 
-        // TODO: Memory pool to reuse upload buffer groups
-        // Create upload buffer
-        auto const uploadBufferGroup = RB::CreateBuffer(    // TODO: We can cache this buffer
-            device,
-            physicalDevice,
-            buffer->Len(),
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-        );
+        auto [gpuTexture, stageBuffer] = RB::CreateTexture(*cpuTexture, device, physicalDevice, commandBuffer);
 
-        // Map texture data to buffer
-        RB::CopyDataToHostVisibleBuffer(device, uploadBufferGroup->memory, *buffer);
+        RB::EndCommandBuffer(commandBuffer);
 
-        if (_instance.lock() == nullptr)
+        auto const instance = _instance.lock();
+        if (instance == nullptr)
         {
             return;
         }
 
-        _stageBufferMap[name] = uploadBufferGroup;
-        _cpuTextureMap[name] = cpuTexture;
+        auto & [lock, imageWeak] = instance->_imageMap[name];
+        MFA_SCOPE_LOCK(lock);
 
-        _nextUpdateTasks.Push([this, name](const RT::CommandRecordState & recordState)
+        QueuedImages item {};
+        item.gpuTexture = gpuTexture;
+        item.stageBuffer = stageBuffer;
+        item.commandBufferGroup = commandBufferGroup; // TODO: Wrapper for command buffer
+        item.lifeTime = (int)LogicalDevice::Instance->GetMaxFramePerFlight() + 1;
+        instance->_activeBuffers.Push(item);
+
+        imageWeak = gpuTexture;
+
+        instance->_nextUpdateTasks.Push([name, commandBuffer](ResourceManager * instance, const RT::CommandRecordState & recordState)
         {
-            if (_cpuTextureMap.contains(name) == false || _stageBufferMap.contains(name) == false)
+            MFA_ASSERT(JobSystem::Instance() == nullptr || JobSystem::Instance()->IsMainThread() == true);
+
+            vkCmdExecuteCommands(recordState.commandBuffer, 1, &commandBuffer);
+
+            auto & [lock, imageWeak] = instance->_imageMap[name];
+            auto gpuTexture = imageWeak.lock();
+            if (gpuTexture != nullptr)
             {
-                return;
+                // I think it is better to call these callback from the main thread.
+                auto & imageCallbacks = instance->_imageCallbacks[name];
+                while (imageCallbacks.IsEmpty() == false)
+                {
+                    auto callback = imageCallbacks.Pop();
+                    callback(gpuTexture);
+                }
+
+                instance->_imageCallbacks.erase(name);
             }
-            auto cpuTexture = _cpuTextureMap[name];
-            auto stageBuffer = _stageBufferMap[name];
-
-            auto * device = LogicalDevice::Instance->GetVkDevice();
-            auto * physicalDevice = LogicalDevice::Instance->GetPhysicalDevice();
-
-            auto const format = cpuTexture->GetFormat();
-            auto const mipCount = cpuTexture->GetMipCount();
-            auto const sliceCount = cpuTexture->GetSlices();
-            auto const& largestMipmapInfo = cpuTexture->GetMipmap(0);
-
-            auto & [lock, imageWeak] = _imageMap[name];
-            MFA_SCOPE_LOCK(lock);
-
-            auto const vulkan_format = RB::ConvertCpuTextureFormatToGpu(format);
-
-            auto imageGroup = RB::CreateImage(
-                device,
-                physicalDevice,
-                largestMipmapInfo.dimension.width,
-                largestMipmapInfo.dimension.height,
-                static_cast<uint32_t>(largestMipmapInfo.dimension.depth),
-                mipCount,
-                sliceCount,
-                vulkan_format,
-                VK_IMAGE_TILING_OPTIMAL,
-                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                VK_SAMPLE_COUNT_1_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-            );
-
-            RB::TransferImageLayout(
-                device,
-                recordState.commandBuffer,
-                imageGroup->image,
-                VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                mipCount,
-                sliceCount
-            );
-
-            RB::CopyBufferToImage(
-                device,
-                recordState.commandBuffer,
-                stageBuffer->buffer,
-                imageGroup->image,
-                *cpuTexture
-            );
-
-            RB::TransferImageLayout(
-                device,
-                recordState.commandBuffer,
-                imageGroup->image,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                mipCount,
-                sliceCount
-            );
-
-            auto imageView = RB::CreateImageView(
-                device,
-                imageGroup->image,
-                vulkan_format,
-                VK_IMAGE_ASPECT_COLOR_BIT,
-                mipCount,
-                sliceCount,
-                VK_IMAGE_VIEW_TYPE_2D
-            );
-
-            std::shared_ptr<RT::GpuTexture> gpuTexture = std::make_shared<RT::GpuTexture>(
-                imageGroup,
-                imageView
-            );
-
-            _activeBuffers.emplace_back();
-            auto & item = _activeBuffers.back();
-            item.gpuTexture = gpuTexture;
-            item.stageBuffer = stageBuffer;
-            item.lifeTime = (int)LogicalDevice::Instance->GetMaxFramePerFlight() + 1;
-
-            imageWeak = gpuTexture;
-
-            auto & imageCallbacks = _imageCallbacks[name];
-            while (imageCallbacks.IsEmpty() == false)
-            {
-                auto callback = imageCallbacks.Pop();
-                callback(gpuTexture);
-            }
-
-            _imageCallbacks.erase(name);
-            _stageBufferMap.erase(name);
-            _cpuTextureMap.erase(name);
         });
     });
 }
@@ -198,16 +131,19 @@ void ResourceManager::UpdateBuffers(RT::CommandRecordState & recordState)
     while (_nextUpdateTasks.IsEmpty() == false)
     {
         auto task = _nextUpdateTasks.Pop();
-        task(recordState);
+        task(this, recordState);
     }
 
-    for (int i = (int)_activeBuffers.size() - 1; i >= 0; i--)
     {
-        auto & item = _activeBuffers[i];
-        item.lifeTime -= 1;
-        if (item.lifeTime <= 0)
+        auto const  count = _activeBuffers.ItemCount();
+        for (int i = 0; i < count; i++)
         {
-            _activeBuffers.erase(_activeBuffers.begin() + i);
+            auto item = _activeBuffers.Pop();
+            item.lifeTime -= 1;
+            if (item.lifeTime > 0)
+            {
+                _activeBuffers.Push(std::move(item));
+            }
         }
     }
 }
@@ -223,8 +159,6 @@ void ResourceManager::ForceCleanUp()
 
     _imageMap.clear();
     _imageCallbacks.clear();
-    _stageBufferMap.clear();
-    _cpuTextureMap.clear();
 }
 
 //======================================================================================================================

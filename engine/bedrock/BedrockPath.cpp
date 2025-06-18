@@ -12,9 +12,10 @@ static bool LogCalledOnce = false;
 
 //-------------------------------------------------------------------------------------------------
 
-std::shared_ptr<MFA::Path> MFA::Path::Instance() {
+std::shared_ptr<MFA::Path> MFA::Path::Instance(bool const makeNewIfNotExists)
+{
 	std::shared_ptr<Path> shared_ptr = _instance.lock();
-	if (shared_ptr == nullptr)
+	if (shared_ptr == nullptr && makeNewIfNotExists == true)
 	{
 		shared_ptr = std::make_shared<Path>();
 		_instance = shared_ptr;

@@ -83,83 +83,10 @@ void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
 {
     _webViewContainer->UpdateBuffer(recordState);
 
-    for (int i = (int)_loadedImages.size() - 1; i >= 0; i--)
+    while (_nextUpdateTasks.IsEmpty() == false)
     {
-        // This process must be done in another thread
-        auto & [spriteIndex, gpuTexture] = _loadedImages[i];
-        auto sprite = levelContent->GetSprites()[spriteIndex];
-
-        std::vector<SpritePipeline::Position> tVs(sprite->vertices.size());
-        std::vector<SpriteRenderer::UV> tUs(sprite->vertices.size());
-        for (int i = 0; i < sprite->vertices.size(); ++i)
-        {
-            auto & oV = sprite->vertices[i];
-            auto & tV = tVs[i];
-
-            tV = glm::vec4{oV, 1.0f};
-
-            tUs[i].x = sprite->uvs[i].x;
-            tUs[i].y = 1.0f - sprite->uvs[i].y;
-        }
-
-        auto [imageData, tempData] = _spriteRenderer->Allocate(
-            recordState.commandBuffer,
-            *gpuTexture,
-            (int)tVs.size(),
-            tVs.data(),
-            tUs.data(),
-            (int)sprite->indices.size(),
-            sprite->indices.data()
-        );
-
-        _temporaryMemories.emplace_back(TemporaryMemory{
-            .lifeTime = (int)LogicalDevice::Instance->GetMaxFramePerFlight() + 1,
-            .memory = std::move(tempData)
-        });
-
-        std::shared_ptr mySprite = std::make_shared<Sprite>();
-        mySprite->spriteData = std::move(imageData);
-        mySprite->gpuTexture = gpuTexture;
-
-        _sprites.emplace_back(mySprite);
-
-        auto const & instances = levelContent->GetSpriteInstances(spriteIndex);
-        for (auto const & instance : instances)
-        {
-            glm::vec3 flipScale {1.0f, 1.0f, 1.0f};
-            if (instance->flipX == true)
-            {
-                flipScale.x *= -1.0f;
-            }
-            if (instance->flipY == true)
-            {
-                flipScale.y *= -1.0f;
-            }
-            auto scaleMat = glm::scale(glm::mat4(1), flipScale);
-
-            auto myInstance = std::make_shared<SpriteInstance>();
-            myInstance->scaleMat = scaleMat;
-            myInstance->sprite = mySprite.get();
-            myInstance->transform = instance->transform;
-            myInstance->color = instance->color;
-
-            bool inserted = false;
-            for (int i = 0 ; i < _instances.size(); i++)
-            {
-                if (_instances[i]->transform->GlobalPosition().z < myInstance->transform->GlobalPosition().z)
-                {
-                    _instances.insert(_instances.begin() + i, myInstance);
-                    inserted = true;
-                    break;
-                }
-            }
-            if (inserted == false)
-            {
-                _instances.emplace_back(std::move(myInstance));
-            }
-        }
-
-        _loadedImages.erase(_loadedImages.begin() + i);
+        auto task = _nextUpdateTasks.Pop();
+        task(recordState);
     }
 
     for (int i = _temporaryMemories.size() - 1; i >= 0; i--)
@@ -274,7 +201,107 @@ void GameScene::ReadLevelFromJson()
             int spriteIndex = i;
             ResourceManager::Instance()->RequestImage(address.c_str(), [spriteIndex, this](std::shared_ptr<RT::GpuTexture> gpuTexture)->void
             {
-                _loadedImages.emplace_back(std::tuple{spriteIndex, std::move(gpuTexture)});
+                JobSystem::Instance()->AssignTask([this, spriteIndex, gpuTexture]()->void
+                {
+                    auto sprite = levelContent->GetSprites()[spriteIndex];
+
+                    std::vector<SpritePipeline::Position> tVs(sprite->vertices.size());
+                    std::vector<SpriteRenderer::UV> tUs(sprite->vertices.size());
+                    for (int i = 0; i < sprite->vertices.size(); ++i)
+                    {
+                        auto & oV = sprite->vertices[i];
+                        auto & tV = tVs[i];
+
+                        tV = glm::vec4{oV, 1.0f};
+
+                        tUs[i].x = sprite->uvs[i].x;
+                        tUs[i].y = 1.0f - sprite->uvs[i].y;
+                    }
+
+                    auto * logicalDevice = LogicalDevice::Instance;
+                    auto * device = logicalDevice->GetVkDevice();
+                    auto * commandPool = logicalDevice->GetGraphicCommandPool();
+
+                    auto commandBufferGroup = RB::BeginSecondaryCommand(
+                        device,
+                        commandPool
+                    );
+
+                    auto commandBuffer = commandBufferGroup->commandBuffers[0];
+
+                    auto [imageData_, tempData_] = _spriteRenderer->Allocate(
+                        commandBuffer,
+                        *gpuTexture,
+                        (int)tVs.size(),
+                        tVs.data(),
+                        tUs.data(),
+                        (int)sprite->indices.size(),
+                        sprite->indices.data()
+                    );
+
+                    RB::EndCommandBuffer(commandBuffer);
+
+                    std::shared_ptr imageData = std::move(imageData_);
+                    std::shared_ptr tempData = std::move(tempData_);
+
+                    _nextUpdateTasks.Push([this, spriteIndex, tempData, imageData, gpuTexture, commandBufferGroup](MFA::RenderTypes::CommandRecordState & recordState)->void
+                    {
+                        vkCmdExecuteCommands(
+                            recordState.commandBuffer,
+                            commandBufferGroup->commandBuffers.size(),
+                            commandBufferGroup->commandBuffers.data()
+                        );
+
+                        _temporaryMemories.emplace_back(TemporaryMemory{
+                            .lifeTime = (int)LogicalDevice::Instance->GetMaxFramePerFlight() + 1,
+                            .memory = std::move(tempData),
+                            .commandBuffer = std::move(commandBufferGroup)
+                        });
+
+                        std::shared_ptr mySprite = std::make_shared<Sprite>();
+                        mySprite->spriteData = imageData;
+                        mySprite->gpuTexture = gpuTexture;
+
+                        _sprites.emplace_back(mySprite);
+
+                        auto const & instances = levelContent->GetSpriteInstances(spriteIndex);
+                        for (auto const & instance : instances)
+                        {
+                            glm::vec3 flipScale {1.0f, 1.0f, 1.0f};
+                            if (instance->flipX == true)
+                            {
+                                flipScale.x *= -1.0f;
+                            }
+                            if (instance->flipY == true)
+                            {
+                                flipScale.y *= -1.0f;
+                            }
+                            auto scaleMat = glm::scale(glm::mat4(1), flipScale);
+
+                            auto myInstance = std::make_shared<SpriteInstance>();
+                            myInstance->scaleMat = scaleMat;
+                            myInstance->sprite = mySprite.get();
+                            myInstance->transform = instance->transform;
+                            myInstance->color = instance->color;
+
+                            bool inserted = false;
+                            for (int i = 0 ; i < _instances.size(); i++)
+                            {
+                                if (_instances[i]->transform->GlobalPosition().z < myInstance->transform->GlobalPosition().z)
+                                {
+                                    _instances.insert(_instances.begin() + i, myInstance);
+                                    inserted = true;
+                                    break;
+                                }
+                            }
+                            if (inserted == false)
+                            {
+                                _instances.emplace_back(std::move(myInstance));
+                            }
+                        }
+                    });
+
+                });
             });
         }
         else

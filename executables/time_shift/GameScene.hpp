@@ -6,6 +6,7 @@
 #include "GenerateGame.h"
 #include "IScene.hpp"
 #include "SpriteRenderer.hpp"
+#include "ThreadSafeQueue.hpp"
 #include "Transform.hpp"
 #include "WebViewContainer.hpp"
 #include "camera/ArcballCamera.hpp"
@@ -60,7 +61,7 @@ private:
 
     struct Sprite
     {
-        std::unique_ptr<SpriteRenderer::SpriteData> spriteData;
+        std::shared_ptr<SpriteRenderer::SpriteData> spriteData;
         std::shared_ptr<MFA::RT::GpuTexture> gpuTexture;
     };
     std::vector<std::shared_ptr<Sprite>> _sprites;
@@ -79,6 +80,7 @@ private:
     {
         int lifeTime = 0;
         std::shared_ptr<SpriteRenderer::CommandBufferData> memory;
+        std::shared_ptr<MFA::RT::CommandBufferGroup> commandBuffer;
     };
     std::vector<TemporaryMemory> _temporaryMemories;
 
@@ -92,12 +94,13 @@ private:
     float _cameraFar{};
     glm::vec3 _mainCameraPosition{};
 
-    // Temporary
+    // Temporary, We have to remove this object
     std::optional<LevelParser> levelContent;
-    std::vector<std::tuple<int, std::shared_ptr<MFA::RT::GpuTexture>>> _loadedImages{};
 
     GumboNode * _timeText = nullptr;
 
     float _passedTime{};
+
+    MFA::ThreadSafeQueue<std::function<void(MFA::RenderTypes::CommandRecordState &recordState)>> _nextUpdateTasks{};
 
 };

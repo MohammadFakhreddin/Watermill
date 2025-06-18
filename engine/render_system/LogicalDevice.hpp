@@ -3,8 +3,9 @@
 #include "RenderBackend.hpp"
 #include "BedrockSignal.hpp"
 
-#include <vulkan/vulkan.h>
 #include <string>
+#include <thread>
+#include <vulkan/vulkan.h>
 
 namespace MFA
 {
@@ -108,10 +109,7 @@ namespace MFA
         VkQueue GetPresentQueue() const noexcept;
 
         [[nodiscard]]
-        VkCommandPool GetGraphicCommandPool() const noexcept;
-
-        [[nodiscard]]
-        std::vector<VkCommandBuffer> const& GetGraphicCommandBuffer() const noexcept;
+        VkCommandPool GetGraphicCommandPool();
 
         [[nodiscard]]
         std::vector<VkSemaphore> const& GetGraphicSemaphores() const noexcept;
@@ -120,10 +118,7 @@ namespace MFA
         std::vector<VkFence> const& GetGraphicFences() const noexcept;
 
         [[nodiscard]]
-        VkCommandPool GetComputeCommandPool() const noexcept;
-
-        [[nodiscard]]
-        std::vector<VkCommandBuffer> const& GetComputeCommandBuffer() const noexcept;
+        VkCommandPool GetComputeCommandPool();
 
         [[nodiscard]]
         std::vector<VkSemaphore> const & GetComputeSemaphores() const noexcept;
@@ -228,13 +223,13 @@ namespace MFA
         VkQueue _computeQueue {};
         VkQueue _presentQueue {};
 
-        VkCommandPool _graphicCommandPool {};
-        std::vector<VkCommandBuffer> _graphicCommandBuffer {};
+        std::unordered_map<std::thread::id, VkCommandPool> _graphicCommandPoolMap {};
+        std::shared_ptr<RT::CommandBufferGroup> _graphicCommandBuffer {};
 
         std::vector<VkFence> _fences {};
 
-        VkCommandPool _computeCommandPool {};
-        std::vector<VkCommandBuffer> _computeCommandBuffer{};
+        std::unordered_map<std::thread::id, VkCommandPool> _computeCommandPoolMap {};
+        std::shared_ptr<RT::CommandBufferGroup> _computeCommandBuffer{};
         std::vector<VkSemaphore> _computeSemaphores {};
 
         std::vector<VkSemaphore> _presentSemaphores {};
