@@ -4,6 +4,7 @@
 #include "RenderTypes.hpp"
 
 #include <future>
+#include <unordered_map>
 
 namespace MFA::RenderTypes
 {
