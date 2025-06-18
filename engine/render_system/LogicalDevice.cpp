@@ -1,9 +1,11 @@
 #include "LogicalDevice.hpp"
 
-#include "BedrockLog.hpp"
 #include "BedrockAssert.hpp"
+#include "BedrockLog.hpp"
 #include "BedrockPlatforms.hpp"
 #include "RenderBackend.hpp"
+
+#include <thread>
 
 #define USE_VALIDATION_LAYERS
 
@@ -264,11 +266,10 @@ namespace MFA
         MFA_LOG_INFO("Acquired graphics, compute and presentation queues");
 
         // Graphic
-        _graphicCommandPool = RB::CreateCommandPool(_vkDevice, _graphicQueueFamily);
         _graphicCommandBuffer = RB::CreateCommandBuffers(
             _vkDevice,
             _maxFramePerFlight,
-            _graphicCommandPool
+            GetGraphicCommandPool()
         );
 
         _fences = RB::CreateFence(
@@ -277,11 +278,10 @@ namespace MFA
         );
 
         // Compute
-        _computeCommandPool = RB::CreateCommandPool(_vkDevice, _computeQueueFamily);
         _computeCommandBuffer = RB::CreateCommandBuffers(
             _vkDevice,
             _maxFramePerFlight,
-            _computeCommandPool
+            GetComputeCommandPool()
         );
         _computeSemaphores = RB::CreateSemaphores(
             _vkDevice,
@@ -327,31 +327,30 @@ namespace MFA
         SDL_DelEventWatch(SDLEventWatcher, _window);
 
         // Graphic
-        RB::DestroyCommandBuffers(
-            _vkDevice,
-            _graphicCommandPool,
-            static_cast<uint32_t>(_graphicCommandBuffer.size()),
-            _graphicCommandBuffer.data()
-        );
-        RB::DestroyCommandPool(
-            _vkDevice,
-            _graphicCommandPool
-        );
+        _graphicCommandBuffer.reset();
+        for (auto & [key, pool] : _graphicCommandPoolMap)
+        {
+            RB::DestroyCommandPool(
+                _vkDevice,
+                pool
+            );
+        }
+
         // Compute
         RB::DestroySemaphore(
             _vkDevice,
             _computeSemaphores
         );
-        RB::DestroyCommandBuffers(
-            _vkDevice,
-            _computeCommandPool,
-            static_cast<uint32_t>(_computeCommandBuffer.size()),
-            _computeCommandBuffer.data()
-        );
-        RB::DestroyCommandPool(
-            _vkDevice,
-            _computeCommandPool
-        );
+
+        _computeCommandBuffer.reset();
+        for (auto & [key, pool] : _computeCommandPoolMap)
+        {
+            RB::DestroyCommandPool(
+                _vkDevice,
+                pool
+            );
+        }
+
         // Presentation
         RB::DestroySemaphore(
             _vkDevice,
@@ -588,16 +587,23 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    VkCommandPool LogicalDevice::GetGraphicCommandPool() const noexcept
+    VkCommandPool LogicalDevice::GetGraphicCommandPool()
     {
-	    return _graphicCommandPool;
-    }
+        VkCommandPool commandPool = VK_NULL_HANDLE;
 
-    //-------------------------------------------------------------------------------------------------
+        auto id = std::this_thread::get_id();
+        auto findResult = _graphicCommandPoolMap.find(id);
+        if (findResult == _graphicCommandPoolMap.end())
+        {
+            commandPool = RB::CreateCommandPool(_vkDevice, _graphicQueueFamily);
+            _graphicCommandPoolMap[id] = commandPool;
+        }
+        else
+        {
+            commandPool = findResult->second;
+        }
 
-    std::vector<VkCommandBuffer> const& LogicalDevice::GetGraphicCommandBuffer() const noexcept
-    {
-	    return _graphicCommandBuffer;
+        return commandPool;
     }
 
     //-------------------------------------------------------------------------------------------------
@@ -609,16 +615,23 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    VkCommandPool LogicalDevice::GetComputeCommandPool() const noexcept
+    VkCommandPool LogicalDevice::GetComputeCommandPool()
     {
-	    return _computeCommandPool;
-    }
+        VkCommandPool commandPool = VK_NULL_HANDLE;
 
-    //-------------------------------------------------------------------------------------------------
+        auto id = std::this_thread::get_id();
+        auto findResult = _computeCommandPoolMap.find(id);
+        if (findResult == _computeCommandPoolMap.end())
+        {
+            commandPool = RB::CreateCommandPool(_vkDevice, _computeQueueFamily);
+            _computeCommandPoolMap[id] = commandPool;
+        }
+        else
+        {
+            commandPool = findResult->second;
+        }
 
-    std::vector<VkCommandBuffer> const& LogicalDevice::GetComputeCommandBuffer() const noexcept
-    {
-	    return _computeCommandBuffer;
+        return commandPool;
     }
 
     //-------------------------------------------------------------------------------------------------
@@ -688,14 +701,14 @@ namespace MFA
 
     VkCommandBuffer LogicalDevice::GetComputeCommandBuffer(RT::CommandRecordState const& recordState) const
     {
-        return _computeCommandBuffer[recordState.frameIndex];
+        return _computeCommandBuffer->commandBuffers[recordState.frameIndex];
     }
 
     //-------------------------------------------------------------------------------------------------
 
     VkCommandBuffer LogicalDevice::GetGraphicCommandBuffer(RT::CommandRecordState const& recordState) const
     {
-        return _graphicCommandBuffer[recordState.frameIndex];
+        return _graphicCommandBuffer->commandBuffers[recordState.frameIndex];
     }
 
     //-------------------------------------------------------------------------------------------------

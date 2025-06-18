@@ -136,6 +136,19 @@ namespace MFA
             Compute
         };
 
+	    struct CommandBufferGroup
+	    {
+	        std::vector<VkCommandBuffer> const commandBuffers;
+            VkCommandPool const commandPool;
+
+	        explicit CommandBufferGroup(
+	            std::vector<VkCommandBuffer> commandBuffers_,
+                VkCommandPool commandPool_
+            );
+
+	        ~CommandBufferGroup();
+	    };
+
         struct CommandRecordState
         {
             uint32_t imageIndex = 0;

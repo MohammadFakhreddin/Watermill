@@ -10,12 +10,13 @@ namespace MFA
     {
     public:
 
-        static std::shared_ptr<JobSystem> Instance();
+        static std::shared_ptr<JobSystem> Instance(bool createNewIfNotExists = false);
 
         explicit JobSystem();
 
         ~JobSystem();
 
+        // I think callback system might be a better choice sometimes
         std::future<void> AssignTask(std::function<void()> task)
         {
             struct Params
@@ -58,6 +59,8 @@ namespace MFA
         {
             return threadPool.IsMainThread();
         }
+
+        // TODO: Add run on main thread!
 
     private:
 

@@ -727,10 +727,11 @@ namespace MFA::RenderBackend
 
     //-------------------------------------------------------------------------------------------------
 
-    std::vector<VkCommandBuffer> CreateCommandBuffers(
+    std::shared_ptr<RT::CommandBufferGroup> CreateCommandBuffers(
         VkDevice device,
         uint32_t const count,
-        VkCommandPool commandPool
+        VkCommandPool commandPool,
+        VkCommandBufferLevel level
     )
     {
         std::vector<VkCommandBuffer> commandBuffers(count);
@@ -738,7 +739,7 @@ namespace MFA::RenderBackend
         VkCommandBufferAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocInfo.commandPool = commandPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.level = level;
         allocInfo.commandBufferCount = count;
 
         VK_Check(vkAllocateCommandBuffers(
@@ -750,7 +751,10 @@ namespace MFA::RenderBackend
         //MFA_LOG_INFO("Allocated graphics command buffers.");
 
         // Command buffer data gets recorded each time
-        return commandBuffers;
+        return std::make_shared<RT::CommandBufferGroup>(
+            commandBuffers,
+            commandPool
+        );
     }
 
     //-------------------------------------------------------------------------------------------------
@@ -897,7 +901,7 @@ namespace MFA::RenderBackend
         VkDevice device,
         VkCommandPool commandPool,
         uint32_t const commandBuffersCount,
-        VkCommandBuffer * commandBuffers
+        VkCommandBuffer const * commandBuffers
     )
     {
         MFA_ASSERT(device != nullptr);
@@ -2049,7 +2053,10 @@ namespace MFA::RenderBackend
     //-------------------------------------------------------------------------------------------------
 
     [[nodiscard]]
-    VkCommandBuffer BeginSingleTimeCommand(VkDevice device, VkCommandPool const & commandPool)
+    VkCommandBuffer BeginSingleTimeCommand(
+        VkDevice device,
+        VkCommandPool const & commandPool
+    )
     {
         MFA_ASSERT(device != nullptr);
 
@@ -2066,7 +2073,7 @@ namespace MFA::RenderBackend
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-        vkBeginCommandBuffer(commandBuffer, &begin_info);
+        BeginCommandBuffer(commandBuffer, begin_info);
 
         return commandBuffer;
     }
@@ -2080,7 +2087,7 @@ namespace MFA::RenderBackend
         VkCommandBuffer const & commandBuffer
     )
     {
-        VK_Check(vkEndCommandBuffer(commandBuffer));
+        EndCommandBuffer(commandBuffer);
 
         VkSubmitInfo submit_info{};
         submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -2089,7 +2096,43 @@ namespace MFA::RenderBackend
         VK_Check(vkQueueSubmit(queue, 1, &submit_info, VK_NULL_HANDLE));
         VK_Check(vkQueueWaitIdle(queue));
 
-        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        DestroyCommandBuffers(device, commandPool, 1, &commandBuffer);
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    std::shared_ptr<RT::CommandBufferGroup> BeginSecondaryCommand(
+        VkDevice device,
+        VkCommandPool const & commandPool,
+        VkRenderPass renderPass,
+        VkFramebuffer framebuffer
+    )
+    {
+        MFA_ASSERT(device != nullptr);
+
+        auto commandBuffer = CreateCommandBuffers(
+            device,
+            1,
+            commandPool,
+            VK_COMMAND_BUFFER_LEVEL_SECONDARY
+        );
+
+        VkCommandBufferInheritanceInfo inheritanceInfo{};
+        inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+        // These depend on how you use the secondary buffer
+        inheritanceInfo.renderPass = renderPass;        // Optional but usually set
+        inheritanceInfo.subpass = 0;                    // Index of subpass
+        inheritanceInfo.framebuffer = framebuffer;      // Optional if renderPass is null
+        // You can set other fields if needed (occlusionQueryEnable, pipelineStatistics, etc.)
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        beginInfo.pInheritanceInfo = &inheritanceInfo;  // ✅ THIS IS REQUIRED
+
+        vkBeginCommandBuffer(commandBuffer->commandBuffers[0], &beginInfo);
+
+        return commandBuffer;
     }
 
     //-------------------------------------------------------------------------------------------------

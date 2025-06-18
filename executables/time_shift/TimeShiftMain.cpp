@@ -24,12 +24,16 @@ int main()
 
     MFA_ASSERT(device->IsValid() == true);
     {
-        auto path = MFA::Path::Instance();
-        auto jobSystem = MFA::JobSystem::Instance();
-        auto resourceManager = ResourceManager::Instance();
+        auto path = MFA::Path::Instance(true);
+        auto resourceManager = ResourceManager::Instance(true);
+        auto jobSystem = MFA::JobSystem::Instance(true);
 
         TimeShiftApp app{};
         app.Run();
+
+        // We have to make sure all thread all complete
+        jobSystem.reset();
+        resourceManager.reset();
     }
 
     MFA_LOG_INFO("End of a legend");

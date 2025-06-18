@@ -95,17 +95,18 @@ namespace MFA::RenderBackend
     [[nodiscard]]
     VkQueue GetQueueByFamilyIndex(
         VkDevice device,
-        uint32_t const queueFamilyIndex
+        uint32_t queueFamilyIndex
     );
 
     [[nodiscard]]
-    VkCommandPool CreateCommandPool(VkDevice device, uint32_t const queue_family_index);
+    VkCommandPool CreateCommandPool(VkDevice device, uint32_t queue_family_index);
 
     [[nodiscard]]
-    std::vector<VkCommandBuffer> CreateCommandBuffers(
+    std::shared_ptr<RT::CommandBufferGroup> CreateCommandBuffers(
         VkDevice device,
-        uint32_t const count,
-        VkCommandPool commandPool
+        uint32_t count,
+        VkCommandPool commandPool,
+        VkCommandBufferLevel level = VK_COMMAND_BUFFER_LEVEL_PRIMARY
     );
 
     [[nodiscard]]
@@ -117,10 +118,10 @@ namespace MFA::RenderBackend
     [[nodiscard]]
     VkFormat FindSupportedFormat(
         VkPhysicalDevice physical_device,
-        uint8_t const candidates_count,
+        uint8_t candidates_count,
         VkFormat * candidates,
-        VkImageTiling const tiling,
-        VkFormatFeatureFlags const features
+        VkImageTiling tiling,
+        VkFormatFeatureFlags features
     );
 
     [[nodiscard]]
@@ -138,8 +139,8 @@ namespace MFA::RenderBackend
     void DestroyCommandBuffers(
         VkDevice device,
         VkCommandPool commandPool,
-        uint32_t const commandBuffersCount,
-        VkCommandBuffer * commandBuffers
+        uint32_t commandBuffersCount,
+        VkCommandBuffer const * commandBuffers
     );
 
     void DestroyCommandPool(VkDevice device, VkCommandPool commandPool);
@@ -391,14 +392,26 @@ namespace MFA::RenderBackend
         VkFence fence
     );
 
+    // Using single time command is not recommended
     [[nodiscard]]
-    VkCommandBuffer BeginSingleTimeCommand(VkDevice device, VkCommandPool const & commandPool);
+    VkCommandBuffer BeginSingleTimeCommand(
+        VkDevice device,
+        VkCommandPool const & commandPool
+    );
 
     void EndAndSubmitSingleTimeCommand(
         VkDevice device,
         VkCommandPool const & commandPool,
         VkQueue const & queue,
         VkCommandBuffer const & commandBuffer
+    );
+
+    [[nodiscard]]
+    std::shared_ptr<RT::CommandBufferGroup> BeginSecondaryCommand(
+        VkDevice device,
+        VkCommandPool const & commandPool,
+        VkRenderPass renderPass = VK_NULL_HANDLE,
+        VkFramebuffer framebuffer = VK_NULL_HANDLE
     );
 
     std::shared_ptr<RT::GpuShader> CreateShader(
