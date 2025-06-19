@@ -5,6 +5,8 @@
 
 #include <glm/glm.hpp>
 
+#include <atomic>
+
 class SpritePipeline : public MFA::IShadingPipeline
 {
 public:
@@ -40,11 +42,11 @@ public:
     void BindPipeline(MFA::RT::CommandRecordState &recordState) const;
 
     [[nodiscard]]
-    MFA::RT::DescriptorSetGroup CreateDescriptorSet(MFA::RT::GpuTexture const &texture) const;
+    MFA::RT::DescriptorSetGroup CreateDescriptorSet(MFA::RT::GpuTexture const &texture);
 
     void UpdateDescriptorSet(MFA::RT::DescriptorSetGroup &descriptorSetGroup, MFA::RT::GpuTexture const &texture) const;
 
-    void FreeDescriptorSet(MFA::RT::DescriptorSetGroup &descriptorSetGroup) const;
+    void FreeDescriptorSet(MFA::RT::DescriptorSetGroup &descriptorSetGroup);
 
     void SetPushConstant(MFA::RT::CommandRecordState &recordState, PushConstants const &pushConstant) const;
 
@@ -60,6 +62,7 @@ private:
 
     std::shared_ptr<MFA::RT::SamplerGroup> _sampler{};
 
+    std::atomic<bool> _descriptorPoolLock{};
     std::shared_ptr<MFA::RT::DescriptorPool> _descriptorPool{};
 
     std::shared_ptr<MFA::RT::DescriptorSetLayoutGroup> _descriptorLayout{};

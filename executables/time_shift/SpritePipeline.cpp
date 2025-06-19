@@ -4,6 +4,7 @@
 #include "DescriptorSetSchema.hpp"
 #include "ImportShader.hpp"
 #include "LogicalDevice.hpp"
+#include "ScopeLock.hpp"
 
 using namespace MFA;
 
@@ -55,8 +56,9 @@ void SpritePipeline::BindPipeline(MFA::RT::CommandRecordState &recordState) cons
 
 //======================================================================================================================
 
-MFA::RT::DescriptorSetGroup SpritePipeline::CreateDescriptorSet(MFA::RT::GpuTexture const &texture) const
+MFA::RT::DescriptorSetGroup SpritePipeline::CreateDescriptorSet(MFA::RT::GpuTexture const &texture)
 {
+    MFA_SCOPE_LOCK(_descriptorPoolLock);
     auto descriptorSetGroup = RB::CreateDescriptorSet(
         LogicalDevice::Instance->GetVkDevice(),
         _descriptorPool->descriptorPool,
@@ -93,8 +95,9 @@ void SpritePipeline::UpdateDescriptorSet(
 
 //======================================================================================================================
 
-void SpritePipeline::FreeDescriptorSet(MFA::RT::DescriptorSetGroup &descriptorSetGroup) const
+void SpritePipeline::FreeDescriptorSet(MFA::RT::DescriptorSetGroup &descriptorSetGroup)
 {
+    MFA_SCOPE_LOCK(_descriptorPoolLock);
     auto *device = LogicalDevice::Instance;
     vkFreeDescriptorSets(
         device->GetVkDevice(),
