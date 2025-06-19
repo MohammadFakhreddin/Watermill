@@ -3,6 +3,7 @@
 #include "BedrockAssert.hpp"
 #include "RenderBackend.hpp"
 #include "LogicalDevice.hpp"
+#include "ScopeLock.hpp"
 
 #include <utility>
 
@@ -141,6 +142,8 @@ namespace MFA::RenderTypes
 
     CommandBufferGroup::~CommandBufferGroup()
 	{
+	    // TODO: We should postpone this to the time that we actually can acquire the lock, or some kind of listener when lock is available again
+	    MFA_SCOPE_LOCK(commandPool.lock);
 	    auto logicalDevice = LogicalDevice::Instance;
 	    RB::DestroyCommandBuffers(logicalDevice->GetVkDevice(), commandPool, commandBuffers.size(), commandBuffers.data());
 	}

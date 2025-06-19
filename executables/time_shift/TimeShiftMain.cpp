@@ -28,8 +28,8 @@ int main()
         auto resourceManager = ResourceManager::Instance(true);
         auto jobSystem = MFA::JobSystem::Instance(true);
 
-        TimeShiftApp app{};
-        app.Run();
+        auto app = std::make_shared<TimeShiftApp>();
+        app->Run();
 
         // We have to make sure all thread all complete
         jobSystem.reset();

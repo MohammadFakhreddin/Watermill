@@ -29,7 +29,7 @@ public:
         Params gameParams
     );
 
-    ~GameScene();
+    ~GameScene() override;
 
     void Update(float deltaTime) override;
 

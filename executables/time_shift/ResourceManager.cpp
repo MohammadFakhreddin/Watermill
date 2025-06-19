@@ -57,6 +57,7 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
         auto * device = logicalDevice->GetVkDevice();
         auto * commandPool = logicalDevice->GetGraphicCommandPool();
         auto * physicalDevice = logicalDevice->GetPhysicalDevice();
+        MFA_SCOPE_LOCK(commandPool->lock);
 
         auto commandBufferGroup = RB::BeginSecondaryCommand(
             device,
@@ -87,13 +88,13 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
         QueuedImages item {};
         item.gpuTexture = gpuTexture;
         item.stageBuffer = stageBuffer;
-        item.commandBufferGroup = commandBufferGroup; // TODO: Wrapper for command buffer
+        item.commandBufferGroup = commandBufferGroup;
         item.lifeTime = (int)LogicalDevice::Instance->GetMaxFramePerFlight() + 1;
         instance->_activeBuffers.Push(item);
 
         imageWeak = gpuTexture;
 
-        instance->_nextUpdateTasks.Push([name, commandBuffer](ResourceManager * instance, const RT::CommandRecordState & recordState)
+        instance->_nextUpdateTasks.Push([name = std::move(name), commandBuffer](ResourceManager * instance, const RT::CommandRecordState & recordState)
         {
             MFA_ASSERT(JobSystem::Instance() == nullptr || JobSystem::Instance()->IsMainThread() == true);
 
@@ -110,9 +111,10 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
                     auto callback = imageCallbacks.Pop();
                     callback(gpuTexture);
                 }
-
-                instance->_imageCallbacks.erase(name);
             }
+
+            instance->_imageCallbacks.erase(name);
+
         });
     });
 }

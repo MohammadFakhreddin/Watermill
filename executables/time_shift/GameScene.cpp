@@ -229,6 +229,8 @@ void GameScene::ReadLevelFromJson()
                     auto * device = logicalDevice->GetVkDevice();
                     auto * commandPool = logicalDevice->GetGraphicCommandPool();
 
+                    MFA_SCOPE_LOCK(commandPool->lock);
+
                     auto commandBufferGroup = RB::BeginSecondaryCommand(
                         device,
                         *commandPool

@@ -25,7 +25,7 @@ namespace MFA
 
 class SpriteRenderer;
 
-class TimeShiftApp
+class TimeShiftApp : public std::enable_shared_from_this<TimeShiftApp>
 {
 public:
 

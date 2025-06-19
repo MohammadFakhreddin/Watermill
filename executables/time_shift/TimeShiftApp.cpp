@@ -90,100 +90,153 @@ void TimeShiftApp::Run()
 
         _sceneRecipes.resize((int)SceneID::Count);
 
-        _sceneRecipes[(int)SceneID::Menu] = [this, webviewParams]()
+        std::weak_ptr weakRef = shared_from_this();
+        _sceneRecipes[(int)SceneID::Menu] = [weakRef, webviewParams]()->std::shared_ptr<IScene>
         {
             MenuScene::Params menuParams
             {
-                .PlayPressed = [this]()->void
+                .PlayPressed = [weakRef]()->void
                 {
-                    MFA_LOG_INFO("Play pressed");
-                    _nextSceneID = SceneID::Level1;
+                    auto myRef = weakRef.lock();
+                    if (myRef != nullptr)
+                    {
+                        MFA_LOG_INFO("Play pressed");
+                        myRef->_nextSceneID = SceneID::Level1;
+                    }
                 },
-                .ScoreBoardPressed = [this]()->void
+                .ScoreBoardPressed = [weakRef]()->void
                 {
-                    MFA_LOG_INFO("Scoreboard pressed");
-                    _nextSceneID = SceneID::Scoreboard;
+                    auto myRef = weakRef.lock();
+                    if (myRef != nullptr)
+                    {
+                        MFA_LOG_INFO("Scoreboard pressed");
+                        myRef->_nextSceneID = SceneID::Scoreboard;
+                    }
                 },
             };
 
             return std::make_shared<MenuScene>(webviewParams, menuParams);
         };
 
-        _sceneRecipes[(int)SceneID::Scoreboard] = [this, webviewParams]()
+        _sceneRecipes[(int)SceneID::Scoreboard] = [weakRef, webviewParams]()->std::shared_ptr<IScene>
         {
+
             ScoreboardScene::Params scoreboardParams
             {
-                .BackPressed = [this]()->void
+                .BackPressed = [weakRef]()->void
                 {
-                    MFA_LOG_INFO("Back pressed");
-                    _nextSceneID = SceneID::Menu;
+                    auto myRef = weakRef.lock();
+                    if (myRef != nullptr)
+                    {
+                        MFA_LOG_INFO("Back pressed");
+                        myRef->_nextSceneID = SceneID::Menu;
+                    }
                 }
             };
 
             return std::make_shared<ScoreboardScene>(webviewParams, scoreboardParams);
         };
 
-        _sceneRecipes[(int)SceneID::Level1] = [this, webviewParams]()
+        _sceneRecipes[(int)SceneID::Level1] = [weakRef, webviewParams]()->std::shared_ptr<IScene>
         {
-            GameScene::Params gameParams
+            auto myRef = weakRef.lock();
+            if (myRef != nullptr)
             {
-                .levelName = "Level 1",
-                .levelPath = "levels/level1.json",
-                .backPressed = [this]()->void
+                GameScene::Params gameParams
                 {
-                    MFA_LOG_INFO("Back pressed");
-                    _nextSceneID = SceneID::Menu;
-                },
-                .nextLevel = [this]()->void
-                {
-                    _nextSceneID = SceneID::Level2;
-                },
-                .spriteRenderer = _spriteRenderer
-            };
+                    .levelName = "Level 1",
+                    .levelPath = "levels/level1.json",
+                    .backPressed = [weakRef]()->void
+                    {
+                        auto myRef = weakRef.lock();
+                        if (myRef != nullptr)
+                        {
+                            MFA_LOG_INFO("Back pressed");
+                            myRef->_nextSceneID = SceneID::Menu;
+                        }
+                    },
+                    .nextLevel = [weakRef]()->void
+                    {
+                        auto myRef = weakRef.lock();
+                        if (myRef != nullptr)
+                        {
+                            myRef->_nextSceneID = SceneID::Level2;
+                        }
+                    },
+                    .spriteRenderer = myRef->_spriteRenderer
+                };
 
-            return std::make_shared<GameScene>(webviewParams, gameParams);
+                return std::make_shared<GameScene>(webviewParams, gameParams);
+            }
+            return nullptr;
         };
 
-        _sceneRecipes[(int)SceneID::Level2] = [this, webviewParams]()
+        _sceneRecipes[(int)SceneID::Level2] = [weakRef, webviewParams]()->std::shared_ptr<IScene>
         {
-            GameScene::Params gameParams
+            auto myRef = weakRef.lock();
+            if (myRef != nullptr)
             {
-                .levelName = "Level 2",
-                .levelPath = "levels/Level2.json",
-                .backPressed = [this]()->void
+                GameScene::Params gameParams
                 {
-                    MFA_LOG_INFO("Back pressed");
-                    _nextSceneID = SceneID::Menu;
-                },
-                .nextLevel = [this]()->void
-                {
-                    _nextSceneID = SceneID::Level3;;
-                },
-                .spriteRenderer = _spriteRenderer
-            };
+                    .levelName = "Level 2",
+                    .levelPath = "levels/Level2.json",
+                    .backPressed = [weakRef]()->void
+                    {
+                        MFA_LOG_INFO("Back pressed");
+                        auto myRef = weakRef.lock();
+                        if (myRef != nullptr)
+                        {
+                            myRef->_nextSceneID = SceneID::Menu;
+                        }
+                    },
+                    .nextLevel = [weakRef]()->void
+                    {
+                        auto myRef = weakRef.lock();
+                        if (myRef != nullptr)
+                        {
+                            myRef->_nextSceneID = SceneID::Level3;
+                        }
+                    },
+                    .spriteRenderer = myRef->_spriteRenderer
+                };
 
-            return std::make_shared<GameScene>(webviewParams, gameParams);
+                return std::make_shared<GameScene>(webviewParams, gameParams);
+            }
+            return nullptr;
         };
 
-        _sceneRecipes[(int)SceneID::Level3] = [this, webviewParams]()
+        _sceneRecipes[(int)SceneID::Level3] = [weakRef, webviewParams]()->std::shared_ptr<IScene>
         {
-            GameScene::Params gameParams
+            auto myRef = weakRef.lock();
+            if (myRef != nullptr)
             {
-                .levelName = "Level 3",
-                .levelPath = "levels/level3.json",
-                .backPressed = [this]()->void
+                GameScene::Params gameParams
                 {
-                    MFA_LOG_INFO("Back pressed");
-                    _nextSceneID = SceneID::Menu;
-                },
-                .nextLevel = [this]()->void
-                {
-                    _nextSceneID = SceneID::Scoreboard;
-                },
-                .spriteRenderer = _spriteRenderer
-            };
+                    .levelName = "Level 3",
+                    .levelPath = "levels/level3.json",
+                    .backPressed = [weakRef]()->void
+                    {
+                        auto myRef = weakRef.lock();
+                        if (myRef != nullptr)
+                        {
+                            MFA_LOG_INFO("Back pressed");
+                            myRef->_nextSceneID = SceneID::Menu;
+                        }
+                    },
+                    .nextLevel = [weakRef]()->void
+                    {
+                        auto myRef = weakRef.lock();
+                        if (myRef != nullptr)
+                        {
+                            myRef->_nextSceneID = SceneID::Scoreboard;
+                        }
+                    },
+                    .spriteRenderer = myRef->_spriteRenderer
+                };
 
-            return std::make_shared<GameScene>(webviewParams, gameParams);
+                return std::make_shared<GameScene>(webviewParams, gameParams);
+            }
+            return nullptr;
         };
 
         _nextSceneID = SceneID::Menu;

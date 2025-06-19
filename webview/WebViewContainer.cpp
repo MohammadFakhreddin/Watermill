@@ -727,7 +727,7 @@ void WebViewContainer::import_css(
     //     , text.c_str(), url.c_str(), baseurl.c_str()
     // );
     auto const cssPath = Path::Get(url.c_str(), _parentAddress.c_str());
-    auto const cssBlob = _requestBlob(cssPath.c_str(), true);
+    auto const cssBlob = _requestBlob(cssPath.c_str(), false);
     text = cssBlob->As<char const>();
 }
 

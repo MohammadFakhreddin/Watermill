@@ -24,6 +24,8 @@ list(
     "${CMAKE_CURRENT_SOURCE_DIR}/BedrockRotation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/BedrockString.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/BedrockString.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/BedrockDeffer.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/BedrockDeffer.cpp"
 )
 
 set(LIBRARY_NAME "Bedrock")

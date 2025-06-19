@@ -1,6 +1,7 @@
 #include "ImportTexture.hpp"
 
 #include "BedrockAssert.hpp"
+#include "BedrockDeffer.hpp"
 #include "BedrockFile.hpp"
 #include "BedrockMemory.hpp"
 #include "BedrockPath.hpp"
@@ -62,6 +63,7 @@ namespace MFA::Importer
             0
         );
 
+        MFA_DEFFER([readData](){stbi_image_free(readData);});
         if (readData != nullptr)
         {
             MFA_ASSERT(outImageData.width > 0);

@@ -3,7 +3,6 @@
 #include "BedrockLog.hpp"
 #include "BedrockAssert.hpp"
 #include "BedrockString.hpp"
-#include "ScopeLock.hpp"
 
 #include <cstdio>
 #include <set>
@@ -735,8 +734,6 @@ namespace MFA::RenderBackend
         VkCommandBufferLevel level
     )
     {
-        MFA_SCOPE_LOCK(commandPool.lock);
-
         std::vector<VkCommandBuffer> commandBuffers(count);
 
         VkCommandBufferAllocateInfo allocInfo = {};
@@ -910,7 +907,6 @@ namespace MFA::RenderBackend
         MFA_ASSERT(device != nullptr);
         MFA_ASSERT(commandBuffersCount > 0);
         MFA_ASSERT(commandBuffers != nullptr);
-        MFA_SCOPE_LOCK(commandPool.lock);
         vkFreeCommandBuffers(
             device,
             commandPool.commandPool,
