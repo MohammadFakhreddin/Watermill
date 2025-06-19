@@ -28,7 +28,6 @@ namespace MFA::Asset
 	Texture::~Texture()
 	{
 	    mBuffer.reset();
-	    MFA_LOG_INFO("Free asset texture");
 	}
 
 	//-------------------------------------------------------------------------------------------------
