@@ -15,15 +15,11 @@ using namespace MFA;
 
 //======================================================================================================================
 
-GameScene::GameScene(
-    WebViewContainer::Params const & webviewParams,
-    Params gameParams
-)
-    : _params(std::move(gameParams))
+GameScene::GameScene(WebViewContainer::Params const &webviewParams, Params gameParams) : _params(std::move(gameParams))
 {
     MFA_LOG_INFO("Loading level %s", _params.levelName.c_str());
 
-    auto const * device = MFA::LogicalDevice::Instance;
+    auto const *device = MFA::LogicalDevice::Instance;
 
     _spriteRenderer = _params.spriteRenderer;
     MFA_ASSERT(_spriteRenderer != nullptr);
@@ -46,10 +42,12 @@ GameScene::GameScene(
     auto levelPath = MFA::Path::Instance()->Get(_params.levelPath);
     MFA_ASSERT(std::filesystem::exists(levelPath) == true);
 
-    _jsonTask = JobSystem::Instance()->AssignTask<LevelParser>([levelPath]()
-    {
-        return LevelParser(levelPath);
-    });
+    _jsonTask = JobSystem::Instance()->AssignTask<LevelParser>([levelPath]() { return LevelParser(levelPath); });
+}
+
+GameScene::~GameScene()
+{
+    MFA_LOG_INFO("Destroying level %s", _params.levelName.c_str());
 }
 
 //======================================================================================================================

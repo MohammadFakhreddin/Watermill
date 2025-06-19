@@ -29,6 +29,8 @@ public:
         Params gameParams
     );
 
+    ~GameScene();
+
     void Update(float deltaTime) override;
 
     void UpdateBuffer(MFA::RT::CommandRecordState &recordState) override;
