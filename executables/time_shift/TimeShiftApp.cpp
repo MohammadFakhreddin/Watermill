@@ -90,7 +90,7 @@ void TimeShiftApp::Run()
 
         _sceneRecipes.resize((int)SceneID::Count);
 
-        _sceneRecipes[(int)SceneID::Menu] = [this, webviewParams]()->std::unique_ptr<IScene>
+        _sceneRecipes[(int)SceneID::Menu] = [this, webviewParams]()
         {
             MenuScene::Params menuParams
             {
@@ -106,10 +106,10 @@ void TimeShiftApp::Run()
                 },
             };
 
-            return std::make_unique<MenuScene>(webviewParams, menuParams);
+            return std::make_shared<MenuScene>(webviewParams, menuParams);
         };
 
-        _sceneRecipes[(int)SceneID::Scoreboard] = [this, webviewParams]()->std::unique_ptr<IScene>
+        _sceneRecipes[(int)SceneID::Scoreboard] = [this, webviewParams]()
         {
             ScoreboardScene::Params scoreboardParams
             {
@@ -120,10 +120,10 @@ void TimeShiftApp::Run()
                 }
             };
 
-            return std::make_unique<ScoreboardScene>(webviewParams, scoreboardParams);
+            return std::make_shared<ScoreboardScene>(webviewParams, scoreboardParams);
         };
 
-        _sceneRecipes[(int)SceneID::Level1] = [this, webviewParams]()->std::unique_ptr<IScene>
+        _sceneRecipes[(int)SceneID::Level1] = [this, webviewParams]()
         {
             GameScene::Params gameParams
             {
@@ -141,10 +141,10 @@ void TimeShiftApp::Run()
                 .spriteRenderer = _spriteRenderer
             };
 
-            return std::make_unique<GameScene>(webviewParams, gameParams);
+            return std::make_shared<GameScene>(webviewParams, gameParams);
         };
 
-        _sceneRecipes[(int)SceneID::Level2] = [this, webviewParams]()->std::unique_ptr<IScene>
+        _sceneRecipes[(int)SceneID::Level2] = [this, webviewParams]()
         {
             GameScene::Params gameParams
             {
@@ -162,10 +162,10 @@ void TimeShiftApp::Run()
                 .spriteRenderer = _spriteRenderer
             };
 
-            return std::make_unique<GameScene>(webviewParams, gameParams);
+            return std::make_shared<GameScene>(webviewParams, gameParams);
         };
 
-        _sceneRecipes[(int)SceneID::Level3] = [this, webviewParams]()->std::unique_ptr<IScene>
+        _sceneRecipes[(int)SceneID::Level3] = [this, webviewParams]()
         {
             GameScene::Params gameParams
             {
@@ -183,7 +183,7 @@ void TimeShiftApp::Run()
                 .spriteRenderer = _spriteRenderer
             };
 
-            return std::make_unique<GameScene>(webviewParams, gameParams);
+            return std::make_shared<GameScene>(webviewParams, gameParams);
         };
 
         _nextSceneID = SceneID::Menu;
@@ -238,6 +238,8 @@ void TimeShiftApp::Update(float const deltaTime)
     {
         MFA_LOG_INFO("Switching to next scene");
         ResourceManager::Instance()->ForceCleanUp();
+        _blobMap.clear();
+        _imageMap.clear();
         // TODO: We have to load stuff in another thread
         _previousScenes.emplace_back(std::tuple{std::move(_currentScene), LogicalDevice::Instance->GetMaxFramePerFlight() + 1});
         _currentScene = _sceneRecipes[(int)_nextSceneID]();
@@ -534,7 +536,7 @@ std::tuple<std::shared_ptr<RT::GpuTexture>, glm::vec2> TimeShiftApp::RequestImag
 
         auto const path = Path::Instance()->Get(imageName);
 
-        auto const commandBuffer = RB::BeginSingleTimeCommand(device->GetVkDevice(), device->GetGraphicCommandPool());
+        auto const commandBuffer = RB::BeginSingleTimeCommand(device->GetVkDevice(), *device->GetGraphicCommandPool());
 
         auto const cpuTexture = Importer::UncompressedImage(path);
 
@@ -547,7 +549,7 @@ std::tuple<std::shared_ptr<RT::GpuTexture>, glm::vec2> TimeShiftApp::RequestImag
 
         RB::EndAndSubmitSingleTimeCommand(
             device->GetVkDevice(),
-            device->GetGraphicCommandPool(),
+            *device->GetGraphicCommandPool(),
             device->GetGraphicQueue(),
             commandBuffer
         );

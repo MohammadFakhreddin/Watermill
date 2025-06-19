@@ -103,6 +103,6 @@ private:
 
     float _passedTime{};
 
-    MFA::ThreadSafeQueue<std::function<void(MFA::RenderTypes::CommandRecordState &recordState)>> _nextUpdateTasks{};
+    MFA::ThreadSafeQueue<std::function<void(GameScene * scene, MFA::RenderTypes::CommandRecordState &recordState)>> _nextUpdateTasks{};
 
 };

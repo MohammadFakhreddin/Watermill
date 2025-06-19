@@ -123,9 +123,17 @@ namespace MFA::RenderTypes
 
     //-------------------------------------------------------------------------------------------------
 
+    CommandPoolGroup::~CommandPoolGroup()
+	{
+	    auto ld = LogicalDevice::Instance;
+	    RB::DestroyCommandPool(ld->GetVkDevice(), commandPool);
+	}
+
+    //-------------------------------------------------------------------------------------------------
+
     CommandBufferGroup::CommandBufferGroup(
         std::vector<VkCommandBuffer> commandBuffers_,
-        VkCommandPool commandPool_
+        CommandPoolGroup & commandPool_
     )
         : commandBuffers(std::move(commandBuffers_))
         , commandPool(commandPool_)

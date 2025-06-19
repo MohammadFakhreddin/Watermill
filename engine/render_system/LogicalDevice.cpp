@@ -269,7 +269,7 @@ namespace MFA
         _graphicCommandBuffer = RB::CreateCommandBuffers(
             _vkDevice,
             _maxFramePerFlight,
-            GetGraphicCommandPool()
+            *GetGraphicCommandPool()
         );
 
         _fences = RB::CreateFence(
@@ -281,7 +281,7 @@ namespace MFA
         _computeCommandBuffer = RB::CreateCommandBuffers(
             _vkDevice,
             _maxFramePerFlight,
-            GetComputeCommandPool()
+            *GetComputeCommandPool()
         );
         _computeSemaphores = RB::CreateSemaphores(
             _vkDevice,
@@ -319,7 +319,6 @@ namespace MFA
 
     LogicalDevice::~LogicalDevice()
     {
-        Instance = nullptr;
 
         // Common part with resize
         DeviceWaitIdle();
@@ -328,13 +327,14 @@ namespace MFA
 
         // Graphic
         _graphicCommandBuffer.reset();
-        for (auto & [key, pool] : _graphicCommandPoolMap)
-        {
-            RB::DestroyCommandPool(
-                _vkDevice,
-                pool
-            );
-        }
+        _graphicCommandPoolMap.clear();
+        // for (auto & [key, pool] : _graphicCommandPoolMap)
+        // {
+        //     RB::DestroyCommandPool(
+        //         _vkDevice,
+        //         pool
+        //     );
+        // }
 
         // Compute
         RB::DestroySemaphore(
@@ -343,13 +343,14 @@ namespace MFA
         );
 
         _computeCommandBuffer.reset();
-        for (auto & [key, pool] : _computeCommandPoolMap)
-        {
-            RB::DestroyCommandPool(
-                _vkDevice,
-                pool
-            );
-        }
+        _computeCommandPoolMap.clear();
+        // for (auto & [key, pool] : _computeCommandPoolMap)
+        // {
+        //     RB::DestroyCommandPool(
+        //         _vkDevice,
+        //         pool
+        //     );
+        // }
 
         // Presentation
         RB::DestroySemaphore(
@@ -370,6 +371,8 @@ namespace MFA
     #endif
 
         RB::DestroyInstance(_vkInstance);
+
+        Instance = nullptr;
 	}
 
     //-------------------------------------------------------------------------------------------------
@@ -587,23 +590,24 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    VkCommandPool LogicalDevice::GetGraphicCommandPool()
+    RT::CommandPoolGroup * LogicalDevice::GetGraphicCommandPool()
     {
-        VkCommandPool commandPool = VK_NULL_HANDLE;
+        RT::CommandPoolGroup * commandPoolRef;
 
         auto id = std::this_thread::get_id();
         auto findResult = _graphicCommandPoolMap.find(id);
         if (findResult == _graphicCommandPoolMap.end())
         {
-            commandPool = RB::CreateCommandPool(_vkDevice, _graphicQueueFamily);
+            std::shared_ptr commandPool = RB::CreateCommandPool(_vkDevice, _graphicQueueFamily);
             _graphicCommandPoolMap[id] = commandPool;
+            commandPoolRef = commandPool.get();
         }
         else
         {
-            commandPool = findResult->second;
+            commandPoolRef = findResult->second.get();
         }
 
-        return commandPool;
+        return commandPoolRef;
     }
 
     //-------------------------------------------------------------------------------------------------
@@ -615,23 +619,24 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    VkCommandPool LogicalDevice::GetComputeCommandPool()
+    RT::CommandPoolGroup * LogicalDevice::GetComputeCommandPool()
     {
-        VkCommandPool commandPool = VK_NULL_HANDLE;
+        RT::CommandPoolGroup * commandPoolRef;
 
         auto id = std::this_thread::get_id();
         auto findResult = _computeCommandPoolMap.find(id);
         if (findResult == _computeCommandPoolMap.end())
         {
-            commandPool = RB::CreateCommandPool(_vkDevice, _computeQueueFamily);
+            std::shared_ptr commandPool = RB::CreateCommandPool(_vkDevice, _computeQueueFamily);
             _computeCommandPoolMap[id] = commandPool;
+            commandPoolRef = commandPool.get();
         }
         else
         {
-            commandPool = findResult->second;
+            commandPoolRef = findResult->second.get();
         }
 
-        return commandPool;
+        return commandPoolRef;
     }
 
     //-------------------------------------------------------------------------------------------------

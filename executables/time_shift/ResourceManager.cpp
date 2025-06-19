@@ -60,7 +60,7 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
 
         auto commandBufferGroup = RB::BeginSecondaryCommand(
             device,
-            commandPool
+            *commandPool
         );
 
         auto commandBuffer = commandBufferGroup->commandBuffers[0];

@@ -2,6 +2,7 @@
 
 #include "BedrockPlatforms.hpp"
 
+#include <atomic>
 #include <memory>
 #include <vector>
 #include <vulkan/vulkan.h>
@@ -136,14 +137,26 @@ namespace MFA
             Compute
         };
 
+        struct CommandPoolGroup
+        {
+            VkCommandPool const commandPool;
+            std::atomic<bool> lock {};
+
+            explicit CommandPoolGroup(VkCommandPool commandPool_)
+                : commandPool(commandPool_)
+            {}
+
+            ~CommandPoolGroup();
+        };
+
 	    struct CommandBufferGroup
 	    {
 	        std::vector<VkCommandBuffer> const commandBuffers;
-            VkCommandPool const commandPool;
+            CommandPoolGroup & commandPool;
 
 	        explicit CommandBufferGroup(
 	            std::vector<VkCommandBuffer> commandBuffers_,
-                VkCommandPool commandPool_
+	            CommandPoolGroup & commandPool_
             );
 
 	        ~CommandBufferGroup();

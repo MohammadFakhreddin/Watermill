@@ -270,7 +270,7 @@ namespace MFA
             bytes.Len()
         );
 
-        auto commandBuffer = RB::BeginSingleTimeCommand(device->GetVkDevice(), device->GetGraphicCommandPool());
+        auto commandBuffer = RB::BeginSingleTimeCommand(device->GetVkDevice(), *device->GetGraphicCommandPool());
 
         auto [fontTexture, stageBuffer] = RB::CreateTexture(
             cpuTexture,
@@ -283,7 +283,7 @@ namespace MFA
 
         RB::EndAndSubmitSingleTimeCommand(
             device->GetVkDevice(),
-            device->GetGraphicCommandPool(),
+            *device->GetGraphicCommandPool(),
             device->GetGraphicQueue(),
             commandBuffer
         );

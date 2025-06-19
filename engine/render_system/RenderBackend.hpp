@@ -99,13 +99,13 @@ namespace MFA::RenderBackend
     );
 
     [[nodiscard]]
-    VkCommandPool CreateCommandPool(VkDevice device, uint32_t queue_family_index);
+    std::unique_ptr<RT::CommandPoolGroup> CreateCommandPool(VkDevice device, uint32_t queue_family_index);
 
     [[nodiscard]]
-    std::shared_ptr<RT::CommandBufferGroup> CreateCommandBuffers(
+    std::unique_ptr<RT::CommandBufferGroup> CreateCommandBuffers(
         VkDevice device,
         uint32_t count,
-        VkCommandPool commandPool,
+        RT::CommandPoolGroup & commandPool,
         VkCommandBufferLevel level = VK_COMMAND_BUFFER_LEVEL_PRIMARY
     );
 
@@ -138,7 +138,7 @@ namespace MFA::RenderBackend
 
     void DestroyCommandBuffers(
         VkDevice device,
-        VkCommandPool commandPool,
+        RenderTypes::CommandPoolGroup & commandPool,
         uint32_t commandBuffersCount,
         VkCommandBuffer const * commandBuffers
     );
@@ -396,12 +396,12 @@ namespace MFA::RenderBackend
     [[nodiscard]]
     VkCommandBuffer BeginSingleTimeCommand(
         VkDevice device,
-        VkCommandPool const & commandPool
+        RT::CommandPoolGroup const & commandPool
     );
 
     void EndAndSubmitSingleTimeCommand(
         VkDevice device,
-        VkCommandPool const & commandPool,
+        RT::CommandPoolGroup & commandPool,
         VkQueue const & queue,
         VkCommandBuffer const & commandBuffer
     );
@@ -409,7 +409,7 @@ namespace MFA::RenderBackend
     [[nodiscard]]
     std::shared_ptr<RT::CommandBufferGroup> BeginSecondaryCommand(
         VkDevice device,
-        VkCommandPool const & commandPool,
+        RT::CommandPoolGroup & commandPool,
         VkRenderPass renderPass = VK_NULL_HANDLE,
         VkFramebuffer framebuffer = VK_NULL_HANDLE
     );

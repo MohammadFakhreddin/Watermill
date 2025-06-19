@@ -3,10 +3,11 @@
 #include "BedrockLog.hpp"
 #include "BedrockAssert.hpp"
 #include "BedrockString.hpp"
+#include "ScopeLock.hpp"
 
-#include <vector>
-#include <set>
 #include <cstdio>
+#include <set>
+#include <vector>
 
 namespace MFA::RenderBackend
 {
@@ -710,7 +711,7 @@ namespace MFA::RenderBackend
 
     //-------------------------------------------------------------------------------------------------
 
-    VkCommandPool CreateCommandPool(VkDevice device, uint32_t const queue_family_index)
+    std::unique_ptr<RT::CommandPoolGroup> CreateCommandPool(VkDevice device, uint32_t const queue_family_index)
     {
         MFA_ASSERT(device);
         // Create graphics command pool
@@ -719,26 +720,28 @@ namespace MFA::RenderBackend
         poolCreateInfo.queueFamilyIndex = queue_family_index;
         poolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-        VkCommandPool command_pool{};
-        VK_Check(vkCreateCommandPool(device, &poolCreateInfo, nullptr, &command_pool));
+        VkCommandPool commandPool{};
+        VK_Check(vkCreateCommandPool(device, &poolCreateInfo, nullptr, &commandPool));
 
-        return command_pool;
+        return std::make_unique<RT::CommandPoolGroup>(commandPool);
     }
 
     //-------------------------------------------------------------------------------------------------
 
-    std::shared_ptr<RT::CommandBufferGroup> CreateCommandBuffers(
+    std::unique_ptr<RT::CommandBufferGroup> CreateCommandBuffers(
         VkDevice device,
         uint32_t const count,
-        VkCommandPool commandPool,
+        RT::CommandPoolGroup & commandPool,
         VkCommandBufferLevel level
     )
     {
+        MFA_SCOPE_LOCK(commandPool.lock);
+
         std::vector<VkCommandBuffer> commandBuffers(count);
 
         VkCommandBufferAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = commandPool;
+        allocInfo.commandPool = commandPool.commandPool;
         allocInfo.level = level;
         allocInfo.commandBufferCount = count;
 
@@ -751,7 +754,7 @@ namespace MFA::RenderBackend
         //MFA_LOG_INFO("Allocated graphics command buffers.");
 
         // Command buffer data gets recorded each time
-        return std::make_shared<RT::CommandBufferGroup>(
+        return std::make_unique<RT::CommandBufferGroup>(
             commandBuffers,
             commandPool
         );
@@ -899,18 +902,18 @@ namespace MFA::RenderBackend
 
     void DestroyCommandBuffers(
         VkDevice device,
-        VkCommandPool commandPool,
+        RenderTypes::CommandPoolGroup & commandPool,
         uint32_t const commandBuffersCount,
         VkCommandBuffer const * commandBuffers
     )
     {
         MFA_ASSERT(device != nullptr);
-        MFA_ASSERT(commandPool != VK_NULL_HANDLE);
         MFA_ASSERT(commandBuffersCount > 0);
         MFA_ASSERT(commandBuffers != nullptr);
+        MFA_SCOPE_LOCK(commandPool.lock);
         vkFreeCommandBuffers(
             device,
-            commandPool,
+            commandPool.commandPool,
             commandBuffersCount,
             commandBuffers
         );
@@ -2055,7 +2058,7 @@ namespace MFA::RenderBackend
     [[nodiscard]]
     VkCommandBuffer BeginSingleTimeCommand(
         VkDevice device,
-        VkCommandPool const & commandPool
+        RT::CommandPoolGroup const & commandPool
     )
     {
         MFA_ASSERT(device != nullptr);
@@ -2063,7 +2066,7 @@ namespace MFA::RenderBackend
         VkCommandBufferAllocateInfo allocate_info{};
         allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocate_info.commandPool = commandPool;
+        allocate_info.commandPool = commandPool.commandPool;
         allocate_info.commandBufferCount = 1;
 
         VkCommandBuffer commandBuffer;
@@ -2082,7 +2085,7 @@ namespace MFA::RenderBackend
 
     void EndAndSubmitSingleTimeCommand(
         VkDevice device,
-        VkCommandPool const & commandPool,
+        RT::CommandPoolGroup & commandPool,
         VkQueue const & queue,
         VkCommandBuffer const & commandBuffer
     )
@@ -2103,7 +2106,7 @@ namespace MFA::RenderBackend
 
     std::shared_ptr<RT::CommandBufferGroup> BeginSecondaryCommand(
         VkDevice device,
-        VkCommandPool const & commandPool,
+        RT::CommandPoolGroup & commandPool,
         VkRenderPass renderPass,
         VkFramebuffer framebuffer
     )

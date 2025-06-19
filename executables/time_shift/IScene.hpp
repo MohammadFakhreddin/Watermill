@@ -4,7 +4,7 @@
 
 #include <glm/glm.hpp>
 
-class IScene
+class IScene : public std::enable_shared_from_this<IScene>
 {
 
 public:

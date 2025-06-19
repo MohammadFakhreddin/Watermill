@@ -84,7 +84,7 @@ void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
     while (_nextUpdateTasks.IsEmpty() == false)
     {
         auto task = _nextUpdateTasks.Pop();
-        task(recordState);
+        task(this, recordState);
     }
 
     for (int i = _temporaryMemories.size() - 1; i >= 0; i--)
@@ -191,17 +191,26 @@ void GameScene::ReadLevelFromJson()
     _transforms = levelContent->GetTransforms();
     auto const & sprites = levelContent->GetSprites();
 
+    std::weak_ptr sceneRef = shared_from_this();
+
     for (int i = 0; i < (int)sprites.size(); ++i)
     {
         auto const address = Path::Instance()->Get("textures/" + sprites[i]->textureName);
         if (std::filesystem::exists(address))
         {
             int spriteIndex = i;
-            ResourceManager::Instance()->RequestImage(address.c_str(), [spriteIndex, this](std::shared_ptr<RT::GpuTexture> gpuTexture)->void
+            ResourceManager::Instance()->RequestImage(address.c_str(), [spriteIndex, sceneRef](std::shared_ptr<RT::GpuTexture> gpuTexture)->void
             {
-                JobSystem::Instance()->AssignTask([this, spriteIndex, gpuTexture]()->void
+                JobSystem::Instance()->AssignTask([sceneRef, spriteIndex, gpuTexture = std::move(gpuTexture)]()->void
                 {
-                    auto sprite = levelContent->GetSprites()[spriteIndex];
+                    auto scenePtr = sceneRef.lock();
+                    if (scenePtr == nullptr)
+                    {
+                        return;
+                    }
+                    auto * scene = (GameScene *)scenePtr.get();
+
+                    auto sprite = scene->levelContent->GetSprites()[spriteIndex];
 
                     std::vector<SpritePipeline::Position> tVs(sprite->vertices.size());
                     std::vector<SpriteRenderer::UV> tUs(sprite->vertices.size());
@@ -222,12 +231,12 @@ void GameScene::ReadLevelFromJson()
 
                     auto commandBufferGroup = RB::BeginSecondaryCommand(
                         device,
-                        commandPool
+                        *commandPool
                     );
 
                     auto commandBuffer = commandBufferGroup->commandBuffers[0];
 
-                    auto [imageData_, tempData_] = _spriteRenderer->Allocate(
+                    auto [imageData_, tempData_] = scene->_spriteRenderer->Allocate(
                         commandBuffer,
                         *gpuTexture,
                         (int)tVs.size(),
@@ -242,7 +251,7 @@ void GameScene::ReadLevelFromJson()
                     std::shared_ptr imageData = std::move(imageData_);
                     std::shared_ptr tempData = std::move(tempData_);
 
-                    _nextUpdateTasks.Push([this, spriteIndex, tempData, imageData, gpuTexture, commandBufferGroup](MFA::RenderTypes::CommandRecordState & recordState)->void
+                    scene->_nextUpdateTasks.Push([spriteIndex, tempData, imageData, gpuTexture = std::move(gpuTexture), commandBufferGroup](GameScene * scene, MFA::RenderTypes::CommandRecordState & recordState)->void
                     {
                         vkCmdExecuteCommands(
                             recordState.commandBuffer,
@@ -250,7 +259,7 @@ void GameScene::ReadLevelFromJson()
                             commandBufferGroup->commandBuffers.data()
                         );
 
-                        _temporaryMemories.emplace_back(TemporaryMemory{
+                        scene->_temporaryMemories.emplace_back(TemporaryMemory{
                             .lifeTime = (int)LogicalDevice::Instance->GetMaxFramePerFlight() + 1,
                             .memory = std::move(tempData),
                             .commandBuffer = std::move(commandBufferGroup)
@@ -260,9 +269,9 @@ void GameScene::ReadLevelFromJson()
                         mySprite->spriteData = imageData;
                         mySprite->gpuTexture = gpuTexture;
 
-                        _sprites.emplace_back(mySprite);
+                        scene->_sprites.emplace_back(mySprite);
 
-                        auto const & instances = levelContent->GetSpriteInstances(spriteIndex);
+                        auto const & instances = scene->levelContent->GetSpriteInstances(spriteIndex);
                         for (auto const & instance : instances)
                         {
                             glm::vec3 flipScale {1.0f, 1.0f, 1.0f};
@@ -283,18 +292,18 @@ void GameScene::ReadLevelFromJson()
                             myInstance->color = instance->color;
 
                             bool inserted = false;
-                            for (int i = 0 ; i < _instances.size(); i++)
+                            for (int i = 0 ; i < scene->_instances.size(); i++)
                             {
-                                if (_instances[i]->transform->GlobalPosition().z < myInstance->transform->GlobalPosition().z)
+                                if (scene->_instances[i]->transform->GlobalPosition().z < myInstance->transform->GlobalPosition().z)
                                 {
-                                    _instances.insert(_instances.begin() + i, myInstance);
+                                    scene->_instances.insert(scene->_instances.begin() + i, myInstance);
                                     inserted = true;
                                     break;
                                 }
                             }
                             if (inserted == false)
                             {
-                                _instances.emplace_back(std::move(myInstance));
+                                scene->_instances.emplace_back(std::move(myInstance));
                             }
                         }
                     });

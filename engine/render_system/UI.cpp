@@ -1068,7 +1068,7 @@ namespace MFA
 
         auto const commandBuffer = RB::BeginSingleTimeCommand(
             device->GetVkDevice(), 
-            device->GetGraphicCommandPool()
+            *device->GetGraphicCommandPool()
         );
 
         // TODO Support from in memory import of images inside importer
@@ -1083,7 +1083,7 @@ namespace MFA
 
         RB::EndAndSubmitSingleTimeCommand(
 			device->GetVkDevice(),
-            device->GetGraphicCommandPool(),
+            *device->GetGraphicCommandPool(),
             device->GetGraphicQueue(),
             commandBuffer
         );

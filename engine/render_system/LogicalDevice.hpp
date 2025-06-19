@@ -109,7 +109,7 @@ namespace MFA
         VkQueue GetPresentQueue() const noexcept;
 
         [[nodiscard]]
-        VkCommandPool GetGraphicCommandPool();
+        RT::CommandPoolGroup * GetGraphicCommandPool();
 
         [[nodiscard]]
         std::vector<VkSemaphore> const& GetGraphicSemaphores() const noexcept;
@@ -118,7 +118,7 @@ namespace MFA
         std::vector<VkFence> const& GetGraphicFences() const noexcept;
 
         [[nodiscard]]
-        VkCommandPool GetComputeCommandPool();
+        RT::CommandPoolGroup * GetComputeCommandPool();
 
         [[nodiscard]]
         std::vector<VkSemaphore> const & GetComputeSemaphores() const noexcept;
@@ -223,12 +223,12 @@ namespace MFA
         VkQueue _computeQueue {};
         VkQueue _presentQueue {};
 
-        std::unordered_map<std::thread::id, VkCommandPool> _graphicCommandPoolMap {};
+        std::unordered_map<std::thread::id, std::shared_ptr<RT::CommandPoolGroup>> _graphicCommandPoolMap {};
         std::shared_ptr<RT::CommandBufferGroup> _graphicCommandBuffer {};
 
         std::vector<VkFence> _fences {};
 
-        std::unordered_map<std::thread::id, VkCommandPool> _computeCommandPoolMap {};
+        std::unordered_map<std::thread::id, std::shared_ptr<RT::CommandPoolGroup>> _computeCommandPoolMap {};
         std::shared_ptr<RT::CommandBufferGroup> _computeCommandBuffer{};
         std::vector<VkSemaphore> _computeSemaphores {};
 

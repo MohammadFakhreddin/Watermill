@@ -88,11 +88,11 @@ private:
         Count = 5
     };
 
-    using SceneRecipe = std::function<std::unique_ptr<IScene>()>;
+    using SceneRecipe = std::function<std::shared_ptr<IScene>()>;
     std::vector<SceneRecipe> _sceneRecipes {};
 
-    std::unique_ptr<IScene> _currentScene;
-    std::vector<std::tuple<std::unique_ptr<IScene>, int>> _previousScenes {};
+    std::shared_ptr<IScene> _currentScene;
+    std::vector<std::tuple<std::shared_ptr<IScene>, int>> _previousScenes {};
     SceneID _activeSceneID = SceneID::Invalid;
     SceneID _nextSceneID = SceneID::Invalid;
 

@@ -43,7 +43,7 @@ void GridRenderer::AllocateBuffers()
 
     auto * device = LogicalDevice::Instance;
 
-    const auto cb = RB::BeginSingleTimeCommand(device->GetVkDevice(), device->GetGraphicCommandPool());
+    const auto cb = RB::BeginSingleTimeCommand(device->GetVkDevice(), *device->GetGraphicCommandPool());
 
     auto const vertexStageBuffer = RB::CreateStageBuffer(
         device->GetVkDevice(),
@@ -77,7 +77,7 @@ void GridRenderer::AllocateBuffers()
 
     RB::EndAndSubmitSingleTimeCommand(
         device->GetVkDevice(),
-        device->GetGraphicCommandPool(),
+        *device->GetGraphicCommandPool(),
         device->GetGraphicQueue(),
         cb
     );
