@@ -390,7 +390,7 @@ void WebViewContainer::draw_borders(
             bottomWidth
         );
     }
-
+    // TODO: Start from here replace all these with secondary command buffer
 	_activeState->drawCalls.emplace_back([this, bufferTracker](RT::CommandRecordState &recordState) -> void
 	{
 	    _borderRenderer->Draw(
