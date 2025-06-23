@@ -253,7 +253,13 @@ void GameScene::ReadLevelFromJson()
                     std::shared_ptr imageData = std::move(imageData_);
                     std::shared_ptr tempData = std::move(tempData_);
 
-                    scene->_nextUpdateTasks.Push([spriteIndex, tempData, imageData, gpuTexture = std::move(gpuTexture), commandBufferGroup](GameScene * scene, MFA::RenderTypes::CommandRecordState & recordState)->void
+                    scene->_nextUpdateTasks.Push([
+                        spriteIndex,
+                        tempData,
+                        imageData,
+                        gpuTexture = std::move(gpuTexture),
+                        commandBufferGroup
+                    ](GameScene * scene, MFA::RenderTypes::CommandRecordState & recordState)->void
                     {
                         vkCmdExecuteCommands(
                             recordState.commandBuffer,

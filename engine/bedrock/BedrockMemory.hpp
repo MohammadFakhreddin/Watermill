@@ -122,7 +122,7 @@ namespace MFA
 
         ~Blob()
     	{
-            std::free(_ptr);
+    	    delete[] _ptr;
     	}
 
         operator Alias() const {

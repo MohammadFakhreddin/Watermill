@@ -728,7 +728,7 @@ void WebViewContainer::import_css(
     // );
     auto const cssPath = Path::Get(url.c_str(), _parentAddress.c_str());
     auto const cssBlob = _requestBlob(cssPath.c_str(), false);
-    text = cssBlob->As<char const>();
+    text = litehtml::string(cssBlob->As<char const>(), cssBlob->Len());
 }
 
 //=========================================================================================
@@ -1051,7 +1051,7 @@ void WebViewContainer::OnReload(litehtml::position clip)
         litehtml::document::destroy_output(_gumboOutput);
         _gumboOutput = nullptr;
     }
-    _htmlBlob = _requestBlob(_htmlAddress.c_str(), true);
+    _htmlBlob = _requestBlob(_htmlAddress.c_str(), false);
     char const *htmlText = _htmlBlob->As<char const>();
     _gumboOutput = litehtml::document::parse_html(htmlText);
 

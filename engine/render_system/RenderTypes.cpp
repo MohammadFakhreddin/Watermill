@@ -4,6 +4,7 @@
 #include "RenderBackend.hpp"
 #include "LogicalDevice.hpp"
 #include "ScopeLock.hpp"
+#include "Time.hpp"
 
 #include <utility>
 
@@ -142,10 +143,35 @@ namespace MFA::RenderTypes
 
     CommandBufferGroup::~CommandBufferGroup()
 	{
-	    // TODO: We should postpone this to the time that we actually can acquire the lock, or some kind of listener when lock is available again
-	    MFA_SCOPE_LOCK(commandPool.lock);
-	    auto logicalDevice = LogicalDevice::Instance;
-	    RB::DestroyCommandBuffers(logicalDevice->GetVkDevice(), commandPool, commandBuffers.size(), commandBuffers.data());
+	    if (Time::HasInstance())
+	    {
+	        // Am I causing a new memory leak ?
+            CommandPoolGroup * myCommandPool = &commandPool;
+            Time::AddUpdateTask([commandBuffers = std::move(commandBuffers), myCommandPool]()->bool
+            {
+                // We try to lock without the spin loop
+                if (TryLock(myCommandPool->lock))
+                {
+                    auto logicalDevice = LogicalDevice::Instance;
+                    RB::DestroyCommandBuffers(
+                        logicalDevice->GetVkDevice(),
+                        *myCommandPool,
+                        commandBuffers.size(),
+                        commandBuffers.data()
+                    );
+                    Unlock(myCommandPool->lock);
+                    // Releasing the update
+                    return false;
+                }
+                return true;
+            });
+	    }
+	    else
+	    {
+	        MFA_SCOPE_LOCK(commandPool.lock);
+	        auto logicalDevice = LogicalDevice::Instance;
+	        RB::DestroyCommandBuffers(logicalDevice->GetVkDevice(), commandPool, commandBuffers.size(), commandBuffers.data());
+	    }
 	}
 
     //-------------------------------------------------------------------------------------------------

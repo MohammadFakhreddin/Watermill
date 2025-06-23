@@ -697,10 +697,7 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    SDL_Window* LogicalDevice::GetWindow() const noexcept
-    {
-	    return _window;
-    }
+    SDL_Window *LogicalDevice::GetWindow() const noexcept { return _window; }
 
     //-------------------------------------------------------------------------------------------------
 

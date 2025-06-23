@@ -9,6 +9,19 @@ namespace MFA
 
     //==================================================================================================================
 
+    bool TryLock(std::atomic<bool> &lock)
+    {
+        bool expectedValue = false;
+        bool const desiredValue = true;
+        if (lock.compare_exchange_strong(expectedValue, desiredValue) == true)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    //==================================================================================================================
+
     void Lock(std::atomic<bool> &lock)
     {
         while (true)
@@ -23,6 +36,8 @@ namespace MFA
         }
         MFA_ASSERT(lock == true);
     }
+
+    //==================================================================================================================
 
     void Unlock(std::atomic<bool> &lock)
     {

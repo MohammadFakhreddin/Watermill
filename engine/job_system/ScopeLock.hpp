@@ -1,11 +1,12 @@
 #pragma once
 
-#include "BedrockAssert.hpp"
 #include "BedrockCommon.hpp"
 
 #include <atomic>
 
 namespace MFA {
+
+    bool TryLock(std::atomic<bool>& lock);
 
     void Lock(std::atomic<bool>& lock);
 

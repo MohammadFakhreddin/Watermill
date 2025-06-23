@@ -2,6 +2,7 @@
 
 #include "RenderBackend.hpp"
 #include "BedrockSignal.hpp"
+#include "ThreadSafeQueue.hpp"
 
 #include <string>
 #include <thread>
@@ -238,6 +239,7 @@ namespace MFA
         VkSurfaceFormatKHR _surfaceFormat{};
 
         VkDebugReportCallbackEXT _vkDebugReportCallbackExt {};
+
     };
 
 };

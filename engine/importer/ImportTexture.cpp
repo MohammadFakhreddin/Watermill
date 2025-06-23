@@ -70,14 +70,12 @@ namespace MFA::Importer
             MFA_ASSERT(outImageData.height > 0);
             MFA_ASSERT(outImageData.stbi_components > 0);
 
-            outImageData.stbi_pixels = std::make_shared<Blob>(
-                readData,
-                static_cast<size_t>(outImageData.width) *
+            auto blobSize = static_cast<size_t>(outImageData.width) *
                 outImageData.height *
                 outImageData.stbi_components *
-                sizeof(uint8_t)
+                sizeof(uint8_t);
 
-                );
+            outImageData.stbi_pixels = Memory::Alloc(readData, blobSize);
 
             outImageData.components = outImageData.stbi_components;
             if (prefer_srgb)
@@ -270,10 +268,10 @@ namespace MFA::Importer
 
     std::shared_ptr<AS::Texture> InMemoryTexture(
         BaseBlob const & data,
-        int32_t width,
-        int32_t height,
+        int32_t const width,
+        int32_t const height,
         Format format,
-        uint32_t components,
+        uint32_t const components,
         uint16_t depth,
         uint16_t slices,
         ImportTextureOptions const& options

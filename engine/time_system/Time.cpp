@@ -40,17 +40,34 @@ namespace MFA
     void Time::Update()
     {
         _deltaTimeMs = SDL_GetTicks() - _nowMs;
-        if(_minDeltaTimeMs > _deltaTimeMs)
+        if (_minDeltaTimeMs > _deltaTimeMs)
         {
             SDL_Delay(_minDeltaTimeMs - _deltaTimeMs);
         }
 
         _deltaTimeMs = SDL_GetTicks() - _nowMs;
         _deltaTimeMs = std::min(_deltaTimeMs, _maxDeltaTimeMs);
-		_deltaTimeSec = static_cast<float>(_deltaTimeMs) / 1000.0f;
+        _deltaTimeSec = static_cast<float>(_deltaTimeMs) / 1000.0f;
         _timeSec += _deltaTimeSec;
 
         _nowMs = SDL_GetTicks();
+
+        int const count = _updateTasks.ItemCount();
+        for (int i = 0; i < count; i++)
+        {
+            auto const task = _updateTasks.Pop();
+            if (task() == true)
+            {
+                _updateTasks.Push(task);
+            }
+        }
+    }
+
+    //==========================================================
+
+    void Time::AddUpdateTask(UpdateTask task)
+    {
+        Instance->_updateTasks.Push(std::move(task));
     }
 
     //==========================================================
@@ -69,11 +86,15 @@ namespace MFA
 
     //==========================================================
     
-    float Time::NowSec()
+    float Time::NowSec() { return Instance->_timeSec; }
+
+    //==========================================================
+
+    bool Time::HasInstance()
     {
-        return Instance->_timeSec;
+        return Instance != nullptr;
     }
-    
+
     //==========================================================
     
 }
