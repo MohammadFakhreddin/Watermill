@@ -377,6 +377,7 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
+    bool fenceIsSignaledOnce = false;
     RT::CommandRecordState LogicalDevice::AcquireRecordState(VkSwapchainKHR swapChain)
     {
 	    MFA_ASSERT(_maxFramePerFlight > _currentFrame);
@@ -389,25 +390,36 @@ namespace MFA
 
 	    recordState.frameIndex = _currentFrame;
 	    recordState.isValid = true;
-	    ++_currentFrame;
+
+        if (fenceIsSignaledOnce == false)
+        {
+            auto const fence = GetFence(recordState);
+            RB::WaitForFence(_vkDevice, {fence});
+            RB::ResetFences(_vkDevice, {fence});
+        }
+
+        // We ignore failed acquire of image because a resize will be triggered at end of pass
+        auto const result = RB::AcquireNextImage(
+            _vkDevice,
+            GetPresentSemaphore(recordState),
+            swapChain,
+            recordState.imageIndex
+        );
+        fenceIsSignaledOnce = false;
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+        {
+            _windowResized = true;
+            fenceIsSignaledOnce = true;
+            recordState.isValid = false;
+            return recordState;
+        }
+
+        ++_currentFrame;
         if (_currentFrame >= _maxFramePerFlight)
         {
             _currentFrame = 0;
-	    }
-
-        auto const vkDevice = LogicalDevice::Instance->GetVkDevice();
-
-        auto const fence = GetFence(recordState);
-        RB::WaitForFence(vkDevice, {fence});
-        RB::ResetFences(vkDevice, {fence});
-
-	    // We ignore failed acquire of image because a resize will be triggered at end of pass
-	    RB::AcquireNextImage(
-            vkDevice,
-		    GetPresentSemaphore(recordState),
-		    swapChain,
-            recordState.imageIndex
-        );
+        }
 
         recordState.swapChain = swapChain;
 
