@@ -172,7 +172,7 @@ include_directories("${CMAKE_SOURCE_DIR}/webview")
 ### KTX ###################################################
 
 # Disable all non-essential KTX features
-set(KTX_FEATURE_TOOLS ON CACHE BOOL "" FORCE)
+set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
 set(KTX_FEATURE_LOADTEST_APPS OFF CACHE BOOL "" FORCE)
 set(KTX_FEATURE_TESTS OFF CACHE BOOL "" FORCE)
 set(KTX_FEATURE_DOC OFF CACHE BOOL "" FORCE)
@@ -187,6 +187,6 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/executables/time_shift")
 ##########################################################
 
 strip_warnings_as_errors(ktx)
-strip_warnings_as_errors(toktx)
-strip_warnings_as_errors(fmt)
-strip_warnings_as_errors(imageio)
+#strip_warnings_as_errors(toktx)
+#strip_warnings_as_errors(fmt)
+#strip_warnings_as_errors(imageio)
