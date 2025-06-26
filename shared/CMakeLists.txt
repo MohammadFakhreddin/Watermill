@@ -21,3 +21,5 @@ list(
 set(LIBRARY_NAME "Shared")
 add_library(${LIBRARY_NAME} ${LIBRARY_SOURCES})
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/")
+target_link_libraries(${LIBRARY_NAME} SDL2-static)
+target_link_libraries(${LIBRARY_NAME} glm)

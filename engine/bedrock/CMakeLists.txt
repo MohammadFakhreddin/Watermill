@@ -30,3 +30,4 @@ list(
 
 set(LIBRARY_NAME "Bedrock")
 add_library(${LIBRARY_NAME} ${LIBRARY_SOURCES})
+target_link_libraries(${LIBRARY_NAME} glm)

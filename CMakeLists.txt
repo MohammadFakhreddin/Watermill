@@ -54,16 +54,27 @@ if(LINUX)
     set(THREADS_PREFER_PTHREAD_FLAG ON)
 endif()
 
+function(strip_warnings_as_errors target)
+    get_target_property(opts ${target} COMPILE_OPTIONS)
+    if (opts)
+        list(REMOVE_ITEM opts -Werror /WX)
+        set_target_properties(${target} PROPERTIES COMPILE_OPTIONS "${opts}")
+    endif()
+endfunction()
+
 ### OpenMP #############################################
 
-find_package(OpenMP)
-if (OpenMP_CXX_FOUND)
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-    link_libraries(OpenMP::OpenMP_CXX)
-endif()
+#find_package(OpenMP)
+#if (OpenMP_CXX_FOUND)
+#    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+#    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+#    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+#    link_libraries(OpenMP::OpenMP_CXX)
+#endif()
 
+#if(OpenMP_CXX_FOUND)
+#    link_libraries(OpenMP::OpenMP_CXX)
+#endif()
 
 ### Vulkan ##############################################
 
@@ -102,82 +113,71 @@ include_directories("${CMAKE_SOURCE_DIR}/submodules/SDL2/include")
 add_subdirectory("${CMAKE_SOURCE_DIR}/webview/litehtml")
 include_directories("${CMAKE_SOURCE_DIR}/webview/litehtml/include")
 
-### Linking libraries ####################################
-
-if(OpenMP_CXX_FOUND)
-    link_libraries(OpenMP::OpenMP_CXX)
-endif()
-link_libraries(glm)
-link_libraries(Vulkan::Vulkan)
-link_libraries(SDL2-static)
-link_libraries(LibConfig)
-
 ### Imgui ###############################################
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/engine/libs/imgui")
 include_directories("${CMAKE_SOURCE_DIR}/engine/libs/imgui")
-link_libraries(Imgui)
 
 ### Implot #########################################
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/engine/libs/implot")
 include_directories("${CMAKE_SOURCE_DIR}/engine/libs/implot")
-link_libraries(Implot)
 
 ### Bedrock ##############################################
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/engine/bedrock")
 include_directories("${CMAKE_SOURCE_DIR}/engine/bedrock")
-link_libraries(Bedrock)
 
 ### Entity system ########################################
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/engine/entity_system")
 include_directories("${CMAKE_SOURCE_DIR}/engine/entity_system")
-link_libraries(EntitySystem)
 
 ### Asset system #########################################
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/engine/asset_system")
 include_directories("${CMAKE_SOURCE_DIR}/engine/asset_system")
-link_libraries(AssetSystem)
 
 ### Importer #############################################
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/engine/importer")
 include_directories("${CMAKE_SOURCE_DIR}/engine/importer")
-link_libraries(Importer)
 
 ### TimeSystem ###########################################
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/engine/time_system")
 include_directories("${CMAKE_SOURCE_DIR}/engine/time_system")
-link_libraries(TimeSystem)
 
 ### JobSystem ############################################
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/engine/job_system")
 include_directories("${CMAKE_SOURCE_DIR}/engine/job_system")
-link_libraries(JobSystem)
 
 ### Renderer #############################################
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/engine/render_system")
 include_directories("${CMAKE_SOURCE_DIR}/engine/render_system")
-link_libraries(RenderSystem)
 
 ### Shared ###############################################
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/shared")
 include_directories("${CMAKE_SOURCE_DIR}/shared")
-link_libraries(Shared)
 
-### WebView #############################################
+### WebView ##############################################
 
-link_libraries(litehtml)
+#link_libraries(litehtml)
 add_subdirectory("${CMAKE_SOURCE_DIR}/webview")
 include_directories("${CMAKE_SOURCE_DIR}/webview")
-link_libraries(Webview)
+
+### KTX ###################################################
+
+# Disable all non-essential KTX features
+set(KTX_FEATURE_TOOLS ON CACHE BOOL "" FORCE)
+set(KTX_FEATURE_LOADTEST_APPS OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_TESTS OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_DOC OFF CACHE BOOL "" FORCE)
+include_directories(submodules/KTX-Software/include)
+add_subdirectory(submodules/KTX-Software)
 
 ##########################################################
 
@@ -185,3 +185,8 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/executables/default")
 add_subdirectory("${CMAKE_SOURCE_DIR}/executables/time_shift")
 
 ##########################################################
+
+strip_warnings_as_errors(ktx)
+strip_warnings_as_errors(toktx)
+strip_warnings_as_errors(fmt)
+strip_warnings_as_errors(imageio)
