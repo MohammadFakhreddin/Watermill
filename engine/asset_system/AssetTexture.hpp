@@ -46,11 +46,13 @@ namespace MFA::Asset
             uint16_t depth = 0;
         };
 
-        struct MipmapInfo
+        struct Mipmap
         {
-            uint64_t offset{};
-            uint32_t size{};
             Dimensions dimension{};
+            size_t offset = 0;
+            size_t size = 0;
+
+            std::shared_ptr<Blob> data{};
         };
 
     private:
@@ -93,19 +95,19 @@ namespace MFA::Asset
     public:
 
         explicit Texture(
+            std::string address,
             Format format,
             uint16_t slices,
             uint16_t depth,
-            size_t bufferSize
+            uint8_t mipCount
         );
+
         ~Texture();
 
         Texture(Texture const&) noexcept = delete;
         Texture(Texture&&) noexcept = delete;
         Texture& operator= (Texture const& rhs) noexcept = delete;
         Texture& operator= (Texture&& rhs) noexcept = delete;
-
-        static uint8_t ComputeMipCount(Dimensions const& dimensions);
 
         /*
          * This function result is only correct for uncompressed data
@@ -129,37 +131,19 @@ namespace MFA::Asset
             Dimensions originalImageDims
         );
 
-        /*
-        * This function result is only correct for uncompressed data
-        * Returns space required for both mipmaps and TextureHeader
-        */
-        [[nodiscard]]
-        static size_t CalculateUncompressedTextureRequiredDataSize(
-            Format format,
-            uint16_t slices,
-            Dimensions const& dims,
-            uint8_t mipCount
+        void SetMipmapInfo(
+            uint8_t mipIdx,
+            Dimensions const& dimension
         );
 
-        void addMipmap(
-            Dimensions const& dimension,
+        void SetMipmapData(
+            uint8_t mipIdx,
             std::shared_ptr<Blob> const& data
         );
 
-        void addMipmap(
-            Dimensions const& dimension,
-            void * ptr,
-            size_t length
-        );
+        void ClearMipmapBuffer(int index);
 
-        [[nodiscard]]
-        size_t mipOffsetInBytes(uint8_t mip_level, uint8_t slice_index = 0) const;
-
-        [[nodiscard]]
-        bool isValid() const;
-
-        [[nodiscard]]
-        std::shared_ptr<Blob> GetBuffer() const noexcept;
+        void ClearMipmapBuffer();
 
         [[nodiscard]]
         Format GetFormat() const noexcept;
@@ -171,14 +155,14 @@ namespace MFA::Asset
         uint8_t GetMipCount() const noexcept;
 
         [[nodiscard]]
-        MipmapInfo const& GetMipmap(uint8_t const mipLevel) const noexcept;
-
-        [[nodiscard]]
-        MipmapInfo const* GetMipmaps() const noexcept;
-
-        [[nodiscard]]
         uint16_t GetDepth() const noexcept;
-        
+
+        [[nodiscard]]
+        Dimensions const & GetMipmapDimension(uint8_t mipLevel) const noexcept;
+
+        [[nodiscard]]
+        std::shared_ptr<Blob> const & GetMipmapBuffer(uint8_t mipLevel) const noexcept;
+
     private:
 
         Format mFormat = Format::INVALID;
@@ -189,16 +173,7 @@ namespace MFA::Asset
 
         uint16_t mDepth = 0;
 
-        std::vector<MipmapInfo> mMipmapInfos{};
-
-        std::shared_ptr<Blob> mBuffer{};
-
-        uint64_t mCurrentOffset = 0;
-
-        int mPreviousMipWidth = -1;
-
-        int mPreviousMipHeight = -1;
-
+        std::vector<Mipmap> mMipmaps{};
     };
 
 }
