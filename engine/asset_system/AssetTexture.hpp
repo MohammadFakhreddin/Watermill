@@ -1,10 +1,9 @@
 #pragma once
 
-#include <cstdint>
+#include "BedrockMemory.hpp"
+
 #include <memory>
 #include <vector>
-
-#include "BedrockMemory.hpp"
 
 namespace MFA::Asset
 {
@@ -95,6 +94,13 @@ namespace MFA::Asset
     public:
 
         explicit Texture(
+            Format format,
+            uint16_t slices,
+            uint16_t depth,
+            uint8_t mipCount
+        );
+
+        explicit Texture(
             std::string address,
             Format format,
             uint16_t slices,
@@ -131,19 +137,32 @@ namespace MFA::Asset
             Dimensions originalImageDims
         );
 
-        void SetMipmapInfo(
-            uint8_t mipIdx,
+        void SetMipmapDimension(
+            uint8_t mipLevel,
             Dimensions const& dimension
         );
 
+        void SetMipmapOffset(
+            uint8_t mipLevel,
+            size_t offset
+        );
+
+        void SetMipmapSize(
+            uint8_t mipLevel,
+            size_t size
+        );
+
         void SetMipmapData(
-            uint8_t mipIdx,
+            uint8_t mipLevel,
             std::shared_ptr<Blob> const& data
         );
 
-        void ClearMipmapBuffer(int index);
+        void ClearMipmapBuffer(uint8_t mipLevel);
 
         void ClearMipmapBuffer();
+
+        [[nodiscard]]
+        std::string GetAddress() const;
 
         [[nodiscard]]
         Format GetFormat() const noexcept;
@@ -158,6 +177,12 @@ namespace MFA::Asset
         uint16_t GetDepth() const noexcept;
 
         [[nodiscard]]
+        size_t GetMipmapSize(uint8_t mipLevel) const noexcept;
+
+        [[nodiscard]]
+        size_t GetMipmapOffset(uint8_t mipLevel) const noexcept;
+
+        [[nodiscard]]
         Dimensions const & GetMipmapDimension(uint8_t mipLevel) const noexcept;
 
         [[nodiscard]]
@@ -165,13 +190,11 @@ namespace MFA::Asset
 
     private:
 
-        Format mFormat = Format::INVALID;
-
-        uint16_t mSlices = 0;
-
-        uint8_t mMipCount = 0;
-
-        uint16_t mDepth = 0;
+        std::string const mAddress;
+        Format const mFormat;
+        uint16_t const mSlices;
+        uint8_t const mMipCount;
+        uint16_t const mDepth;
 
         std::vector<Mipmap> mMipmaps{};
     };

@@ -2696,7 +2696,8 @@ namespace MFA::RenderBackend
     void CopyDataToHostVisibleBuffer(
         VkDevice device,
         VkDeviceMemory bufferMemory,
-        BaseBlob const & dataBlob
+        BaseBlob const & dataBlob,
+        size_t offset
     )
     {
         MFA_ASSERT(dataBlob.IsValid() == true);
@@ -2704,7 +2705,7 @@ namespace MFA::RenderBackend
         MapHostVisibleMemory(
             device,
             bufferMemory,
-            0,
+            offset,
             dataBlob.Len(),
             &tempBufferData
         );
@@ -3068,43 +3069,46 @@ namespace MFA::RenderBackend
         VkCommandBuffer commandBuffer,
         VkBuffer buffer,
         VkImage image,
-        AS::Texture const& cpuTexture
+
+        AS::Texture const& cpuTexture,
+        int const mipCount,
+        uint8_t const * mipLevels
     )
     {
-        MFA_ASSERT(device != nullptr);
+        MFA_ASSERT(device != VK_NULL_HANDLE);
         MFA_ASSERT(commandBuffer != VK_NULL_HANDLE);
         MFA_ASSERT(buffer != VK_NULL_HANDLE);
         MFA_ASSERT(image != VK_NULL_HANDLE);
-        MFA_ASSERT(cpuTexture.isValid());
-        MFA_ASSERT(
-            cpuTexture.GetMipmap(cpuTexture.GetMipCount() - 1).offset +
-            cpuTexture.GetMipmap(cpuTexture.GetMipCount() - 1).size == cpuTexture.GetBuffer()->Len()
-        );
 
-        auto const mipCount = cpuTexture.GetMipCount();
         auto const slices = cpuTexture.GetSlices();
         auto const regionCount = mipCount * slices;
         auto const regionsBlob = Memory::AllocSize(regionCount * sizeof(VkBufferImageCopy));
         auto* regionsArray = regionsBlob->As<VkBufferImageCopy>();
+
+        size_t bufferOffset = 0;
         for (uint8_t sliceIndex = 0; sliceIndex < slices; sliceIndex++)
         {
-            for (uint8_t mipLevel = 0; mipLevel < mipCount; mipLevel++)
+            for (uint8_t mipIdx = 0; mipIdx < mipCount; mipIdx++)
             {
-                auto const& mipInfo = cpuTexture.GetMipmap(mipLevel);
+                auto const mipLevel = mipLevels[mipIdx];
+                auto const& dimension = cpuTexture.GetMipmapDimension(mipLevel);
+
                 auto& region = regionsArray[mipLevel];
-                region.imageExtent.width = mipInfo.dimension.width;
-                region.imageExtent.height = mipInfo.dimension.height;
-                region.imageExtent.depth = mipInfo.dimension.depth;
+                region.imageExtent.width = dimension.width;
+                region.imageExtent.height = dimension.height;
+                region.imageExtent.depth = dimension.depth;
                 region.imageOffset.x = 0;
                 region.imageOffset.y = 0;
                 region.imageOffset.z = 0;
-                region.bufferOffset = static_cast<uint32_t>(cpuTexture.mipOffsetInBytes(mipLevel, sliceIndex));
+                region.bufferOffset = bufferOffset;
                 region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
                 region.imageSubresource.mipLevel = mipLevel;
                 region.imageSubresource.baseArrayLayer = sliceIndex;
                 region.imageSubresource.layerCount = 1;
                 region.bufferRowLength = 0;
                 region.bufferImageHeight = 0;
+
+                bufferOffset += cpuTexture.GetMipmapBuffer(mipLevel)->Len();
             }
         }
 
@@ -3161,194 +3165,243 @@ namespace MFA::RenderBackend
 
     //-------------------------------------------------------------------------------------------------
 
+    static size_t CalculateRequiredBufferSize(
+        AS::Texture const & cpuTexture,
+        uint8_t const mipCount,
+        uint8_t const * mipLevels
+    )
+    {
+        size_t bufferSize = 0;
+        for (int i = 0; i < mipCount; i++)
+        {
+            bufferSize += cpuTexture.GetMipmapBuffer(mipLevels[i])->Len();
+        }
+        return bufferSize;
+    }
+
     CreateTextureResult CreateTexture(
         AS::Texture const& cpuTexture,
         VkDevice device,
         VkPhysicalDevice physicalDevice,
-        VkCommandBuffer commandBuffer
+        VkCommandBuffer commandBuffer,
+
+        int const mipCount,
+        uint8_t * mipLevels
     )
     {
         MFA_ASSERT(device != nullptr);
         MFA_ASSERT(physicalDevice != nullptr);
         MFA_ASSERT(commandBuffer != VK_NULL_HANDLE);
-        MFA_ASSERT(cpuTexture.isValid());
+        // MFA_ASSERT(cpuTexture.isValid());
 
-        if (cpuTexture.isValid())
-        {
-            auto const format = cpuTexture.GetFormat();
-            auto const mipCount = cpuTexture.GetMipCount();
-            auto const sliceCount = cpuTexture.GetSlices();
-            auto const& largestMipmapInfo = cpuTexture.GetMipmap(0);
-            auto const buffer = cpuTexture.GetBuffer();
-            MFA_ASSERT(buffer != nullptr && buffer->IsValid() == true);
-            // Create upload buffer
-            auto const uploadBufferGroup = CreateBuffer(    // TODO: We can cache this buffer
-                device,
-                physicalDevice,
-                buffer->Len(),
-                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-            );
+        auto const requiredBufferSize = CalculateRequiredBufferSize(cpuTexture, mipCount, mipLevels);
 
-            // Map texture data to buffer
-            CopyDataToHostVisibleBuffer(device, uploadBufferGroup->memory, *buffer);
+        auto const uploadBufferGroup = CreateBuffer(    // TODO: We can cache this buffer
+            device,
+            physicalDevice,
+            requiredBufferSize,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        );
 
-            auto const vulkan_format = ConvertCpuTextureFormatToGpu(format);
-
-            auto imageGroup = CreateImage(
-                device,
-                physicalDevice,
-                largestMipmapInfo.dimension.width,
-                largestMipmapInfo.dimension.height,
-                static_cast<uint32_t>(largestMipmapInfo.dimension.depth),
-                mipCount,
-                sliceCount,
-                vulkan_format,
-                VK_IMAGE_TILING_OPTIMAL,
-                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                VK_SAMPLE_COUNT_1_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-            );
-
-            TransferImageLayout(
-                device,
-                commandBuffer,
-                imageGroup->image,
-                VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                mipCount,
-                sliceCount
-            );
-
-            CopyBufferToImage(
-                device,
-                commandBuffer,
-                uploadBufferGroup->buffer,
-                imageGroup->image,
-                cpuTexture
-            );
-
-            TransferImageLayout(
-                device,
-                commandBuffer,
-                imageGroup->image,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                mipCount,
-                sliceCount
-            );
-
-            auto imageView = CreateImageView(
-                device,
-                imageGroup->image,
-                vulkan_format,
-                VK_IMAGE_ASPECT_COLOR_BIT,
-                mipCount,
-                sliceCount,
-                VK_IMAGE_VIEW_TYPE_2D
-            );
-
-            std::shared_ptr<RT::GpuTexture> gpuTexture = std::make_shared<RT::GpuTexture>(
-                imageGroup,
-                imageView
-            );
-            return { gpuTexture, uploadBufferGroup };
-        }
-        return {nullptr, nullptr};
+        return CreateTexture(
+            cpuTexture,
+            uploadBufferGroup,
+            device,
+            physicalDevice,
+            commandBuffer,
+            mipCount,
+            mipLevels
+        );
+        // if (cpuTexture.isValid())
+        // {
+        //     auto const format = cpuTexture.GetFormat();
+        //     auto const mipCount = cpuTexture.GetMipCount();
+        //     auto const sliceCount = cpuTexture.GetSlices();
+        //     auto const& largestMipmapInfo = cpuTexture.GetMipmap(0);
+        //     auto const buffer = cpuTexture.GetBuffer();
+        //     MFA_ASSERT(buffer != nullptr && buffer->IsValid() == true);
+        //     // Create upload buffer
+        //     auto const uploadBufferGroup = CreateBuffer(    // TODO: We can cache this buffer
+        //         device,
+        //         physicalDevice,
+        //         buffer->Len(),
+        //         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        //         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        //     );
+        //
+        //     // Map texture data to buffer
+        //     CopyDataToHostVisibleBuffer(device, uploadBufferGroup->memory, *buffer);
+        //
+        //     auto const vulkan_format = ConvertCpuTextureFormatToGpu(format);
+        //
+        //     auto imageGroup = CreateImage(
+        //         device,
+        //         physicalDevice,
+        //         largestMipmapInfo.dimension.width,
+        //         largestMipmapInfo.dimension.height,
+        //         static_cast<uint32_t>(largestMipmapInfo.dimension.depth),
+        //         mipCount,
+        //         sliceCount,
+        //         vulkan_format,
+        //         VK_IMAGE_TILING_OPTIMAL,
+        //         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        //         VK_SAMPLE_COUNT_1_BIT,
+        //         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        //     );
+        //
+        //     TransferImageLayout(
+        //         device,
+        //         commandBuffer,
+        //         imageGroup->image,
+        //         VK_IMAGE_LAYOUT_UNDEFINED,
+        //         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        //         mipCount,
+        //         sliceCount
+        //     );
+        //
+        //     CopyBufferToImage(
+        //         device,
+        //         commandBuffer,
+        //         uploadBufferGroup->buffer,
+        //         imageGroup->image,
+        //         cpuTexture
+        //     );
+        //
+        //     TransferImageLayout(
+        //         device,
+        //         commandBuffer,
+        //         imageGroup->image,
+        //         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        //         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        //         mipCount,
+        //         sliceCount
+        //     );
+        //
+        //     auto imageView = CreateImageView(
+        //         device,
+        //         imageGroup->image,
+        //         vulkan_format,
+        //         VK_IMAGE_ASPECT_COLOR_BIT,
+        //         mipCount,
+        //         sliceCount,
+        //         VK_IMAGE_VIEW_TYPE_2D
+        //     );
+        //
+        //     std::shared_ptr<RT::GpuTexture> gpuTexture = std::make_shared<RT::GpuTexture>(
+        //         imageGroup,
+        //         imageView
+        //     );
+        //     return { gpuTexture, uploadBufferGroup };
+        // }
+        // return {nullptr, nullptr};
     }
 
-    //-------------------------------------------------------------------------------------------------
-
+    // For this game there was no need to switch between dynamic lods
     CreateTextureResult CreateTexture(
         AS::Texture const& cpuTexture,
         std::shared_ptr<RT::BufferAndMemory> const& uploadBufferGroup,
         VkDevice device,
         VkPhysicalDevice physicalDevice,
-        VkCommandBuffer commandBuffer
+        VkCommandBuffer commandBuffer,
+
+        int mipCount,
+        uint8_t const * mipLevels
     )
     {
         MFA_ASSERT(device != nullptr);
         MFA_ASSERT(physicalDevice != nullptr);
         MFA_ASSERT(commandBuffer != VK_NULL_HANDLE);
-        MFA_ASSERT(cpuTexture.isValid());
 
-        if (cpuTexture.isValid())
+        auto const format = cpuTexture.GetFormat();
+        auto const sliceCount = cpuTexture.GetSlices();
+
+        uint8_t biggestMipLevel = mipLevels[0];
+        for (int i = 0; i < mipCount; ++i)
         {
-            auto const format = cpuTexture.GetFormat();
-            auto const mipCount = cpuTexture.GetMipCount();
-            auto const sliceCount = cpuTexture.GetSlices();
-            auto const& largestMipmapInfo = cpuTexture.GetMipmap(0);
-            auto const buffer = cpuTexture.GetBuffer();
-            MFA_ASSERT(buffer != nullptr && buffer->IsValid() == true);
-
-            // Map texture data to buffer
-            CopyDataToHostVisibleBuffer(device, uploadBufferGroup->memory, *buffer);
-
-            auto const vulkan_format = ConvertCpuTextureFormatToGpu(format);
-
-            auto imageGroup = CreateImage(
-                device,
-                physicalDevice,
-                largestMipmapInfo.dimension.width,
-                largestMipmapInfo.dimension.height,
-                largestMipmapInfo.dimension.depth,
-                mipCount,
-                sliceCount,
-                vulkan_format,
-                VK_IMAGE_TILING_OPTIMAL,
-                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                VK_SAMPLE_COUNT_1_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-            );
-
-            TransferImageLayout(
-                device,
-                commandBuffer,
-                imageGroup->image,
-                VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                mipCount,
-                sliceCount
-            );
-
-            CopyBufferToImage(
-                device,
-                commandBuffer,
-                uploadBufferGroup->buffer,
-                imageGroup->image,
-                cpuTexture
-            );
-
-            TransferImageLayout(
-                device,
-                commandBuffer,
-                imageGroup->image,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                mipCount,
-                sliceCount
-            );
-
-            auto imageView = CreateImageView(
-                device,
-                imageGroup->image,
-                vulkan_format,
-                VK_IMAGE_ASPECT_COLOR_BIT,
-                mipCount,
-                sliceCount,
-                VK_IMAGE_VIEW_TYPE_2D
-            );
-
-            std::shared_ptr<RT::GpuTexture> gpuTexture = std::make_shared<RT::GpuTexture>(
-                imageGroup,
-                imageView
-            );
-            return { gpuTexture, uploadBufferGroup };
+            biggestMipLevel = std::min(biggestMipLevel, mipLevels[i]);
         }
-        return {nullptr, nullptr};
-    }
 
-    //-------------------------------------------------------------------------------------------------
+        auto const& largestMipmapInfo = cpuTexture.GetMipmapDimension(biggestMipLevel);
+
+#ifdef MFA_DEBUG
+        auto bufferSize = CalculateRequiredBufferSize(cpuTexture, mipCount, mipLevels);
+        MFA_ASSERT(bufferSize <= uploadBufferGroup->size);
+#endif
+
+        size_t offset = 0;
+        for (int i = 0; i < mipCount; ++i)
+        {
+            auto const buffer = cpuTexture.GetMipmapBuffer(mipLevels[i]);
+            MFA_ASSERT(buffer != nullptr && buffer->IsValid() == true);
+            // Map texture data to buffer
+            CopyDataToHostVisibleBuffer(device, uploadBufferGroup->memory, *buffer, offset);
+            offset += buffer->Len();
+        }
+
+        auto const vulkan_format = ConvertCpuTextureFormatToGpu(format);
+
+        auto imageGroup = CreateImage(
+            device,
+            physicalDevice,
+            largestMipmapInfo.width,
+            largestMipmapInfo.height,
+            largestMipmapInfo.depth,
+            mipCount,
+            sliceCount,
+            vulkan_format,
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VK_SAMPLE_COUNT_1_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        );
+
+        TransferImageLayout(
+            device,
+            commandBuffer,
+            imageGroup->image,
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            mipCount,
+            sliceCount
+        );
+
+        CopyBufferToImage(
+            device,
+            commandBuffer,
+            uploadBufferGroup->buffer,
+            imageGroup->image,
+            cpuTexture,
+            mipCount,
+            mipLevels
+        );
+
+        TransferImageLayout(
+            device,
+            commandBuffer,
+            imageGroup->image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            mipCount,
+            sliceCount
+        );
+
+        auto imageView = CreateImageView(
+            device,
+            imageGroup->image,
+            vulkan_format,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            mipCount,
+            sliceCount,
+            VK_IMAGE_VIEW_TYPE_2D
+        );
+
+        std::shared_ptr<RT::GpuTexture> gpuTexture = std::make_shared<RT::GpuTexture>(
+            imageGroup,
+            imageView
+        );
+        return { gpuTexture, uploadBufferGroup };
+    }
 
     void DestroyTexture(VkDevice device, RT::GpuTexture& gpuTexture)
     {

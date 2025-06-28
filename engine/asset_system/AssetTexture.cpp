@@ -7,21 +7,27 @@ namespace MFA::Asset
 
 	//-------------------------------------------------------------------------------------------------
 
-	Texture::Texture(
+    Texture::Texture(Format const format, uint16_t const slices, uint16_t const depth, uint8_t const mipCount)
+        : Texture("", format, slices, depth, mipCount) {}
+
+    Texture::Texture(
+	    std::string address,
 	    Format const format,
         uint16_t const slices,
         uint16_t const depth,
         uint8_t const mipCount
 	)
+	    : mAddress(std::move(address))
+        , mFormat(format)
+        , mSlices(slices)
+        , mMipCount(mipCount)
+        , mDepth(depth)
 	{
-		MFA_ASSERT(format != Format::INVALID);
-		mFormat = format;
+	    MFA_ASSERT(format != Format::INVALID);
 		MFA_ASSERT(slices > 0);
-		mSlices = slices;
 		MFA_ASSERT(depth > 0);
-		mDepth = depth;
-	    MFA_ASSERT(mipCount > 0);
-		mMipCount = mipCount;
+		MFA_ASSERT(mipCount > 0);
+
 	    mMipmaps.resize(mMipCount);
 	}
 
@@ -63,52 +69,62 @@ namespace MFA::Asset
 
 	//-------------------------------------------------------------------------------------------------
 
-    void Texture::SetMipmapInfo(
-        uint8_t const mipIdx,
-        Dimensions const& dimension
-    )
-	{
-	    MFA_ASSERT(mipIdx < mMipCount);
+    void Texture::SetMipmapDimension(uint8_t const mipLevel, Dimensions const &dimension)
+    {
+        MFA_ASSERT(mipLevel < mMipCount);
+        mMipmaps[mipLevel].dimension = dimension;
+    }
 
-	    mMipmaps[mipIdx].dimension = dimension;
+    void Texture::SetMipmapOffset(uint8_t const mipLevel, size_t const offset)
+	{
+	    MFA_ASSERT(mipLevel < mMipCount);
+	    mMipmaps[mipLevel].offset = offset;
 	}
 
-	//-------------------------------------------------------------------------------------------------
+    void Texture::SetMipmapSize(uint8_t const mipLevel, size_t const size)
+	{
+        MFA_ASSERT(mipLevel < mMipCount);
+	    mMipmaps[mipLevel].size = size;
+	}
 
-	void Texture::SetMipmapData(uint8_t const mipIdx, std::shared_ptr<Blob> const &data)
+	void Texture::SetMipmapData(uint8_t const mipLevel, std::shared_ptr<Blob> const &data)
     {
-        MFA_ASSERT(mipIdx < mMipCount);
+        MFA_ASSERT(mipLevel < mMipCount);
 
-        mMipmaps[mipIdx].data = data;
-        ++mMipCount;
+        mMipmaps[mipLevel].data = data;
     }
 
     //-------------------------------------------------------------------------------------------------
 
-    void Texture::ClearMipmapBuffer(int const index) { mMipmaps[index].data = nullptr; }
-    void Texture::ClearMipmapBuffer()
+    void Texture::ClearMipmapBuffer(uint8_t const mipLevel)
 	{
-	    for (auto & mipmap : mMipmaps)
-	    {
-	        mipmap.data = nullptr;
-	    }
+	    mMipmaps[mipLevel].data = nullptr;
 	}
 
-	//-------------------------------------------------------------------------------------------------
+    void Texture::ClearMipmapBuffer()
+    {
+        for (auto &mipmap : mMipmaps)
+        {
+            mipmap.data = nullptr;
+        }
+    }
 
-	Texture::Format Texture::GetFormat() const noexcept
+    //-------------------------------------------------------------------------------------------------
+
+    std::string Texture::GetAddress() const
+	{
+	    return mAddress;
+	}
+
+    Texture::Format Texture::GetFormat() const noexcept
 	{
 		return mFormat;
 	}
-
-	//-------------------------------------------------------------------------------------------------
 
 	uint16_t Texture::GetSlices() const noexcept
 	{
 		return mSlices;
 	}
-
-	//-------------------------------------------------------------------------------------------------
 
 	uint8_t Texture::GetMipCount() const noexcept
 	{
@@ -117,13 +133,23 @@ namespace MFA::Asset
 
 	//-------------------------------------------------------------------------------------------------
 
+    size_t Texture::GetMipmapSize(uint8_t const mipLevel) const noexcept
+	{
+	    MFA_ASSERT(mipLevel < mMipCount);
+	    return mMipmaps[mipLevel].size;
+	}
+
+    size_t Texture::GetMipmapOffset(uint8_t const mipLevel) const noexcept
+	{
+	    MFA_ASSERT(mipLevel < mMipCount);
+	    return mMipmaps[mipLevel].offset;
+	}
+
 	Texture::Dimensions const& Texture::GetMipmapDimension(uint8_t const mipLevel) const noexcept
 	{
 	    MFA_ASSERT(mipLevel < mMipCount);
 		return mMipmaps[mipLevel].dimension;
 	}
-
-	//-------------------------------------------------------------------------------------------------
 
 	std::shared_ptr<Blob> const & Texture::GetMipmapBuffer(uint8_t const mipLevel) const noexcept
 	{
@@ -133,11 +159,8 @@ namespace MFA::Asset
 
 	//-------------------------------------------------------------------------------------------------
 
-	uint16_t Texture::GetDepth() const noexcept
-	{
-		return mDepth;
-	}
+	uint16_t Texture::GetDepth() const noexcept { return mDepth; }
 
-	//-------------------------------------------------------------------------------------------------
+    //-------------------------------------------------------------------------------------------------
 
 }

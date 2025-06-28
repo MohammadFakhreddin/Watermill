@@ -16,8 +16,6 @@ list(
     "${CMAKE_CURRENT_SOURCE_DIR}/renderer/BorderPipeline.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/renderer/BorderPipeline.hpp"
 
-    "${CMAKE_CURRENT_SOURCE_DIR}/renderer/ConsolasFontRenderer.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/renderer/ConsolasFontRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/renderer/CustomFontRenderer.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/renderer/CustomFontRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/renderer/SolidFillRenderer.hpp"
@@ -26,7 +24,6 @@ list(
     "${CMAKE_CURRENT_SOURCE_DIR}/renderer/ImageRenderer.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/renderer/BorderRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/renderer/BorderRenderer.hpp"
-
 )
 
 set(LIBRARY_NAME "Webview")

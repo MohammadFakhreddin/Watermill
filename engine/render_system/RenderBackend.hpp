@@ -637,7 +637,8 @@ namespace MFA::RenderBackend
     void CopyDataToHostVisibleBuffer(
         VkDevice device,
         VkDeviceMemory bufferMemory,
-        BaseBlob const & dataBlob
+        BaseBlob const & dataBlob,
+        size_t offset = 0
     );
 
     void PushConstants(
@@ -693,7 +694,10 @@ namespace MFA::RenderBackend
         AS::Texture const& cpuTexture,
         VkDevice device,
         VkPhysicalDevice physicalDevice,
-        VkCommandBuffer commandBuffer
+        VkCommandBuffer commandBuffer,
+
+        int mipCount,
+        uint8_t * mipLevels
     );
 
     void TransferImageLayout(
@@ -711,7 +715,10 @@ namespace MFA::RenderBackend
         VkCommandBuffer commandBuffer,
         VkBuffer buffer,
         VkImage image,
-        AS::Texture const& cpuTexture
+
+        AS::Texture const& cpuTexture,
+        int mipCount,
+        uint8_t const * mipLevels
     );
 
     [[nodiscard]]
@@ -720,7 +727,10 @@ namespace MFA::RenderBackend
         std::shared_ptr<RT::BufferAndMemory> const& uploadBufferGroup,
         VkDevice device,
         VkPhysicalDevice physicalDevice,
-        VkCommandBuffer commandBuffer
+        VkCommandBuffer commandBuffer,
+
+        int mipCount,
+        uint8_t const * mipLevels
     );
 
     void DestroyTexture(VkDevice device, RT::GpuTexture& gpuTexture);

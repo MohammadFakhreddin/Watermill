@@ -6,6 +6,7 @@
 #include "BedrockMemory.hpp"
 #include "BedrockPath.hpp"
 #include "BedrockPlatforms.hpp"
+#include "AssetTexture.hpp"
 
 #include "stb_image.h"
 #include "stb_image_resize.h"
@@ -204,41 +205,44 @@ namespace MFA::Importer
 
     //-------------------------------------------------------------------------------------------------
 
-    std::shared_ptr<AS::Texture> UncompressedImage(
-        std::string const& path, 
-        ImportTextureOptions const& options
-    )
+    std::shared_ptr<AS::Texture> UncompressedImage(std::string const& path)
     {
         std::shared_ptr<AS::Texture> texture{};
+
         Data imageData{};
         auto const loadImageResult = LoadUncompressed(
             imageData,
             path,
             false
         );
+
         if (loadImageResult == LoadResult::Success)
         {
             MFA_ASSERT(imageData.valid());
-            auto const image_width = imageData.width;
-            auto const image_height = imageData.height;
+            uint32_t const imageWidth = imageData.width;
+            uint32_t const imageHeight = imageData.height;
             auto const pixels = imageData.pixels;
-            auto const components = imageData.components;
+            // auto const components = imageData.components;
             auto const format = imageData.format;
-            int const depth = 1; // TODO We need to support depth
-            int const slices = 1;
 
-            texture = InMemoryTexture(
-                *pixels,
-                image_width,
-                image_height,
+            texture = std::make_shared<AS::Texture>(
+                path,
                 format,
-                components,
-                depth,
-                slices,
-                options
+                1,
+                1,
+                1
             );
+
+            texture->SetMipmapDimension(0, AS::Texture::Dimensions {
+                .width = imageWidth,
+                .height = imageHeight,
+                .depth = 1
+            });
+            texture->SetMipmapOffset(0, 0);
+            texture->SetMipmapSize(0, pixels->Len());
+            texture->SetMipmapData(0, pixels);
         }
-        // TODO: Handle errors
+
         return texture;
     }
 
@@ -246,99 +250,31 @@ namespace MFA::Importer
 
     std::shared_ptr<AS::Texture> ErrorTexture()
     {
-        auto const data = Memory::AllocSize(4);
-        auto* pixel = data->As<uint8_t>();
-        pixel[0] = 1;
-        pixel[1] = 1;
-        pixel[2] = 1;
-        pixel[3] = 1;
+        auto data = Memory::AllocSize(4);
+        auto * pixels = data->As<uint8_t>();
+        pixels[0] = 1;
+        pixels[1] = 1;
+        pixels[2] = 1;
+        pixels[3] = 1;
 
-        return InMemoryTexture(
-            *data,
+        auto const texture = std::make_shared<AS::Texture>(
+            "",
+            Format::UNCOMPRESSED_UNORM_R8G8B8A8_LINEAR,
             1,
-            1,
-            AS::Texture::Format::UNCOMPRESSED_UNORM_R8G8B8A8_LINEAR,
-            4,
             1,
             1
         );
-    }
 
-    //-------------------------------------------------------------------------------------------------
-
-    std::shared_ptr<AS::Texture> InMemoryTexture(
-        BaseBlob const & data,
-        int32_t const width,
-        int32_t const height,
-        Format format,
-        uint32_t const components,
-        uint16_t depth,
-        uint16_t slices,
-        ImportTextureOptions const& options
-    )
-    {
-        AS::Texture::Dimensions const originalImageDimension{
-            static_cast<uint32_t>(width),
-            static_cast<uint32_t>(height),
-            depth
-        };
-
-        uint8_t const mipCount = options.tryToGenerateMipmaps
-            ? AS::Texture::ComputeMipCount(originalImageDimension)
-            : 1;
-
-        auto const bufferSize = AS::Texture::CalculateUncompressedTextureRequiredDataSize(
-            format,
-            slices,
-            originalImageDimension,
-            mipCount
-        );
-
-        std::shared_ptr<AS::Texture> texture = std::make_shared<AS::Texture>(
-            format,
-            slices,
-            depth,
-            bufferSize
-        );
-
-        // Generating mipmaps (TODO : Code needs debugging)
-        texture->addMipmap(originalImageDimension, std::make_shared<Blob>(data));
-
-        for (uint8_t mipLevel = 1; mipLevel < mipCount; mipLevel++)
-        {
-            auto const currentMipDims = AS::Texture::MipDimensions(
-                mipLevel,
-                mipCount,
-                originalImageDimension
-            );
-            auto const currentMipSizeBytes = AS::Texture::MipSizeBytes(
-                format,
-                slices,
-                currentMipDims
-            );
-            std::shared_ptr<Blob> mipMapPixels = Memory::AllocSize(currentMipSizeBytes);
-
-            // Resize
-            ResizeInputParams inputParams{
-                .inputImagePixels = data,
-                .inputImageWidth = static_cast<int>(originalImageDimension.width),
-                .inputImageHeight = static_cast<int>(originalImageDimension.height),
-                .componentsCount = components,
-                .outputImagePixels = mipMapPixels,
-                .outputWidth = static_cast<int>(currentMipDims.width),
-                .outputHeight = static_cast<int>(currentMipDims.height),
-            };
-            auto const resizeResult = ResizeUncompressed(inputParams);
-            MFA_ASSERT(resizeResult == true);
-
-            texture->addMipmap(
-                currentMipDims,
-                mipMapPixels
-            );
-        }
-
-        MFA_ASSERT(texture->isValid());
+        texture->SetMipmapDimension(0, AS::Texture::Dimensions {
+            .width = 1,
+            .height = 1,
+            .depth = 1
+        });
+        texture->SetMipmapOffset(0, 0);
+        texture->SetMipmapSize(1, data->Len());
+        texture->SetMipmapData(0, std::move(data));
 
         return texture;
     }
+
 }

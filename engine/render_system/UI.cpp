@@ -1052,17 +1052,16 @@ namespace MFA
         size_t const components_count = 4;
         size_t const depth = 1;
         size_t const slices = 1;
-        size_t const image_size = width * height * components_count * sizeof(uint8_t);
+        size_t const imageSize = width * height * components_count * sizeof(uint8_t);
 
-        auto const textureAsset = Importer::InMemoryTexture(
-            Alias{ pixels, image_size },
-            width,
-            height,
+        auto const textureAsset = std::make_shared<AS::Texture>(
+            "",
             AS::Texture::Format::UNCOMPRESSED_UNORM_R8G8B8A8_LINEAR,
-            components_count,
+            slices,
             depth,
-            slices
+            1
         );
+        textureAsset->SetMipmapData(0, Memory::Alloc(pixels, imageSize));
 
         auto const device = LogicalDevice::Instance;
 
@@ -1072,11 +1071,14 @@ namespace MFA
         );
 
         // TODO Support from in memory import of images inside importer
+        std::vector<uint8_t> mipmaps{0};
         auto [texture, stagingBuffer] = RB::CreateTexture(
             *textureAsset, 
             device->GetVkDevice(), 
             device->GetPhysicalDevice(),
-            commandBuffer
+            commandBuffer,
+            mipmaps.size(),
+            mipmaps.data()
         );
 
         _fontTexture = std::move(texture);

@@ -69,10 +69,18 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
         auto const path = Path::Instance()->Get(name);
         auto const cpuTexture = Importer::UncompressedImage(path);
 
-        auto const buffer = cpuTexture->GetBuffer();
+        auto const buffer = cpuTexture->GetMipmapBuffer(0);
         MFA_ASSERT(buffer != nullptr && buffer->IsValid() == true);
 
-        auto [gpuTexture, stageBuffer] = RB::CreateTexture(*cpuTexture, device, physicalDevice, commandBuffer);
+        std::vector<uint8_t> mipLevel{0};
+        auto [gpuTexture, stageBuffer] = RB::CreateTexture(
+            *cpuTexture,
+            device,
+            physicalDevice,
+            commandBuffer,
+            mipLevel.size(),
+            mipLevel.data()
+        );
 
         RB::EndCommandBuffer(commandBuffer);
 

@@ -27,7 +27,7 @@ namespace MFA
         // int result = stbtt_InitFont(&_font, buffer, 0);
         // MFA_ASSERT(result >= 0);
 
-        auto const bitmap = Memory::AllocSize(atlasWidth * atlasHeight * sizeof(uint8_t));
+        auto bitmap = Memory::AllocSize(atlasWidth * atlasHeight * sizeof(uint8_t));
         _stbFontData.resize(FontNumberOfChars);
         // Bake font into the bitmap
         int const result = stbtt_BakeFontBitmap(
@@ -40,7 +40,7 @@ namespace MFA
             _stbFontData.data()                         // Output character data
         );
         MFA_ASSERT(result >= 0);
-        CreateFontTextureBuffer(atlasWidth, atlasHeight, Alias{bitmap->Ptr(), bitmap->Len()});
+        CreateFontTextureBuffer(atlasWidth, atlasHeight, std::move(bitmap));
         _descriptorSet = _pipeline->CreateDescriptorSet(*_fontTexture);
 
         _atlasWidth = (float)atlasWidth;
@@ -254,29 +254,41 @@ namespace MFA
     }
 
     //------------------------------------------------------------------------------------------------------------------
-
-    void CustomFontRenderer::CreateFontTextureBuffer(uint32_t const width, uint32_t const height, Alias const & bytes)
+    // TODO: Single time command buffers might not be the best idea but I am confused at the moment.
+    // TODO: Maybe instead I just have to make things when first called inside the main thread?
+    void CustomFontRenderer::CreateFontTextureBuffer(
+        uint32_t const width,
+        uint32_t const height,
+        std::unique_ptr<Blob> bytes
+    )
     {
         auto const device = LogicalDevice::Instance;
 
         AS::Texture cpuTexture{
             Asset::Texture::Format::UNCOMPRESSED_UNORM_R8_LINEAR,
-            1, 1, bytes.Len()
+            1, 1, 1
         };
 
-        cpuTexture.addMipmap(
-            Asset::Texture::Dimensions{.width = width, .height = height, .depth = 1},
-            bytes.Ptr(),
-            bytes.Len()
+        cpuTexture.SetMipmapDimension(
+            0,
+            Asset::Texture::Dimensions{.width = width, .height = height, .depth = 1}
+        );
+
+        cpuTexture.SetMipmapData(
+            0,
+            std::move(bytes)
         );
 
         auto commandBuffer = RB::BeginSingleTimeCommand(device->GetVkDevice(), *device->GetGraphicCommandPool());
 
+        std::vector<uint8_t> mipLevels{0};
         auto [fontTexture, stageBuffer] = RB::CreateTexture(
             cpuTexture,
             device->GetVkDevice(),
             device->GetPhysicalDevice(),
-            commandBuffer
+            commandBuffer,
+            mipLevels.size(),
+            mipLevels.data()
         );
         MFA_ASSERT(fontTexture != nullptr);
         _fontTexture = std::move(fontTexture);

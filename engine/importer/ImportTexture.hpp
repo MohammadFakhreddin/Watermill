@@ -1,38 +1,19 @@
 #pragma once
 
-#include <string>
-
 #include "AssetTexture.hpp"
+
+#include <memory>
+#include <string>
 
 namespace MFA::Importer
 {
-    struct ImportTextureOptions
-    {
-        bool tryToGenerateMipmaps = false;      // Generates mipmaps for uncompressed texture
-        // TODO Usage flags
-    };
 
     [[nodiscard]]
-    std::shared_ptr<AS::Texture> UncompressedImage(
-        std::string const& path,
-        ImportTextureOptions const& options = {}
-    );
+    std::shared_ptr<Asset::Texture> UncompressedImage(std::string const& path);
 
     [[nodiscard]]
-    std::shared_ptr<AS::Texture> ErrorTexture();
+    std::shared_ptr<Asset::Texture> ErrorTexture();
 
-    // [[nodiscard]]
-    // std::shared_ptr<AS::Texture> InMemoryTexture(
-    //     BaseBlob const & data,
-    //     int32_t width,
-    //     int32_t height,
-    //     AS::Texture::Format format,
-    //     uint32_t components,
-    //     uint16_t depth = 1,
-    //     uint16_t slices = 1,
-    //     ImportTextureOptions const& options = {}
-    // );
-
-    void LoadMipLevel(AS::Texture & texture, uint8_t mipLevel);
+    void LoadMipLevel(Asset::Texture & texture, uint8_t mipLevel);
 
 }

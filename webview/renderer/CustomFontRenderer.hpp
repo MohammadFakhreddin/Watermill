@@ -65,7 +65,7 @@ namespace MFA
 
     private:
 
-        void CreateFontTextureBuffer(uint32_t width, uint32_t height, Alias const & bytes);
+        void CreateFontTextureBuffer(uint32_t width, uint32_t height, std::unique_ptr<Blob> bytes);
 
     public:
 

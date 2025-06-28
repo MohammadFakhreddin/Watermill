@@ -593,11 +593,14 @@ std::tuple<std::shared_ptr<RT::GpuTexture>, glm::vec2> TimeShiftApp::RequestImag
 
         auto const cpuTexture = Importer::UncompressedImage(path);
 
+        std::vector<uint8_t> mipLevels{0};
         auto [gpuTexture, stageBuffer] = RB::CreateTexture(
             *cpuTexture,
             device->GetVkDevice(),
             device->GetPhysicalDevice(),
-            commandBuffer
+            commandBuffer,
+            mipLevels.size(),
+            mipLevels.data()
         );
 
         RB::EndAndSubmitSingleTimeCommand(
@@ -607,7 +610,7 @@ std::tuple<std::shared_ptr<RT::GpuTexture>, glm::vec2> TimeShiftApp::RequestImag
             commandBuffer
         );
 
-        auto const & mipDim = cpuTexture->GetMipmap(0).dimension;
+        auto const & mipDim = cpuTexture->GetMipmapDimension(mipLevels[0]);
 
         auto const tuple = std::tuple{gpuTexture, glm::vec2{mipDim.width, mipDim.height}};
 
