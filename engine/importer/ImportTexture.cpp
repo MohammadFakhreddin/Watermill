@@ -8,6 +8,9 @@
 #include "BedrockPlatforms.hpp"
 #include "AssetTexture.hpp"
 
+#include "vulkan/vulkan_core.h"
+#include "ktx.h"
+#include "ktxvulkan.h"
 #include "stb_image.h"
 #include "stb_image_resize.h"
 
@@ -251,25 +254,15 @@ namespace MFA::Importer
     std::shared_ptr<AS::Texture> ErrorTexture()
     {
         auto data = Memory::AllocSize(4);
-        auto * pixels = data->As<uint8_t>();
+        auto *pixels = data->As<uint8_t>();
         pixels[0] = 1;
         pixels[1] = 1;
         pixels[2] = 1;
         pixels[3] = 1;
 
-        auto const texture = std::make_shared<AS::Texture>(
-            "",
-            Format::UNCOMPRESSED_UNORM_R8G8B8A8_LINEAR,
-            1,
-            1,
-            1
-        );
+        auto const texture = std::make_shared<AS::Texture>("", Format::UNCOMPRESSED_UNORM_R8G8B8A8_LINEAR, 1, 1, 1);
 
-        texture->SetMipmapDimension(0, AS::Texture::Dimensions {
-            .width = 1,
-            .height = 1,
-            .depth = 1
-        });
+        texture->SetMipmapDimension(0, AS::Texture::Dimensions{.width = 1, .height = 1, .depth = 1});
         texture->SetMipmapOffset(0, 0);
         texture->SetMipmapSize(1, data->Len());
         texture->SetMipmapData(0, std::move(data));
@@ -277,4 +270,152 @@ namespace MFA::Importer
         return texture;
     }
 
-}
+    //-------------------------------------------------------------------------------------------------
+
+    static Format MapVkFormat(ktx_uint32_t vkFormat) {
+        switch (vkFormat) {
+            case VK_FORMAT_R8G8B8A8_UNORM: return Format::UNCOMPRESSED_UNORM_R8G8B8A8_LINEAR;           // VK_FORMAT_R8G8B8A8_UNORM
+            case VK_FORMAT_R8G8B8A8_SRGB: return Format::UNCOMPRESSED_UNORM_R8G8B8A8_SRGB;              // VK_FORMAT_R8G8B8A8_SRGB
+            case VK_FORMAT_BC7_UNORM_BLOCK: return Format::BC7_UNorm_Linear_RGBA;                       // VK_FORMAT_BC7_UNORM_BLOCK
+            case VK_FORMAT_BC7_SRGB_BLOCK: return Format::BC7_UNorm_sRGB_RGBA;                          // VK_FORMAT_BC7_SRGB_BLOCK
+            case VK_FORMAT_BC6H_UFLOAT_BLOCK: return Format::BC6H_UFloat_Linear_RGB;                    // VK_FORMAT_BC6H_UFLOAT_BLOCK
+            case VK_FORMAT_BC6H_SFLOAT_BLOCK: return Format::BC6H_SFloat_Linear_RGB;                    // VK_FORMAT_BC6H_SFLOAT_BLOCK
+                // Add more as needed
+            default: return Format::INVALID;
+        }
+    }
+
+    std::shared_ptr<Asset::Texture> LoadKtxMetadata(char const *path)
+    {
+        MFA_ASSERT(std::filesystem::exists(path));
+
+        ktxTexture* rawTexture;
+        KTX_error_code result = ktxTexture_CreateFromNamedFile(
+            path,
+            KTX_TEXTURE_CREATE_NO_FLAGS,  // No flags = don't load image data
+            &rawTexture
+        );
+        MFA_DEFFER([&rawTexture]()->void
+        {
+            ktxTexture_Destroy(rawTexture);
+        });
+
+        if (result != KTX_SUCCESS)
+        {
+            MFA_LOG_WARN(
+                "Failed to load ktx file with name: %s\n Reason: %s\n"
+                , path
+                , ktxErrorString(result)
+            );
+            return nullptr;
+        }
+
+        if (rawTexture->classId != ktxTexture2_c)
+        {
+            MFA_LOG_WARN("Only level 2 ktx is supported");
+            return nullptr;
+        }
+
+        MFA_ASSERT(rawTexture->pData == nullptr);
+
+        auto const width = rawTexture->baseWidth;
+        auto const height = rawTexture->baseHeight;
+        auto const mipLevels = rawTexture->numLevels;
+
+        // if (ktxTexture_NeedsTranscoding(rawTexture)) {
+        //     MFA_LOG_WARN("KTX2 texture is BasisU-compressed and needs transcoding.");
+        //     KTX_error_code transcodeResult = ktxTexture2_TranscodeBasis(rawTexture, KTX_TTF_BC7_RGBA, 0);
+        //     if (transcodeResult != KTX_SUCCESS) {
+        //         MFA_LOG_WARN("Transcoding failed: %s\n", ktxErrorString(transcodeResult));
+        //         return nullptr;
+        //     }
+        // }
+        if (rawTexture->classId == ktxTexture2_c) {
+            ktxTexture2* tex2 = (ktxTexture2*)rawTexture;
+
+            if (ktxTexture2_NeedsTranscoding(tex2)) {
+                KTX_error_code transcodeResult = ktxTexture2_TranscodeBasis(tex2, KTX_TTF_BC7_RGBA, 0);
+                if (transcodeResult != KTX_SUCCESS) {
+                    MFA_LOG_WARN("Transcoding failed: %s\n", ktxErrorString(transcodeResult));
+                    return nullptr;
+                }
+            }
+        }
+
+        auto vkFormat = ktxTexture_GetVkFormat(rawTexture);
+        // MFA_ASSERT(vkFormat != VK_FORMAT_UNDEFINED);
+        // ktx_uint8_t* ktxTextureData = ktxTexture_GetData(rawTexture);
+        // ktx_size_t ktxTextureSize = ktxTexture_GetDataSize(rawTexture);
+
+        // auto const vkFormat = rawTexture2->vkFormat;
+        auto const format = MapVkFormat(vkFormat);
+
+        std::string message;
+        message += "Path: " + std::string(path) + "\n";
+        message += "KTX file metadata:\n";
+        message += "Dimensions: " + std::to_string(rawTexture->baseWidth) + " x " + std::to_string(rawTexture->baseHeight) + " x " + std::to_string(rawTexture->baseDepth) + "\n";
+        message += "Mipmap levels: " + std::to_string(rawTexture->numLevels) + "\n";
+        message += "Layers: " + std::to_string(rawTexture->numLayers) + "\n";
+        message += "Faces (cubemap): " + std::to_string(rawTexture->numFaces) + "\n";
+        message += "Is compressed: " + std::string(rawTexture->isCompressed ? "yes" : "no") + "\n";
+        message += "VK Format: " + std::to_string((int)format) + "\n";
+
+        MFA_LOG_INFO("KTX metadata:\n%s", message.c_str());
+
+        // auto levelOffset = ktxTexture_calcLevelOffset(rawTexture, mipLevels - 1);
+        // auto levelSize = ktxTexture_calcLevelSize(rawTexture, mipLevels - 1, KTX_FORMAT_VERSION_TWO);
+        ktx_uint32_t mipLevel = rawTexture->numLevels - 1;
+        ktx_size_t mipOffset;
+        result = ktxTexture_GetImageOffset(rawTexture, mipLevel, 0, 0, &mipOffset);
+        if (result != KTX_SUCCESS)
+        {
+            MFA_LOG_WARN("Error getting mip offset: %s\n", ktxErrorString(result));
+            return nullptr;
+        }
+
+        // Get size of that mip level
+        ktx_size_t mipSize = ktxTexture_GetImageSize(rawTexture, mipLevel);
+        // TODO: Start from here use this function to load levels one by one:
+        // ktxTexture2_IterateLoadLevelFaces
+        // ktxTexture2* tex2 = (ktxTexture2*)rawTexture;
+        // // === Compute image data start file offset ===
+        // size_t dfdSize = tex2->dfdByteLength;
+        // size_t kvdSize = tex2->kvDataLen;
+        // size_t levelIndexSize = tex2->numLevels * sizeof(ktxLevelIndexEntry);
+        // size_t imageDataStartFileOffset = 68 + dfdSize + kvdSize + levelIndexSize;
+        //
+        // std::ifstream file("your_file.ktx2", std::ios::binary);
+        // file.seekg(imageDataStartFileOffset + mipOffsetInImageBlock);
+        //
+        // std::vector<uint8_t> mipData(mipSize);
+        // file.read(reinterpret_cast<char*>(mipData.data()), mipSize);
+        //
+        // file.close();
+
+        // // Get device properties for the requested texture format
+        // VkFormatProperties formatProperties;
+        // vkGetPhysicalDeviceFormatProperties(device->physicalDevice, format, &formatProperties);
+
+        // message += "Data size: " + std::to_string(ktxTextureSize) + "\n";
+
+        // if (rawTexture->classId == ktxTexture1_c) {
+        //     MFA_NOT_IMPLEMENTED_YET("Mohammad Fakhreddin");
+        // }
+        // else if (rawTexture->classId == ktxTexture2_c) {
+        //     ktxTexture2* tex2 = (ktxTexture2*)rawTexture;
+        //     auto format = MapVkFormat(tex2->vkFormat);
+        //     MFA_ASSERT(format != Format::INVALID);
+
+        // }
+
+
+
+        return nullptr;
+        // auto assetTexture = std::make_shared<AS::Texture>(
+        //
+        // );
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+} // namespace MFA::Importer

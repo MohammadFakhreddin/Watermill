@@ -43,6 +43,5 @@ target_link_libraries(${EXECUTABLE} JobSystem)
 target_link_libraries(${EXECUTABLE} RenderSystem)
 target_link_libraries(${EXECUTABLE} Shared)
 target_link_libraries(${EXECUTABLE} Webview)
-target_link_libraries(${EXECUTABLE} ktx)
 
 ########################################

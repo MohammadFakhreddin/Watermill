@@ -7,8 +7,9 @@ namespace MFA::Asset
 
 	//-------------------------------------------------------------------------------------------------
 
-    Texture::Texture(Format const format, uint16_t const slices, uint16_t const depth, uint8_t const mipCount)
-        : Texture("", format, slices, depth, mipCount) {}
+    Texture::Texture(Format format, uint16_t slices, uint16_t depth, uint8_t mipCount)
+        : Texture("", format, slices, depth, mipCount)
+    {}
 
     Texture::Texture(
 	    std::string address,

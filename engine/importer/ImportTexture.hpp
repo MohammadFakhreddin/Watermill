@@ -14,6 +14,6 @@ namespace MFA::Importer
     [[nodiscard]]
     std::shared_ptr<Asset::Texture> ErrorTexture();
 
-    void LoadMipLevel(Asset::Texture & texture, uint8_t mipLevel);
+    std::shared_ptr<Asset::Texture> LoadKtxMetadata(char const * path);
 
 }

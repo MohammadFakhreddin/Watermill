@@ -108,6 +108,16 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/engine/libs/libconfig/tiny_gltf
 add_subdirectory("${CMAKE_SOURCE_DIR}/submodules/SDL2")
 include_directories("${CMAKE_SOURCE_DIR}/submodules/SDL2/include")
 
+### KTX ###################################################
+
+# Disable all non-essential KTX features
+set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_LOADTEST_APPS OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_TESTS OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_DOC OFF CACHE BOOL "" FORCE)
+include_directories(submodules/KTX-Software/include)
+add_subdirectory(submodules/KTX-Software)
+
 ### Litehtml #############################################
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/webview/litehtml")
@@ -169,19 +179,9 @@ include_directories("${CMAKE_SOURCE_DIR}/shared")
 add_subdirectory("${CMAKE_SOURCE_DIR}/webview")
 include_directories("${CMAKE_SOURCE_DIR}/webview")
 
-### KTX ###################################################
-
-# Disable all non-essential KTX features
-set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
-set(KTX_FEATURE_LOADTEST_APPS OFF CACHE BOOL "" FORCE)
-set(KTX_FEATURE_TESTS OFF CACHE BOOL "" FORCE)
-set(KTX_FEATURE_DOC OFF CACHE BOOL "" FORCE)
-include_directories(submodules/KTX-Software/include)
-add_subdirectory(submodules/KTX-Software)
-
 ##########################################################
 
-add_subdirectory("${CMAKE_SOURCE_DIR}/executables/default")
+#add_subdirectory("${CMAKE_SOURCE_DIR}/executables/default")
 add_subdirectory("${CMAKE_SOURCE_DIR}/executables/time_shift")
 
 ##########################################################

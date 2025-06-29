@@ -6,6 +6,8 @@
 #include "ResourceManager.hpp"
 #include "TimeShiftApp.hpp"
 
+#include "ImportTexture.hpp"
+
 using namespace MFA;
 
 int main()
@@ -25,6 +27,11 @@ int main()
     MFA_ASSERT(device->IsValid() == true);
     {
         auto path = MFA::Path::Instance(true);
+
+        auto texture = Importer::LoadKtxMetadata(path->Get("textures/sky-0.ktx2").c_str());
+
+        return 0;
+
         auto resourceManager = ResourceManager::Instance(true);
         auto jobSystem = MFA::JobSystem::Instance(true);
 

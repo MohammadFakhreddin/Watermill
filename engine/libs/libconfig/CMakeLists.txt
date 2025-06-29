@@ -1,4 +1,3 @@
-
 set(LIBRARY_SOURCES)
 
 list(
