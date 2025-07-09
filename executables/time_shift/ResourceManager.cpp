@@ -29,9 +29,20 @@ ResourceManager::~ResourceManager() = default;
 
 //======================================================================================================================
 
-void ResourceManager::RequestImage(char const * name_, const ImageCallback & callback, bool const forceReload)
+void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & callback, bool const forceReload)
 {
-    auto & [lock, imageWeak] = _imageMap[name_];
+
+    std::string imagePath{nameRaw_};
+
+    std::filesystem::path originalPath{imagePath};
+    std::filesystem::path ktx2Path = originalPath;
+    ktx2Path.replace_extension(".ktx2");
+
+    if (std::filesystem::exists(ktx2Path)) {
+        imagePath = ktx2Path.string();
+    }
+
+    auto & [lock, imageWeak] = _imageMap[imagePath];
 
     MFA_SCOPE_LOCK(lock);
 
@@ -44,16 +55,16 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
         }
     }
 
-    _imageCallbacks[name_].Push(callback);
+    _imageCallbacks[imagePath].Push(callback);
     // To make sure we are not requesting things multiple times
-    if (_imageCallbacks[name_].ItemCount() != 1)
+    if (_imageCallbacks[imagePath].ItemCount() != 1)
     {
         return;
     }
 
     std::weak_ptr rcWeak = shared_from_this();
     // TODO: In the new design, our functions should return a command buffer that they have allocated themselves and we just combine them together for execution
-    JobSystem::Instance()->AssignTask([rcWeak, name = std::string(name_)]()
+    JobSystem::Instance()->AssignTask([rcWeak, name = std::string(imagePath)]()
     {
         if (rcWeak.lock() == nullptr)
         {
@@ -73,8 +84,17 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
 
         auto commandBuffer = commandBufferGroup->commandBuffers[0];
 
-        auto const path = Path::Instance()->Get(name);
-        auto const cpuTexture = Importer::UncompressedImage(path);
+        std::shared_ptr<Asset::Texture> cpuTexture;
+
+        std::filesystem::path const path = Path::Instance()->Get(name);
+        if (path.extension() == ".ktx2")
+        {
+            cpuTexture = Importer::LoadKtxMetadata(path.c_str());
+        }
+        else
+        {
+            cpuTexture = Importer::UncompressedImage(path);
+        }
 
         auto const buffer = cpuTexture->GetMipmapBuffer(0);
         MFA_ASSERT(buffer != nullptr && buffer->IsValid() == true);

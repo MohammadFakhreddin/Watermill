@@ -8,7 +8,7 @@ namespace MFA
     ThreadPool::ThreadPool()
     {
         mMainThreadId = std::this_thread::get_id();
-        mNumberOfThreads = static_cast<int>(std::thread::hardware_concurrency() * 0.75f);
+        mNumberOfThreads = 1;//static_cast<int>(std::thread::hardware_concurrency() * 0.75f);
         MFA_LOG_INFO("Job system is running on %d threads. Available threads are: %d", mNumberOfThreads, static_cast<int>(std::thread::hardware_concurrency()));
 
         mIsAlive = true;
