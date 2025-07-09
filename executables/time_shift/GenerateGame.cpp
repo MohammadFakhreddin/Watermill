@@ -4,6 +4,7 @@
 #include <json.hpp>
 
 #include "BedrockLog.hpp"
+#include "ScopeProfiler.hpp"
 
 using namespace nlohmann;
 using namespace MFA;
@@ -39,7 +40,8 @@ LevelParser::LevelParser(const std::filesystem::path &json_path)
 {
     try
     {
-        MFA_LOG_INFO("Started parsing file");
+        MFA_SCOPE_Profiler("Level parser")
+        // MFA_LOG_INFO("Started parsing file");
 
         std::ifstream file(json_path);
         json data = json::parse(file);
@@ -52,7 +54,7 @@ LevelParser::LevelParser(const std::filesystem::path &json_path)
         ParseSprites(data["sprites"]);
         ParseTransforms(nullptr, data["transforms"]);
 
-        MFA_LOG_INFO("Finished parsing file");
+        // MFA_LOG_INFO("Finished parsing file");
 
     } catch (std::exception &e)
     {

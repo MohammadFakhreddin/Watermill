@@ -282,7 +282,34 @@ namespace MFA::Importer
             case VK_FORMAT_BC7_SRGB_BLOCK: return Format::BC7_UNorm_sRGB_RGBA;                          // VK_FORMAT_BC7_SRGB_BLOCK
             case VK_FORMAT_BC6H_UFLOAT_BLOCK: return Format::BC6H_UFloat_Linear_RGB;                    // VK_FORMAT_BC6H_UFLOAT_BLOCK
             case VK_FORMAT_BC6H_SFLOAT_BLOCK: return Format::BC6H_SFloat_Linear_RGB;                    // VK_FORMAT_BC6H_SFLOAT_BLOCK
-                // Add more as needed
+            case VK_FORMAT_ASTC_4x4_UNORM_BLOCK: return Format::ASTC_4x4_UNORM_BLOCK;
+            case VK_FORMAT_ASTC_4x4_SRGB_BLOCK: return Format::ASTC_4x4_SRGB_BLOCK;
+            case VK_FORMAT_ASTC_5x4_UNORM_BLOCK: return Format::ASTC_5x4_UNORM_BLOCK;
+            case VK_FORMAT_ASTC_5x4_SRGB_BLOCK: return Format::ASTC_5x4_SRGB_BLOCK;
+            case VK_FORMAT_ASTC_5x5_UNORM_BLOCK: return Format::ASTC_5x5_UNORM_BLOCK;
+            case VK_FORMAT_ASTC_5x5_SRGB_BLOCK: return Format::ASTC_5x5_SRGB_BLOCK;
+            case VK_FORMAT_ASTC_6x5_UNORM_BLOCK: return Format::ASTC_6x5_UNORM_BLOCK;
+            case VK_FORMAT_ASTC_6x5_SRGB_BLOCK: return Format::ASTC_6x5_SRGB_BLOCK;
+            case VK_FORMAT_ASTC_6x6_UNORM_BLOCK: return Format::ASTC_6x6_UNORM_BLOCK;
+            case VK_FORMAT_ASTC_6x6_SRGB_BLOCK: return Format::ASTC_6x6_SRGB_BLOCK;
+            case VK_FORMAT_ASTC_8x5_UNORM_BLOCK: return Format::ASTC_8x5_UNORM_BLOCK;
+            case VK_FORMAT_ASTC_8x5_SRGB_BLOCK: return Format::ASTC_8x5_SRGB_BLOCK;
+            case VK_FORMAT_ASTC_8x6_UNORM_BLOCK: return Format::ASTC_8x6_UNORM_BLOCK;
+            case VK_FORMAT_ASTC_8x6_SRGB_BLOCK: return Format::ASTC_8x6_SRGB_BLOCK;
+            case VK_FORMAT_ASTC_8x8_UNORM_BLOCK: return Format::ASTC_8x8_UNORM_BLOCK;
+            case VK_FORMAT_ASTC_8x8_SRGB_BLOCK: return Format::ASTC_8x8_SRGB_BLOCK;
+            case VK_FORMAT_ASTC_10x5_UNORM_BLOCK: return Format::ASTC_10x5_UNORM_BLOCK;
+            case VK_FORMAT_ASTC_10x5_SRGB_BLOCK: return Format::ASTC_10x5_SRGB_BLOCK;
+            case VK_FORMAT_ASTC_10x6_UNORM_BLOCK: return Format::ASTC_10x6_UNORM_BLOCK;
+            case VK_FORMAT_ASTC_10x6_SRGB_BLOCK: return Format::ASTC_10x6_SRGB_BLOCK;
+            case VK_FORMAT_ASTC_10x8_UNORM_BLOCK: return Format::ASTC_10x8_UNORM_BLOCK;
+            case VK_FORMAT_ASTC_10x8_SRGB_BLOCK: return Format::ASTC_10x8_SRGB_BLOCK;
+            case VK_FORMAT_ASTC_10x10_UNORM_BLOCK: return Format::ASTC_10x10_UNORM_BLOCK;
+            case VK_FORMAT_ASTC_10x10_SRGB_BLOCK: return Format::ASTC_10x10_SRGB_BLOCK;
+            case VK_FORMAT_ASTC_12x10_UNORM_BLOCK: return Format::ASTC_12x10_UNORM_BLOCK;
+            case VK_FORMAT_ASTC_12x10_SRGB_BLOCK: return Format::ASTC_12x10_SRGB_BLOCK;
+            case VK_FORMAT_ASTC_12x12_UNORM_BLOCK: return Format::ASTC_12x12_UNORM_BLOCK;
+            case VK_FORMAT_ASTC_12x12_SRGB_BLOCK: return Format::ASTC_12x12_SRGB_BLOCK;
             default: return Format::INVALID;
         }
     }
@@ -321,7 +348,9 @@ namespace MFA::Importer
         ktxTexture* ktx;
 
         FILE* fp = fopen(path, "rb");
-        auto result = ktxTexture_CreateFromStdioStream(fp, KTX_TEXTURE_CREATE_NO_FLAGS, &ktx);
+        MFA_ASSERT(fp != nullptr);
+        // auto result = ktxTexture_CreateFromStdioStream(fp, KTX_TEXTURE_CREATE_NO_FLAGS, &ktx);
+        auto result = ktxTexture_CreateFromNamedFile(path, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx);
 
         MFA_DEFFER([&ktx]()->void
         {
@@ -349,6 +378,7 @@ namespace MFA::Importer
             ktx2 = (ktxTexture2*)ktx;
             // iF TEXTURE NEEDS TRANSCODING THE WE HAVE TO LOAD THE WHOLE THING
             if (ktxTexture2_NeedsTranscoding(ktx2)) {
+                MFA_ASSERT(false);
                 KTX_error_code transcodeResult = ktxTexture2_TranscodeBasis(ktx2, KTX_TTF_RGBA32, 0);
                 if (transcodeResult != KTX_SUCCESS) {
                     MFA_LOG_WARN("Transcoding failed: %s\n", ktxErrorString(transcodeResult));

@@ -12,7 +12,7 @@ namespace MFA::Asset
     class Texture final
     {
     public:
-
+        // TODO: We could have just stored the vkFormat
         enum class Format : uint8_t
         {
             INVALID = 0,
@@ -35,6 +35,35 @@ namespace MFA::Asset
 
             BC4_UNorm_Linear_R = 14,
             BC4_SNorm_Linear_R = 15,
+
+            ASTC_4x4_UNORM_BLOCK = 16,
+            ASTC_4x4_SRGB_BLOCK = 17,
+            ASTC_5x4_UNORM_BLOCK = 18,
+            ASTC_5x4_SRGB_BLOCK = 19,
+            ASTC_5x5_UNORM_BLOCK = 20,
+            ASTC_5x5_SRGB_BLOCK = 21,
+            ASTC_6x5_UNORM_BLOCK = 22,
+            ASTC_6x5_SRGB_BLOCK = 23,
+            ASTC_6x6_UNORM_BLOCK = 24,
+            ASTC_6x6_SRGB_BLOCK = 25,
+            ASTC_8x5_UNORM_BLOCK = 26,
+            ASTC_8x5_SRGB_BLOCK = 27,
+            ASTC_8x6_UNORM_BLOCK = 28,
+            ASTC_8x6_SRGB_BLOCK = 29,
+            ASTC_8x8_UNORM_BLOCK = 30,
+            ASTC_8x8_SRGB_BLOCK = 31,
+            ASTC_10x5_UNORM_BLOCK = 32,
+            ASTC_10x5_SRGB_BLOCK = 33,
+            ASTC_10x6_UNORM_BLOCK = 34,
+            ASTC_10x6_SRGB_BLOCK = 35,
+            ASTC_10x8_UNORM_BLOCK = 36,
+            ASTC_10x8_SRGB_BLOCK = 37,
+            ASTC_10x10_UNORM_BLOCK = 38,
+            ASTC_10x10_SRGB_BLOCK = 39,
+            ASTC_12x10_UNORM_BLOCK = 40,
+            ASTC_12x10_SRGB_BLOCK = 41,
+            ASTC_12x12_UNORM_BLOCK = 42,
+            ASTC_12x12_SRGB_BLOCK = 43,
 
             Count
         };
