@@ -303,7 +303,7 @@ namespace MFA::Importer
         texture->SetMipmapDimension(0/*mipLevel*/, AS::Texture::Dimensions{
             .width = static_cast<uint32_t>(width),
             .height = static_cast<uint32_t>(height),
-            .depth = depth
+            .depth = (uint16_t)depth
         });
         texture->SetMipmapSize(0/*mipLevel*/, faceLodSize);
         auto blob = Memory::AllocSize(faceLodSize);

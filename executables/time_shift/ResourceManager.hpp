@@ -43,6 +43,7 @@ private:
 
     inline static std::weak_ptr<ResourceManager> _instance {};
 
-    std::unordered_map<std::string, std::tuple<std::atomic<bool>, std::weak_ptr<MFA::RenderTypes::GpuTexture>>> _imageMap{};
+    std::unordered_map<std::string, std::weak_ptr<MFA::RenderTypes::GpuTexture>> _imageMap{};
+    // std::unordered_map<std::string, std::tuple<std::atomic<bool>, std::weak_ptr<MFA::RenderTypes::GpuTexture>>> _imageMap{};
     std::unordered_map<std::string, MFA::ThreadSafeQueue<ImageCallback>> _imageCallbacks{};
 };

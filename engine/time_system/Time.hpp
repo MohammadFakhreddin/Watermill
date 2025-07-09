@@ -47,6 +47,7 @@ namespace MFA
         float _timeSec {};
 
         ThreadSafeQueue<UpdateTask> _updateTasks;
+        std::queue<UpdateTask> _pUpdateTasks;
 
     };
 

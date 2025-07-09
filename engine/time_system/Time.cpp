@@ -52,13 +52,31 @@ namespace MFA
 
         _nowMs = SDL_GetTicks();
 
-        int const count = _updateTasks.ItemCount();
-        for (int i = 0; i < count; i++)
         {
-            auto const task = _updateTasks.Pop();
-            if (task() == true)
+            int const count = (int)_pUpdateTasks.size();
+            for (int i = 0; i < count; i++)
             {
-                _updateTasks.Push(task);
+                auto task = _pUpdateTasks.front();
+                _pUpdateTasks.pop();
+                if (task() == true)
+                {
+                    _pUpdateTasks.push(task);
+                }
+            }
+        }
+        {
+            int const count = (int)_updateTasks.ItemCount();
+            for (int i = 0; i < count; i++)
+            {
+                UpdateTask task{};
+                bool isEmpty{};
+                if (_updateTasks.TryToPop(task, isEmpty))
+                {
+                    if (task() == true)
+                    {
+                        _pUpdateTasks.emplace(task);
+                    }
+                }
             }
         }
     }

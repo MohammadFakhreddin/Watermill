@@ -244,7 +244,7 @@ namespace MFA
         VkDebugReportCallbackEXT _vkDebugReportCallbackExt {};
 
         ThreadSafeQueue<RenderTask> _renderTasks{};
-
+        std::queue<RenderTask> _pRenderTasks{};
     };
 
 };

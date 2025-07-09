@@ -775,13 +775,31 @@ namespace MFA
         recordState.commandBufferType = commandBufferType;
         recordState.commandBuffer = commandBuffer;
 
-        int const count = (int)_renderTasks.ItemCount();
-        for (int i = 0; i < count; i++)
         {
-            auto const task = _renderTasks.Pop();
-            if (task(recordState) == true)
+            int const count = (int)_pRenderTasks.size();
+            for (int i = 0; i < count; i++)
             {
-                _renderTasks.Push(task);
+                RenderTask task = _pRenderTasks.front();
+                _pRenderTasks.pop();
+                if (task(recordState) == true)
+                {
+                    _pRenderTasks.push(task);
+                }
+            }
+        }
+        {
+            int const count = (int)_renderTasks.ItemCount();
+            for (int i = 0; i < count; i++)
+            {
+                RenderTask task;
+                bool isEmpty;
+                if (_renderTasks.TryToPop(task, isEmpty))
+                {
+                    if (task(recordState) == true)
+                    {
+                        _pRenderTasks.emplace(task);
+                    }
+                }
             }
         }
     }

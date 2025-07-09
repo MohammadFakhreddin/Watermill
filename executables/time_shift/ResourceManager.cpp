@@ -42,17 +42,16 @@ void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & 
     //     imagePath = ktx2Path.string();
     // }
 
-    auto & [lock, imageWeak] = _imageMap[imagePath];
+    auto & imageWeak = _imageMap[imagePath];
 
-    MFA_SCOPE_LOCK(lock);
+    // auto & [lock, imageWeak] = _imageMap[imagePath];
+    // MFA_SCOPE_LOCK(lock);
 
-    if (forceReload == false)
+    auto imageShared = imageWeak.lock();
+    if (imageShared != nullptr && forceReload == false)
     {
-        auto imageShared = imageWeak.lock();
-        if (imageShared != nullptr)
-        {
-            callback(imageShared);
-        }
+        callback(imageShared);
+        return;
     }
 
     _imageCallbacks[imagePath].Push(callback);
@@ -89,11 +88,11 @@ void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & 
         std::filesystem::path const path = Path::Instance()->Get(name);
         if (path.extension() == ".ktx2")
         {
-            cpuTexture = Importer::LoadKtxMetadata(path.c_str());
+            cpuTexture = Importer::LoadKtxMetadata(path.string().c_str());
         }
         else
         {
-            cpuTexture = Importer::UncompressedImage(path);
+            cpuTexture = Importer::UncompressedImage(path.string());
         }
 
         auto const buffer = cpuTexture->GetMipmapBuffer(0);
@@ -122,8 +121,9 @@ void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & 
             return;
         }
 
-        auto & [lock, imageWeak] = instance->_imageMap[name];
-        MFA_SCOPE_LOCK(lock);
+        auto & imageWeak = instance->_imageMap[name];
+        // auto & [lock, imageWeak] = instance->_imageMap[name];
+        // MFA_SCOPE_LOCK(lock);
 
         struct QueuedImages
         {
@@ -158,28 +158,45 @@ void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & 
         {
             MFA_ASSERT(JobSystem::Instance() == nullptr || JobSystem::Instance()->IsMainThread() == true);
 
-            auto rc = rcWeak.lock();
-            if (rc == nullptr)
-            {
-                return false;
-            }
-
             vkCmdExecuteCommands(recordState.commandBuffer, 1, &commandBuffer);
 
-            auto & [lock, imageWeak] = rc->_imageMap[name];
-            auto gpuTexture = imageWeak.lock();
-            if (gpuTexture != nullptr)
+            Time::AddUpdateTask([rcWeak, name]()->bool
             {
-                // I think it is better to call these callback from the main thread.
-                auto & imageCallbacks = rc->_imageCallbacks[name];
-                while (imageCallbacks.IsEmpty() == false)
+                auto rc = rcWeak.lock();
+                if (rc == nullptr)
                 {
-                    auto callback = imageCallbacks.Pop();
-                    callback(gpuTexture);
+                    return false;
                 }
-            }
 
-            rc->_imageCallbacks.erase(name);
+                // TODO: This should run on time and remove pop and replace with tryPop
+                auto & imageWeak = rc->_imageMap[name];
+                // auto & [lock, imageWeak] = rc->_imageMap[name];
+                auto gpuTexture = imageWeak.lock();
+                if (gpuTexture != nullptr)
+                {
+                    // I think it is better to call these callback from the main thread.
+                    auto & imageCallbacks = rc->_imageCallbacks[name];
+                    while (imageCallbacks.IsEmpty() == false)
+                    {
+                        bool isEmpty;
+                        std::function<void(std::shared_ptr<RenderTypes::GpuTexture>)> callback;
+                        if (imageCallbacks.TryToPop(callback, isEmpty))
+                        {
+                            callback(gpuTexture);
+                        }
+                        else // We failed to get the lock so try again next frame. (There is a risk for starvation)
+                        {
+                            return true;
+                        }
+                        // auto callback = imageCallbacks.Pop();
+                        // callback(gpuTexture);
+                    }
+                }
+
+                rc->_imageCallbacks.erase(name);
+
+                return false;
+            });
 
             return false;
         });
