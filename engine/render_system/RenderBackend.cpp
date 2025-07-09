@@ -3174,7 +3174,7 @@ namespace MFA::RenderBackend
         size_t bufferSize = 0;
         for (int i = 0; i < mipCount; i++)
         {
-            bufferSize += cpuTexture.GetMipmapBuffer(mipLevels[i])->Len();
+            bufferSize += cpuTexture.GetMipmapSize(mipLevels[i]);
         }
         return bufferSize;
     }

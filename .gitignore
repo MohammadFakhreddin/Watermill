@@ -132,3 +132,6 @@ cmake-build-debug-visual-studio
 cmake-build-release-visual-studio
 
 cmake-build-*/*
+
+*.ppm
+*.ktx2

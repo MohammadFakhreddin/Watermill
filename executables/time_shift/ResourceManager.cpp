@@ -35,12 +35,12 @@ void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & 
     std::string imagePath{nameRaw_};
 
     std::filesystem::path originalPath{imagePath};
-    std::filesystem::path ktx2Path = originalPath;
-    ktx2Path.replace_extension(".ktx2");
-
-    if (std::filesystem::exists(ktx2Path)) {
-        imagePath = ktx2Path.string();
-    }
+    // std::filesystem::path ktx2Path = originalPath;
+    // ktx2Path.replace_extension(".ktx2");
+    //
+    // if (std::filesystem::exists(ktx2Path)) {
+    //     imagePath = ktx2Path.string();
+    // }
 
     auto & [lock, imageWeak] = _imageMap[imagePath];
 
@@ -97,7 +97,12 @@ void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & 
         }
 
         auto const buffer = cpuTexture->GetMipmapBuffer(0);
-        MFA_ASSERT(buffer != nullptr && buffer->IsValid() == true);
+        if (buffer == nullptr || buffer->IsValid() == false)
+        {
+            MFA_LOG_WARN("Failed to load image: %s", name.c_str());
+            return;
+        }
+        // MFA_ASSERT(buffer != nullptr && buffer->IsValid() == true);
 
         std::vector<uint8_t> mipLevel{0};
         auto [gpuTexture, stageBuffer] = RB::CreateTexture(

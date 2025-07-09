@@ -274,6 +274,8 @@ namespace MFA
             Asset::Texture::Dimensions{.width = width, .height = height, .depth = 1}
         );
 
+        cpuTexture.SetMipmapSize(0, bytes->Len());
+
         cpuTexture.SetMipmapData(
             0,
             std::move(bytes)
