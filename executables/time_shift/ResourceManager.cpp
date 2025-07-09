@@ -1,11 +1,12 @@
 #include "ResourceManager.hpp"
 
 #include "BedrockPath.hpp"
-#include "LogicalDevice.hpp"
-#include "ScopeLock.hpp"
-#include "RenderTypes.hpp"
-#include "JobSystem.hpp"
 #include "ImportTexture.hpp"
+#include "JobSystem.hpp"
+#include "LogicalDevice.hpp"
+#include "RenderTypes.hpp"
+#include "ScopeLock.hpp"
+#include "Time.hpp"
 
 using namespace MFA;
 
@@ -50,9 +51,15 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
         return;
     }
 
+    std::weak_ptr rcWeak = shared_from_this();
     // TODO: In the new design, our functions should return a command buffer that they have allocated themselves and we just combine them together for execution
-    JobSystem::Instance()->AssignTask([name = std::string(name_)]()
+    JobSystem::Instance()->AssignTask([rcWeak, name = std::string(name_)]()
     {
+        if (rcWeak.lock() == nullptr)
+        {
+            return;
+        }
+
         auto * logicalDevice = LogicalDevice::Instance;
         auto * device = logicalDevice->GetVkDevice();
         auto * commandPool = logicalDevice->GetGraphicCommandPool();
@@ -93,27 +100,53 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
         auto & [lock, imageWeak] = instance->_imageMap[name];
         MFA_SCOPE_LOCK(lock);
 
-        QueuedImages item {};
-        item.gpuTexture = gpuTexture;
-        item.stageBuffer = stageBuffer;
-        item.commandBufferGroup = commandBufferGroup;
-        item.lifeTime = (int)LogicalDevice::Instance->GetMaxFramePerFlight() + 1;
-        instance->_activeBuffers.Push(item);
+        struct QueuedImages
+        {
+            std::shared_ptr<RenderTypes::GpuTexture> gpuTexture;
+            std::shared_ptr<RenderTypes::BufferAndMemory> stageBuffer;
+            std::shared_ptr<RenderTypes::CommandBufferGroup> commandBufferGroup;
+            int lifeTime = 0;
+        };
+        std::shared_ptr imageBuffer = std::make_shared<QueuedImages>(QueuedImages{
+            .gpuTexture = gpuTexture,
+            .stageBuffer = stageBuffer,
+            .commandBufferGroup = commandBufferGroup,
+            .lifeTime = (int)LogicalDevice::Instance->GetMaxFramePerFlight() + 1
+        });
+        Time::AddUpdateTask([imageBuffer]()->bool
+        {
+            imageBuffer->lifeTime -= 1;
+            if (imageBuffer->lifeTime < 0)
+            {
+                return false;
+            }
+            return true;
+        });
 
         imageWeak = gpuTexture;
 
-        instance->_nextUpdateTasks.Push([name = std::move(name), commandBuffer](ResourceManager * instance, const RT::CommandRecordState & recordState)
+        LogicalDevice::Instance->AddRenderTask([
+            rcWeak,
+            name = std::move(name),
+            commandBuffer
+        ](const RT::CommandRecordState & recordState)->bool
         {
             MFA_ASSERT(JobSystem::Instance() == nullptr || JobSystem::Instance()->IsMainThread() == true);
 
+            auto rc = rcWeak.lock();
+            if (rc == nullptr)
+            {
+                return false;
+            }
+
             vkCmdExecuteCommands(recordState.commandBuffer, 1, &commandBuffer);
 
-            auto & [lock, imageWeak] = instance->_imageMap[name];
+            auto & [lock, imageWeak] = rc->_imageMap[name];
             auto gpuTexture = imageWeak.lock();
             if (gpuTexture != nullptr)
             {
                 // I think it is better to call these callback from the main thread.
-                auto & imageCallbacks = instance->_imageCallbacks[name];
+                auto & imageCallbacks = rc->_imageCallbacks[name];
                 while (imageCallbacks.IsEmpty() == false)
                 {
                     auto callback = imageCallbacks.Pop();
@@ -121,52 +154,17 @@ void ResourceManager::RequestImage(char const * name_, const ImageCallback & cal
                 }
             }
 
-            instance->_imageCallbacks.erase(name);
+            rc->_imageCallbacks.erase(name);
 
+            return false;
         });
     });
 }
 
 //======================================================================================================================
 
-// std::future<std::shared_ptr<Blob>> ResourceManager::RequestBlob(char const * name, bool forceReload)
-// {
-//
-// }
-
-//======================================================================================================================
-
-void ResourceManager::UpdateBuffers(RT::CommandRecordState & recordState)
-{
-    while (_nextUpdateTasks.IsEmpty() == false)
-    {
-        auto task = _nextUpdateTasks.Pop();
-        task(this, recordState);
-    }
-
-    {
-        auto const  count = _activeBuffers.ItemCount();
-        for (int i = 0; i < count; i++)
-        {
-            auto item = _activeBuffers.Pop();
-            item.lifeTime -= 1;
-            if (item.lifeTime > 0)
-            {
-                _activeBuffers.Push(std::move(item));
-            }
-        }
-    }
-}
-
-//======================================================================================================================
-
 void ResourceManager::ForceCleanUp()
 {
-    while (_nextUpdateTasks.IsEmpty() == false)
-    {
-        _nextUpdateTasks.Pop();
-    }
-
     _imageMap.clear();
     _imageCallbacks.clear();
 }

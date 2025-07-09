@@ -327,18 +327,11 @@ void TimeShiftApp::Render(RT::CommandRecordState & recordState)
 {
     auto* device = LogicalDevice::Instance;
 
-    // device->BeginCommandBuffer(
-    //     recordState,
-    //     RT::CommandBufferType::Compute
-    // );
-    // device->EndCommandBuffer(recordState);
-
     device->BeginCommandBuffer(
         recordState,
         RT::CommandBufferType::Graphic
     );
 
-    ResourceManager::Instance()->UpdateBuffers(recordState);
     _currentScene->UpdateBuffer(recordState);
     _displayRenderPass->Begin(recordState);
     _currentScene->Render(recordState);
@@ -354,10 +347,6 @@ void TimeShiftApp::Resize()
     auto const * device = LogicalDevice::Instance;
     RB::DeviceWaitIdle(device->GetVkDevice());
 
-    // for (auto * scene : _scenes)
-    // {
-    //     scene->Resize();
-    // }
     if (_currentScene != nullptr)
     {
         _currentScene->Resize();

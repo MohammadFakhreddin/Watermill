@@ -171,6 +171,9 @@ namespace MFA
         [[nodiscard]]
         SDL_Window* GetWindow() const noexcept;
 
+        using RenderTask = std::function<bool(RT::CommandRecordState & recordState)>;
+        void AddRenderTask(RenderTask renderTask);
+
     private:
 
         void UpdateSurface();
@@ -239,6 +242,8 @@ namespace MFA
         VkSurfaceFormatKHR _surfaceFormat{};
 
         VkDebugReportCallbackEXT _vkDebugReportCallbackExt {};
+
+        ThreadSafeQueue<RenderTask> _renderTasks{};
 
     };
 

@@ -7,6 +7,7 @@
 #include "camera/ObserverCamera.hpp"
 #include "ResourceManager.hpp"
 #include "JobSystem.hpp"
+#include "Time.hpp"
 
 #include <iostream>
 #include <utility>
@@ -80,21 +81,6 @@ void GameScene::Update(float const deltaTime)
 void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
 {
     _webViewContainer->UpdateBuffer(recordState);
-
-    while (_nextUpdateTasks.IsEmpty() == false)
-    {
-        auto task = _nextUpdateTasks.Pop();
-        task(this, recordState);
-    }
-
-    for (int i = _temporaryMemories.size() - 1; i >= 0; i--)
-    {
-        --_temporaryMemories[i].lifeTime;
-        if (_temporaryMemories[i].lifeTime <= 0)
-        {
-            _temporaryMemories.erase(_temporaryMemories.begin() + i);
-        }
-    }
 }
 
 //======================================================================================================================
@@ -253,24 +239,47 @@ void GameScene::ReadLevelFromJson()
                     std::shared_ptr imageData = std::move(imageData_);
                     std::shared_ptr tempData = std::move(tempData_);
 
-                    scene->_nextUpdateTasks.Push([
+                    LogicalDevice::Instance->AddRenderTask([
+                        sceneRef,
                         spriteIndex,
                         tempData,
                         imageData,
                         gpuTexture = std::move(gpuTexture),
                         commandBufferGroup
-                    ](GameScene * scene, MFA::RenderTypes::CommandRecordState & recordState)->void
+                    ](MFA::RT::CommandRecordState & recordState)->bool
                     {
+                        auto scenePtr = sceneRef.lock();
+                        if (scenePtr == nullptr)
+                        {
+                            return false;
+                        }
+                        auto * scene = (GameScene *)scenePtr.get();
+
                         vkCmdExecuteCommands(
                             recordState.commandBuffer,
                             commandBufferGroup->commandBuffers.size(),
                             commandBufferGroup->commandBuffers.data()
                         );
 
-                        scene->_temporaryMemories.emplace_back(TemporaryMemory{
+                        struct TemporaryMemory
+                        {
+                            int lifeTime = 0;
+                            std::shared_ptr<SpriteRenderer::CommandBufferData> memory;
+                            std::shared_ptr<MFA::RT::CommandBufferGroup> commandBuffer;
+                        };
+                        auto tempMemory = std::make_shared<TemporaryMemory>(TemporaryMemory{
                             .lifeTime = (int)LogicalDevice::Instance->GetMaxFramePerFlight() + 1,
-                            .memory = std::move(tempData),
-                            .commandBuffer = std::move(commandBufferGroup)
+                            .memory = tempData,
+                            .commandBuffer = commandBufferGroup
+                        });
+                        Time::AddUpdateTask([tempMemory]()->bool
+                        {
+                            tempMemory->lifeTime -= 1;
+                            if (tempMemory->lifeTime <= 0)
+                            {
+                                return false;
+                            }
+                            return true;
                         });
 
                         std::shared_ptr mySprite = std::make_shared<Sprite>();
@@ -314,8 +323,9 @@ void GameScene::ReadLevelFromJson()
                                 scene->_instances.emplace_back(std::move(myInstance));
                             }
                         }
-                    });
 
+                        return false;
+                    });
                 });
             });
         }

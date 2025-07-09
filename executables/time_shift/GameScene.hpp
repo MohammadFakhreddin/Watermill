@@ -1,15 +1,13 @@
 #pragma once
 
-#include <future>
-
-
 #include "GenerateGame.h"
 #include "IScene.hpp"
 #include "SpriteRenderer.hpp"
-#include "ThreadSafeQueue.hpp"
 #include "Transform.hpp"
 #include "WebViewContainer.hpp"
 #include "camera/ArcballCamera.hpp"
+
+#include <future>
 
 class GameScene final : public IScene
 {
@@ -76,16 +74,6 @@ private:
         glm::vec4 color;
     };
     std::vector<std::shared_ptr<SpriteInstance>> _instances;
-    // TODO: Instance rendering
-
-    struct TemporaryMemory
-    {
-        int lifeTime = 0;
-        std::shared_ptr<SpriteRenderer::CommandBufferData> memory;
-        std::shared_ptr<MFA::RT::CommandBufferGroup> commandBuffer;
-    };
-    std::vector<TemporaryMemory> _temporaryMemories;
-
     std::shared_ptr<SpriteRenderer> _spriteRenderer;
 
     float _cameraLeft{};
@@ -102,7 +90,5 @@ private:
     GumboNode * _timeText = nullptr;
 
     float _passedTime{};
-
-    MFA::ThreadSafeQueue<std::function<void(GameScene * scene, MFA::RenderTypes::CommandRecordState &recordState)>> _nextUpdateTasks{};
 
 };

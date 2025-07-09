@@ -67,6 +67,10 @@ namespace MFA
 
     void Time::AddUpdateTask(UpdateTask task)
     {
+        if (Instance == nullptr)
+        {
+            return;
+        }
         Instance->_updateTasks.Push(std::move(task));
     }
 

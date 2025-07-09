@@ -145,8 +145,7 @@ namespace MFA::RenderTypes
 	{
 	    if (Time::HasInstance())
 	    {
-	        // Am I causing a new memory leak ?
-            CommandPoolGroup * myCommandPool = &commandPool;
+	        CommandPoolGroup * myCommandPool = &commandPool;
             Time::AddUpdateTask([commandBuffers = std::move(commandBuffers), myCommandPool]()->bool
             {
                 // We try to lock without the spin loop

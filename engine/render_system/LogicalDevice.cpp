@@ -713,6 +713,14 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
+    void LogicalDevice::AddRenderTask(RenderTask renderTask)
+    {
+        MFA_ASSERT(renderTask != nullptr);
+        _renderTasks.Push(std::move(renderTask));
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
     VkCommandBuffer LogicalDevice::GetComputeCommandBuffer(RT::CommandRecordState const& recordState) const
     {
         return _computeCommandBuffer->commandBuffers[recordState.frameIndex];
@@ -766,6 +774,16 @@ namespace MFA
 
         recordState.commandBufferType = commandBufferType;
         recordState.commandBuffer = commandBuffer;
+
+        int const count = (int)_renderTasks.ItemCount();
+        for (int i = 0; i < count; i++)
+        {
+            auto const task = _renderTasks.Pop();
+            if (task(recordState) == true)
+            {
+                _renderTasks.Push(task);
+            }
+        }
     }
 
     //-------------------------------------------------------------------------------------------------
