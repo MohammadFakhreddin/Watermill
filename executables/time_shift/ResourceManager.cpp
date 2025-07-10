@@ -34,13 +34,29 @@ void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & 
 
     std::string imagePath{nameRaw_};
 
-    std::filesystem::path originalPath{imagePath};
-    std::filesystem::path ktx2Path = originalPath;
-    ktx2Path.replace_extension(".ktx2");
-
-    if (std::filesystem::exists(ktx2Path)) {
-        imagePath = ktx2Path.string();
+    {
+        std::filesystem::path originalPath{imagePath};
+        int mipIdx = 0;
+        while (true)
+        {
+            auto mipPath = (originalPath.parent_path() / originalPath.stem()).string() + "_mip_" + std::to_string(mipIdx) + originalPath.extension().string();
+            if (std::filesystem::exists(mipPath) == true)
+            {
+                imagePath = mipPath;
+                mipIdx += 1;
+            }
+            else
+            {
+                break;
+            }
+        }
     }
+    // std::filesystem::path ktx2Path = originalPath;
+    // ktx2Path.replace_extension(".ktx2");
+    //
+    // if (std::filesystem::exists(ktx2Path)) {
+    //     imagePath = ktx2Path.string();
+    // }
 
     auto & imageWeak = _imageMap[imagePath];
 
