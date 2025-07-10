@@ -276,8 +276,8 @@ namespace MFA::Importer
 
     static Format MapVkFormat(ktx_uint32_t vkFormat) {
         switch (vkFormat) {
+            case VK_FORMAT_R8G8B8A8_SRGB: //return Format::UNCOMPRESSED_UNORM_R8G8B8A8_SRGB;              // VK_FORMAT_R8G8B8A8_SRGB
             case VK_FORMAT_R8G8B8A8_UNORM: return Format::UNCOMPRESSED_UNORM_R8G8B8A8_LINEAR;           // VK_FORMAT_R8G8B8A8_UNORM
-            case VK_FORMAT_R8G8B8A8_SRGB: return Format::UNCOMPRESSED_UNORM_R8G8B8A8_SRGB;              // VK_FORMAT_R8G8B8A8_SRGB
             case VK_FORMAT_R16G16B16A16_UNORM: return Format::UNCOMPRESSED_UNORM_R16G16B16A16_LINEAR;   // VK_FORMAT_R16G16B16A16_UNORM
             case VK_FORMAT_BC7_UNORM_BLOCK: return Format::BC7_UNorm_Linear_RGBA;                       // VK_FORMAT_BC7_UNORM_BLOCK
             case VK_FORMAT_BC7_SRGB_BLOCK: return Format::BC7_UNorm_sRGB_RGBA;                          // VK_FORMAT_BC7_SRGB_BLOCK
@@ -328,16 +328,15 @@ namespace MFA::Importer
     {
         // TODO: Multiple face is not supported yet.
         auto * texture = (AS::Texture *)userData;
-        texture->SetMipmapDimension(0/*mipLevel*/, AS::Texture::Dimensions{
+        texture->SetMipmapDimension(mipLevel, AS::Texture::Dimensions{
             .width = static_cast<uint32_t>(width),
             .height = static_cast<uint32_t>(height),
             .depth = (uint16_t)depth
         });
-        texture->SetMipmapSize(0/*mipLevel*/, faceLodSize);
+        texture->SetMipmapSize(mipLevel, faceLodSize);
         auto blob = Memory::AllocSize(faceLodSize);
-        // Memory::Copy(blob, pixels);
         std::memcpy(blob->Ptr(), pixels, blob->Len());
-        texture->SetMipmapData(mipLevel/*mipLevel*/, std::move(blob));
+        texture->SetMipmapData(mipLevel, std::move(blob));
 
         return KTX_SUCCESS;
     }

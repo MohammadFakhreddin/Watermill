@@ -27,7 +27,7 @@ namespace MFA::Asset
 	    MFA_ASSERT(format != Format::INVALID);
 		MFA_ASSERT(slices > 0);
 		MFA_ASSERT(depth > 0);
-		MFA_ASSERT(mipCount > 0);
+	MFA_ASSERT(mipCount > 0);
 
 	    mMipmaps.resize(mMipCount);
 	}
