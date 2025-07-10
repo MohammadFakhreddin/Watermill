@@ -278,6 +278,7 @@ namespace MFA::Importer
         switch (vkFormat) {
             case VK_FORMAT_R8G8B8A8_UNORM: return Format::UNCOMPRESSED_UNORM_R8G8B8A8_LINEAR;           // VK_FORMAT_R8G8B8A8_UNORM
             case VK_FORMAT_R8G8B8A8_SRGB: return Format::UNCOMPRESSED_UNORM_R8G8B8A8_SRGB;              // VK_FORMAT_R8G8B8A8_SRGB
+            case VK_FORMAT_R16G16B16A16_UNORM: return Format::UNCOMPRESSED_UNORM_R16G16B16A16_LINEAR;   // VK_FORMAT_R16G16B16A16_UNORM
             case VK_FORMAT_BC7_UNORM_BLOCK: return Format::BC7_UNorm_Linear_RGBA;                       // VK_FORMAT_BC7_UNORM_BLOCK
             case VK_FORMAT_BC7_SRGB_BLOCK: return Format::BC7_UNorm_sRGB_RGBA;                          // VK_FORMAT_BC7_SRGB_BLOCK
             case VK_FORMAT_BC6H_UFLOAT_BLOCK: return Format::BC6H_UFloat_Linear_RGB;                    // VK_FORMAT_BC6H_UFLOAT_BLOCK
@@ -310,7 +311,7 @@ namespace MFA::Importer
             case VK_FORMAT_ASTC_12x10_SRGB_BLOCK: return Format::ASTC_12x10_SRGB_BLOCK;
             case VK_FORMAT_ASTC_12x12_UNORM_BLOCK: return Format::ASTC_12x12_UNORM_BLOCK;
             case VK_FORMAT_ASTC_12x12_SRGB_BLOCK: return Format::ASTC_12x12_SRGB_BLOCK;
-            default: return Format::INVALID;
+            default: MFA_ASSERT(false); return Format::INVALID;
         }
     }
 
@@ -336,9 +337,9 @@ namespace MFA::Importer
         auto blob = Memory::AllocSize(faceLodSize);
         // Memory::Copy(blob, pixels);
         std::memcpy(blob->Ptr(), pixels, blob->Len());
-        texture->SetMipmapData(0/*mipLevel*/, std::move(blob));
+        texture->SetMipmapData(mipLevel/*mipLevel*/, std::move(blob));
 
-        return KTX_OUT_OF_MEMORY;
+        return KTX_SUCCESS;
     }
 
     std::shared_ptr<Asset::Texture> LoadKtxMetadata(char const *path)
@@ -349,8 +350,8 @@ namespace MFA::Importer
 
         FILE* fp = fopen(path, "rb");
         MFA_ASSERT(fp != nullptr);
-        // auto result = ktxTexture_CreateFromStdioStream(fp, KTX_TEXTURE_CREATE_NO_FLAGS, &ktx);
-        auto result = ktxTexture_CreateFromNamedFile(path, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx);
+        auto result = ktxTexture_CreateFromStdioStream(fp, KTX_TEXTURE_CREATE_NO_FLAGS, &ktx);
+        // auto result = ktxTexture_CreateFromNamedFile(path, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx);
 
         MFA_DEFFER([&ktx]()->void
         {

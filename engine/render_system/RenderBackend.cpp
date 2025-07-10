@@ -3139,6 +3139,8 @@ namespace MFA::RenderBackend
             return VkFormat::VK_FORMAT_R8G8B8A8_SRGB;
         case Format::UNCOMPRESSED_UNORM_R8G8B8A8_LINEAR:
             return VkFormat::VK_FORMAT_R8G8B8A8_UNORM;
+        case Format::UNCOMPRESSED_UNORM_R16G16B16A16_LINEAR:
+            return VkFormat::VK_FORMAT_R16G16B16A16_UNORM;
         case Format::BC4_SNorm_Linear_R:
             return VkFormat::VK_FORMAT_BC4_SNORM_BLOCK;
         case Format::BC4_UNorm_Linear_R:
