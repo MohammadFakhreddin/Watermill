@@ -47,9 +47,7 @@ public:
 
 private:
 
-    void ReadLevelFromJson();
-
-    std::future<LevelParser> _jsonTask{};
+    void ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser);
 
     std::unique_ptr<WebViewContainer> _webViewContainer;
     std::vector<litehtml::element::ptr> _buttons{};
@@ -59,16 +57,11 @@ private:
 
     std::vector<std::shared_ptr<MFA::Transform>> _transforms;
 
-    struct Sprite
-    {
-        std::shared_ptr<SpriteRenderer::SpriteData> spriteData;
-        std::shared_ptr<MFA::RT::GpuTexture> gpuTexture;
-    };
-    std::vector<std::shared_ptr<Sprite>> _sprites;
+    std::vector<std::shared_ptr<SpriteRenderer::Sprite>> _sprites;
 
     struct SpriteInstance
     {
-        Sprite * sprite;
+        SpriteRenderer::Sprite * sprite;
         MFA::Transform * transform;
         glm::mat4 scaleMat;
         glm::vec4 color;
@@ -84,11 +77,11 @@ private:
     float _cameraFar{};
     glm::vec3 _mainCameraPosition{};
 
-    // Temporary, We have to remove this object
-    std::optional<LevelParser> levelContent;
-
     GumboNode * _timeText = nullptr;
 
     float _passedTime{};
+
+    bool _initialized = false;
+    bool _isReadyToRender = false;
 
 };

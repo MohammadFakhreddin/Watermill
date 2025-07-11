@@ -42,9 +42,16 @@ public:
     void BindPipeline(MFA::RT::CommandRecordState &recordState) const;
 
     [[nodiscard]]
-    MFA::RT::DescriptorSetGroup CreateDescriptorSet(MFA::RT::GpuTexture const &texture);
+    MFA::RT::DescriptorSetGroup CreateDescriptorSet(
+        int count,
+        MFA::RT::GpuTexture const &texture
+    );
 
-    void UpdateDescriptorSet(MFA::RT::DescriptorSetGroup &descriptorSetGroup, MFA::RT::GpuTexture const &texture) const;
+    void UpdateDescriptorSet(
+        int frameIndex,
+        MFA::RT::DescriptorSetGroup &descriptorSetGroup,
+        MFA::RT::GpuTexture const &texture
+    ) const;
 
     void FreeDescriptorSet(MFA::RT::DescriptorSetGroup &descriptorSetGroup);
 

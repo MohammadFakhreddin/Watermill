@@ -25,61 +25,134 @@ std::shared_ptr<ResourceManager> ResourceManager::Instance(bool const createNewI
 
 //======================================================================================================================
 
+ResourceManager::ResourceManager()
+{
+    // TODO: The other approach should have worked as well
+    // LogicalDevice::Instance->AddRenderTask([](RT::CommandRecordState & recordState)->bool
+    // {
+    auto * logicalDevice = LogicalDevice::Instance;
+    auto * device = logicalDevice->GetVkDevice();
+    auto * physicalDevice = logicalDevice->GetPhysicalDevice();
+    auto * commandPool = logicalDevice->GetGraphicCommandPool();
+    auto * graphicQueue = logicalDevice->GetGraphicQueue();
+
+    auto commandBuffer = RB::BeginSingleTimeCommand(device, *commandPool);
+
+    auto cpuTexture = Importer::ErrorTexture();
+    std::vector<uint8_t> mipLevel{0};
+    auto [gpuTexture, stageBuffer] = RB::CreateTexture(
+        *cpuTexture,
+        device,
+        physicalDevice,
+        // recordState.commandBuffer,
+        commandBuffer,
+        (int)mipLevel.size(),
+        mipLevel.data()
+    );
+
+    _errorTexture = std::move(gpuTexture);
+
+    RB::EndAndSubmitSingleTimeCommand(device, *commandPool, graphicQueue, commandBuffer);
+        // return false;
+    // });
+}
+
+//======================================================================================================================
+
 ResourceManager::~ResourceManager() = default;
 
 //======================================================================================================================
 
-void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & callback, bool const forceReload)
+void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & callback)
 {
 
     std::string imagePath{nameRaw_};
 
+    auto & lock = _lockMap[imagePath];
+    MFA_SCOPE_LOCK(lock);
+
+    auto & imageData = _imageMap[imagePath];
+    if (imageData == nullptr)
     {
+        imageData = std::make_shared<ImageData>();
+        imageData->path = imagePath;
+        imageData->currentMipLevel = -1;
+
         std::filesystem::path originalPath{imagePath};
+        std::filesystem::path parentPath = originalPath.parent_path().string();
+        std::filesystem::path stem = originalPath.stem().string();
+        std::string extension = originalPath.extension().string();
+
         int mipIdx = 0;
-        while (true)
+        while(true)
         {
-            auto mipPath = (originalPath.parent_path() / originalPath.stem()).string() + "_mip_" + std::to_string(mipIdx) + originalPath.extension().string();
-            if (std::filesystem::exists(mipPath) == true)
-            {
-                imagePath = mipPath;
-                mipIdx += 1;
-            }
-            else
+            auto mipPath = (parentPath / stem).string() + "_mip_" + std::to_string(mipIdx) + extension;
+            if (std::filesystem::exists(mipPath) == false)
             {
                 break;
             }
+            ++mipIdx;
+        }
+
+        imageData->mipCount = mipIdx;
+        imageData->hasMipmaps = mipIdx > 0;
+        imageData->currentMipLevel = imageData->mipCount;
+    }
+    else
+    {
+        auto imageShared = imageData->gpuTexture.lock();
+        if (imageShared != nullptr)
+        {
+            callback(imageShared);
+
+            // We have loaded the highest mip level already
+            if (imageData->hasMipmaps == false || imageData->currentMipLevel == 0)
+            {
+                return;
+            }
         }
     }
-    // std::filesystem::path ktx2Path = originalPath;
-    // ktx2Path.replace_extension(".ktx2");
-    //
-    // if (std::filesystem::exists(ktx2Path)) {
-    //     imagePath = ktx2Path.string();
-    // }
 
-    auto & imageWeak = _imageMap[imagePath];
-
-    // auto & [lock, imageWeak] = _imageMap[imagePath];
-    // MFA_SCOPE_LOCK(lock);
-
-    auto imageShared = imageWeak.lock();
-    if (imageShared != nullptr && forceReload == false)
+    imageData->callbacks.Push(callback);
+    // To make sure we are not requesting things multiple times
+    if (imageData->callbacks.ItemCount() != 1)
     {
-        callback(imageShared);
         return;
     }
 
-    _imageCallbacks[imagePath].Push(callback);
-    // To make sure we are not requesting things multiple times
-    if (_imageCallbacks[imagePath].ItemCount() != 1)
+    imageData->currentMipLevel = imageData->mipCount;
+    RequestNextMipmap(*imageData, imageData->currentMipLevel - 1);
+}
+
+//======================================================================================================================
+
+void ResourceManager::ForceCleanUp()
+{
+    _imageMap.clear();
+    _lockMap.clear();
+}
+
+//======================================================================================================================
+
+void ResourceManager::RequestNextMipmap(ImageData &imageData, int nextMipLevel)
+{
+    MFA_ASSERT(nextMipLevel >= 0);
+
+    std::string imagePath{imageData.path};
+    if (imageData.hasMipmaps == true)
     {
-        return;
+        std::filesystem::path originalPath{imagePath};
+        std::filesystem::path parentPath = originalPath.parent_path().string();
+        std::filesystem::path stem = originalPath.stem().string();
+        std::string extension = originalPath.extension().string();
+        auto mipPath = (parentPath / stem).string() + "_mip_" + std::to_string(nextMipLevel) + originalPath.extension().string();
+
+        imagePath = mipPath;
     }
 
     std::weak_ptr rcWeak = shared_from_this();
     // TODO: In the new design, our functions should return a command buffer that they have allocated themselves and we just combine them together for execution
-    JobSystem::Instance()->AssignTask([rcWeak, name = std::string(imagePath)]()
+    JobSystem::Instance()->AssignTask([rcWeak, name = std::string(imagePath), &imageData, nextMipLevel]()
     {
         if (rcWeak.lock() == nullptr)
         {
@@ -90,7 +163,6 @@ void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & 
         auto * device = logicalDevice->GetVkDevice();
         auto * commandPool = logicalDevice->GetGraphicCommandPool();
         auto * physicalDevice = logicalDevice->GetPhysicalDevice();
-        MFA_SCOPE_LOCK(commandPool->lock);
 
         auto commandBufferGroup = RB::BeginSecondaryCommand(
             device,
@@ -137,10 +209,6 @@ void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & 
             return;
         }
 
-        auto & imageWeak = instance->_imageMap[name];
-        // auto & [lock, imageWeak] = instance->_imageMap[name];
-        // MFA_SCOPE_LOCK(lock);
-
         struct QueuedImages
         {
             std::shared_ptr<RenderTypes::GpuTexture> gpuTexture;
@@ -164,67 +232,61 @@ void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & 
             return true;
         });
 
-        imageWeak = gpuTexture;
+        imageData.gpuTexture = gpuTexture;
+        imageData.currentMipLevel = nextMipLevel;
 
         LogicalDevice::Instance->AddRenderTask([
             rcWeak,
             name = std::move(name),
-            commandBuffer
+            commandBuffer,
+            &imageData
         ](const RT::CommandRecordState & recordState)->bool
         {
             MFA_ASSERT(JobSystem::Instance() == nullptr || JobSystem::Instance()->IsMainThread() == true);
 
+            auto rc = rcWeak.lock();
+            if (rc == nullptr)
+            {
+                return false;
+            }
+
             vkCmdExecuteCommands(recordState.commandBuffer, 1, &commandBuffer);
 
-            Time::AddUpdateTask([rcWeak, name]()->bool
+            auto & lock = rc->_lockMap[imageData.path];
+            MFA_SCOPE_LOCK(lock);
+
+            auto gpuTexture = imageData.gpuTexture.lock();
+            if (gpuTexture == nullptr)
             {
-                auto rc = rcWeak.lock();
-                if (rc == nullptr)
-                {
-                    return false;
-                }
-
-                // TODO: This should run on time and remove pop and replace with tryPop
-                auto & imageWeak = rc->_imageMap[name];
-                // auto & [lock, imageWeak] = rc->_imageMap[name];
-                auto gpuTexture = imageWeak.lock();
-                if (gpuTexture != nullptr)
-                {
-                    // I think it is better to call these callback from the main thread.
-                    auto & imageCallbacks = rc->_imageCallbacks[name];
-                    while (imageCallbacks.IsEmpty() == false)
-                    {
-                        bool isEmpty;
-                        std::function<void(std::shared_ptr<RenderTypes::GpuTexture>)> callback;
-                        if (imageCallbacks.TryToPop(callback, isEmpty))
-                        {
-                            callback(gpuTexture);
-                        }
-                        else // We failed to get the lock so try again next frame. (There is a risk for starvation)
-                        {
-                            return true;
-                        }
-                        // auto callback = imageCallbacks.Pop();
-                        // callback(gpuTexture);
-                    }
-                }
-
-                rc->_imageCallbacks.erase(name);
-
                 return false;
-            });
+            }
+
+            for (int i = 0; i < imageData.callbacks2.size(); ++i)
+            {
+                auto & callback = imageData.callbacks2[i];
+                callback(gpuTexture);
+            }
+
+            auto & imageCallbacks = imageData.callbacks;
+            while (imageCallbacks.IsEmpty() == false)
+            {
+                auto callback = imageCallbacks.Pop();
+                callback(gpuTexture);
+                imageData.callbacks2.emplace_back(callback);
+            }
+
+            if (imageData.hasMipmaps == true && imageData.currentMipLevel > 0)
+            {
+                rc->RequestNextMipmap(imageData, imageData.currentMipLevel - 1);
+            }
+            else
+            {
+                imageData.callbacks2.clear();
+            }
 
             return false;
         });
     });
-}
-
-//======================================================================================================================
-
-void ResourceManager::ForceCleanUp()
-{
-    _imageMap.clear();
-    _imageCallbacks.clear();
 }
 
 //======================================================================================================================

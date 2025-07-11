@@ -3,6 +3,7 @@
 #include "BedrockLog.hpp"
 #include "BedrockAssert.hpp"
 #include "BedrockString.hpp"
+#include "ScopeLock.hpp"
 
 #include <cstdio>
 #include <set>
@@ -734,6 +735,8 @@ namespace MFA::RenderBackend
         VkCommandBufferLevel level
     )
     {
+        MFA_SCOPE_LOCK(commandPool.lock);
+
         std::vector<VkCommandBuffer> commandBuffers(count);
 
         VkCommandBufferAllocateInfo allocInfo = {};
@@ -3271,88 +3274,6 @@ namespace MFA::RenderBackend
             mipCount,
             mipLevels
         );
-        // if (cpuTexture.isValid())
-        // {
-        //     auto const format = cpuTexture.GetFormat();
-        //     auto const mipCount = cpuTexture.GetMipCount();
-        //     auto const sliceCount = cpuTexture.GetSlices();
-        //     auto const& largestMipmapInfo = cpuTexture.GetMipmap(0);
-        //     auto const buffer = cpuTexture.GetBuffer();
-        //     MFA_ASSERT(buffer != nullptr && buffer->IsValid() == true);
-        //     // Create upload buffer
-        //     auto const uploadBufferGroup = CreateBuffer(    // TODO: We can cache this buffer
-        //         device,
-        //         physicalDevice,
-        //         buffer->Len(),
-        //         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        //         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-        //     );
-        //
-        //     // Map texture data to buffer
-        //     CopyDataToHostVisibleBuffer(device, uploadBufferGroup->memory, *buffer);
-        //
-        //     auto const vulkan_format = ConvertCpuTextureFormatToGpu(format);
-        //
-        //     auto imageGroup = CreateImage(
-        //         device,
-        //         physicalDevice,
-        //         largestMipmapInfo.dimension.width,
-        //         largestMipmapInfo.dimension.height,
-        //         static_cast<uint32_t>(largestMipmapInfo.dimension.depth),
-        //         mipCount,
-        //         sliceCount,
-        //         vulkan_format,
-        //         VK_IMAGE_TILING_OPTIMAL,
-        //         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        //         VK_SAMPLE_COUNT_1_BIT,
-        //         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        //     );
-        //
-        //     TransferImageLayout(
-        //         device,
-        //         commandBuffer,
-        //         imageGroup->image,
-        //         VK_IMAGE_LAYOUT_UNDEFINED,
-        //         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        //         mipCount,
-        //         sliceCount
-        //     );
-        //
-        //     CopyBufferToImage(
-        //         device,
-        //         commandBuffer,
-        //         uploadBufferGroup->buffer,
-        //         imageGroup->image,
-        //         cpuTexture
-        //     );
-        //
-        //     TransferImageLayout(
-        //         device,
-        //         commandBuffer,
-        //         imageGroup->image,
-        //         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        //         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        //         mipCount,
-        //         sliceCount
-        //     );
-        //
-        //     auto imageView = CreateImageView(
-        //         device,
-        //         imageGroup->image,
-        //         vulkan_format,
-        //         VK_IMAGE_ASPECT_COLOR_BIT,
-        //         mipCount,
-        //         sliceCount,
-        //         VK_IMAGE_VIEW_TYPE_2D
-        //     );
-        //
-        //     std::shared_ptr<RT::GpuTexture> gpuTexture = std::make_shared<RT::GpuTexture>(
-        //         imageGroup,
-        //         imageView
-        //     );
-        //     return { gpuTexture, uploadBufferGroup };
-        // }
-        // return {nullptr, nullptr};
     }
 
     // For this game there was no need to switch between dynamic lods

@@ -143,33 +143,33 @@ namespace MFA::RenderTypes
 
     CommandBufferGroup::~CommandBufferGroup()
 	{
-	    if (Time::HasInstance())
+	    auto device = LogicalDevice::Instance;
+	    if (device)
 	    {
 	        CommandPoolGroup * myCommandPool = &commandPool;
-            Time::AddUpdateTask([commandBuffers = std::move(commandBuffers), myCommandPool]()->bool
+	        std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight() + 1);
+            device->AddRenderTask([commandBuffers = commandBuffers, myCommandPool, counter = std::move(counter)](CommandRecordState const & recordState)->bool
             {
-                // We try to lock without the spin loop
-                if (TryLock(myCommandPool->lock))
+                (*counter) -= 1;
+                if ((*counter) <= 0)
                 {
-                    auto logicalDevice = LogicalDevice::Instance;
-                    RB::DestroyCommandBuffers(
-                        logicalDevice->GetVkDevice(),
-                        *myCommandPool,
-                        commandBuffers.size(),
-                        commandBuffers.data()
-                    );
-                    Unlock(myCommandPool->lock);
-                    // Releasing the update
-                    return false;
+                    // We try to lock without the spin loop
+                    if (TryLock(myCommandPool->lock))
+                    {
+                        auto logicalDevice = LogicalDevice::Instance;
+                        RB::DestroyCommandBuffers(
+                            logicalDevice->GetVkDevice(),
+                            *myCommandPool,
+                            commandBuffers.size(),
+                            commandBuffers.data()
+                        );
+                        Unlock(myCommandPool->lock);
+                        // Releasing the update
+                        return false;
+                    }
                 }
                 return true;
             });
-	    }
-	    else
-	    {
-	        MFA_SCOPE_LOCK(commandPool.lock);
-	        auto logicalDevice = LogicalDevice::Instance;
-	        RB::DestroyCommandBuffers(logicalDevice->GetVkDevice(), commandPool, commandBuffers.size(), commandBuffers.data());
 	    }
 	}
 

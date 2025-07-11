@@ -56,17 +56,21 @@ void SpritePipeline::BindPipeline(MFA::RT::CommandRecordState &recordState) cons
 
 //======================================================================================================================
 
-MFA::RT::DescriptorSetGroup SpritePipeline::CreateDescriptorSet(MFA::RT::GpuTexture const &texture)
+MFA::RT::DescriptorSetGroup SpritePipeline::CreateDescriptorSet(int count, MFA::RT::GpuTexture const &texture)
 {
+    MFA_ASSERT(count >= 1);
     MFA_SCOPE_LOCK(_descriptorPoolLock);
     auto descriptorSetGroup = RB::CreateDescriptorSet(
         LogicalDevice::Instance->GetVkDevice(),
         _descriptorPool->descriptorPool,
         _descriptorLayout->descriptorSetLayout,
-        1
+        count
     );
 
-    UpdateDescriptorSet(descriptorSetGroup, texture);
+    for (int i = 0; i < count; ++i)
+    {
+        UpdateDescriptorSet(i, descriptorSetGroup, texture);
+    }
 
     return descriptorSetGroup;
 }
@@ -74,13 +78,12 @@ MFA::RT::DescriptorSetGroup SpritePipeline::CreateDescriptorSet(MFA::RT::GpuText
 //======================================================================================================================
 
 void SpritePipeline::UpdateDescriptorSet(
+    int frameIndex,
     MFA::RT::DescriptorSetGroup &descriptorSetGroup,
     MFA::RT::GpuTexture const &texture
 ) const
 {
-    MFA_ASSERT(descriptorSetGroup.descriptorSets.size() == 1);
-
-    auto const &descriptorSet = descriptorSetGroup.descriptorSets[0];
+    auto const &descriptorSet = descriptorSetGroup.descriptorSets[frameIndex];
     MFA_ASSERT(descriptorSet != VK_NULL_HANDLE);
 
     DescriptorSetSchema schema{descriptorSet};
