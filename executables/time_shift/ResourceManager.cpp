@@ -138,7 +138,7 @@ void ResourceManager::RequestNextMipmap(ImageData &imageData, int nextMipLevel)
 {
     MFA_ASSERT(nextMipLevel >= 0);
 
-    std::string imagePath{imageData.path};
+    std::string imagePath{imageData.path.string()};
     if (imageData.hasMipmaps == true)
     {
         std::filesystem::path originalPath{imagePath};
@@ -252,7 +252,7 @@ void ResourceManager::RequestNextMipmap(ImageData &imageData, int nextMipLevel)
 
             vkCmdExecuteCommands(recordState.commandBuffer, 1, &commandBuffer);
 
-            auto & lock = rc->_lockMap[imageData.path];
+            auto & lock = rc->_lockMap[imageData.path.string()];
             MFA_SCOPE_LOCK(lock);
 
             auto gpuTexture = imageData.gpuTexture.lock();
