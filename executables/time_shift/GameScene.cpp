@@ -205,33 +205,114 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
 
     auto errorTexture = ResourceManager::Instance()->ErrorTexture();
 
+    std::unordered_map<int, std::shared_ptr<RT::BufferAndMemory>> vertexBuffers{};
+    std::unordered_map<int, std::tuple<std::shared_ptr<RT::BufferAndMemory>, int>> indexBuffers{};
+
+    auto const & rawBuffers = levelParser->GetBuffers();
+    auto const & rawBlob = levelParser->GetBlob();
     std::vector<std::shared_ptr<RT::BufferGroup>> stageBuffers;
+
+    for (int bIdx = 0; bIdx < rawBuffers.size(); ++bIdx)
+    {
+        auto const & rawBuffer = rawBuffers[bIdx];
+
+        auto const & bufferType = rawBuffer->type;
+        auto const & bufferOffset = rawBuffer->offset;
+        auto const & bufferSize = rawBuffer->size;
+
+        MFA_ASSERT(bufferOffset >= 0);
+        MFA_ASSERT(bufferSize > 0);
+        MFA_ASSERT(rawBlob->IsValid());
+        MFA_ASSERT((rawBlob->Len() >= bufferOffset + bufferSize));
+
+        if (bufferType == LevelParser::BufferType::VertexBuffer)
+        {
+            auto levelVertices = reinterpret_cast<LevelParser::Vertex *>(rawBlob->Ptr() + bufferOffset);
+            size_t oVsCount = bufferSize / sizeof(LevelParser::Vertex);
+            MFA_ASSERT(oVsCount > 0);
+
+            std::vector<SpritePipeline::Position> positions(oVsCount);
+            std::vector<SpritePipeline::UV> uvs(oVsCount);
+            for (size_t i = 0; i < oVsCount; ++i)
+            {
+                auto const & levelVertex = levelVertices[i];
+                auto & position = positions[i];
+                auto & uv = uvs[i];
+
+                position = glm::vec4{levelVertex.position, 0.0f, 1.0f};
+
+                uv.x = levelVertex.uv.x;
+                uv.y = 1.0f - levelVertex.uv.y;
+            }
+
+            auto [vertexBuffer, vertexStageBuffer] = _spriteRenderer->AllocateVertexBuffer(
+                commandBuffer,
+                (int)positions.size(),
+                positions.data(),
+                uvs.data()
+            );
+
+            vertexBuffers.emplace(bIdx, std::move(vertexBuffer));
+            stageBuffers.emplace_back(std::move(vertexStageBuffer));
+        }
+        else if (bufferType == LevelParser::BufferType::IndexBuffer)
+        {
+            auto levelIndices = reinterpret_cast<uint16_t *>(rawBlob->Ptr() + bufferOffset);
+            size_t indicesCount = bufferSize / sizeof(uint16_t);
+            MFA_ASSERT(indicesCount > 0);
+
+            std::vector<uint16_t> indices(indicesCount);
+            for (size_t i = 0; i < indicesCount; ++i)
+            {
+                indices[i] = levelIndices[i];
+            }
+
+            auto [indexBuffer, indexStageBuffer] = _spriteRenderer->AllocateIndexBuffer(
+                commandBuffer,
+                (int)indices.size(),
+                indices.data()
+            );
+
+            indexBuffers.emplace(bIdx, std::tuple{std::move(indexBuffer), indicesCount});
+            stageBuffers.emplace_back(indexStageBuffer);
+        }
+        else
+        {
+            MFA_ASSERT(false);
+        }
+    }
 
     for (int i = 0; i < (int)jsonSprites.size(); ++i)
     {
         auto & jsonSprite = jsonSprites[i];
 
-        std::vector<SpritePipeline::Position> tVs(jsonSprite->vertices.size());
-        std::vector<SpriteRenderer::UV> tUs(jsonSprite->vertices.size());
-        for (int i = 0; i < jsonSprite->vertices.size(); ++i)
-        {
-            auto & oV = jsonSprite->vertices[i];
-            auto & tV = tVs[i];
+        // std::vector<SpritePipeline::Position> tVs(jsonSprite->vertices.size());
+        // std::vector<SpriteRenderer::UV> tUs(jsonSprite->vertices.size());
+        // for (int i = 0; i < jsonSprite->vertices.size(); ++i)
+        // {
+        //     auto & oV = jsonSprite->vertices[i];
+        //     auto & tV = tVs[i];
+        //
+        //     tV = glm::vec4{oV, 1.0f};
+        //
+        //     tUs[i].x = jsonSprite->uvs[i].x;
+        //     tUs[i].y = 1.0f - jsonSprite->uvs[i].y;
+        // }
+        //
+        // auto [vertexBuffer, vertexStageBuffer] = _spriteRenderer->AllocateVertexBuffer(commandBuffer, (int)tVs.size(), tVs.data(), tUs.data());
+        // auto [indexBuffer, indexStageBuffer] = _spriteRenderer->AllocateIndexBuffer(commandBuffer, (int)jsonSprite->indices.size(), jsonSprite->indices.data());
+        MFA_ASSERT(jsonSprite->vertexBufferIndex >= 0);
+        auto vertexBuffer = vertexBuffers[jsonSprite->vertexBufferIndex];
 
-            tV = glm::vec4{oV, 1.0f};
+        MFA_ASSERT(jsonSprite->indexBufferIndex >= 0);
+        auto [indexBuffer, indexCount] = indexBuffers[jsonSprite->indexBufferIndex];
 
-            tUs[i].x = jsonSprite->uvs[i].x;
-            tUs[i].y = 1.0f - jsonSprite->uvs[i].y;
-        }
-
-        auto [vertexBuffer, vertexStageBuffer] = _spriteRenderer->AllocateVertexBuffer(commandBuffer, (int)tVs.size(), tVs.data(), tUs.data());
-        auto [indexBuffer, indexStageBuffer] = _spriteRenderer->AllocateIndexBuffer(commandBuffer, (int)jsonSprite->indices.size(), jsonSprite->indices.data());
         auto material = _spriteRenderer->AllocateMaterial(errorTexture);
 
-        stageBuffers.emplace_back(vertexStageBuffer);
-        stageBuffers.emplace_back(indexStageBuffer);
+        // stageBuffers.emplace_back(vertexStageBuffer);
+        // stageBuffers.emplace_back(indexStageBuffer);
 
-        std::shared_ptr sprite = _spriteRenderer->CreateSprite(vertexBuffer, (int)jsonSprite->indices.size(), indexBuffer, material);
+        std::shared_ptr sprite = _spriteRenderer->CreateSprite(vertexBuffer, indexCount, indexBuffer, material);
         _sprites.emplace_back(sprite);
 
         auto const & instances = levelParser->GetSpriteInstances(i);
