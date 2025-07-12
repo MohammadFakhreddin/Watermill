@@ -3,11 +3,10 @@
 #include "BedrockLog.hpp"
 #include "JsonUtils.hpp"
 #include "ScopeProfiler.hpp"
+#include "BedrockFile.hpp"
 
 #include <fstream>
 #include <json.hpp>
-
-#include "BedrockFile.hpp"
 
 using namespace nlohmann;
 using namespace MFA;
@@ -64,9 +63,22 @@ LevelParser::LevelParser(const std::filesystem::path &json_path)
         ParseSpriteRenderers(JU::TryGetValue(data, "spriteRenderers", json{}));
         ParseTransforms(nullptr, JU::TryGetValue(data, "transforms", json{}));
 
+        {
+#ifdef MFA_DEBUG
+            for (auto const & instance : instances)
+            {
+                MFA_ASSERT(instance->transform != nullptr);
+            }
+            for (auto const & camera : cameras)
+            {
+                MFA_ASSERT(camera->transform != nullptr);
+            }
+#endif
+        }
+
         std::filesystem::path bin_path = json_path;
         bin_path = bin_path.replace_extension(".bin");
-        blob = File::Read(bin_path);
+        blob = File::Read(bin_path.string());
     }
     catch (std::exception &e)
     {
@@ -115,13 +127,13 @@ void LevelParser::ParseTransforms(Transform *parent, json const &rawChildren)
             transform->SetParent(parent);
         }
 
-        int spriteIndex = JU::TryGetValue<int>(object, "spriteIndex", -1);
-        if (spriteIndex >= 0)
+        int rendererIndex = JU::TryGetValue<int>(object, "spriteRenderer", -1);
+        if (rendererIndex >= 0)
         {
-            instances[spriteIndex]->transform = transform.get();
+            instances[rendererIndex]->transform = transform.get();
         }
 
-        int cameraIndex = JU::TryGetValue<int>(object, "cameraIndex", -1);
+        int cameraIndex = JU::TryGetValue<int>(object, "camera", -1);
         if (cameraIndex >= 0)
         {
             cameras[cameraIndex]->transform = transform.get();
@@ -143,12 +155,12 @@ void LevelParser::ParseSprites(nlohmann::json const &rawSprites)
         sprites.emplace_back(std::make_shared<Sprite>());
         auto const & sprite = sprites.back();
 
-        int const textureIndex = JU::TryGetValue<int>(rawSprite, "textureIndex", -1);
+        int const textureIndex = JU::TryGetValue<int>(rawSprite, "textureName", -1);
         MFA_ASSERT(textureIndex >= 0  && textureIndex < textures.size());
         sprite->textureName = textures[textureIndex];
         sprite->spriteName = JU::TryGetValue<std::string>(rawSprite, "spriteName", "");
         sprite->vertexBufferIndex = JU::TryGetValue(rawSprite, "vertexBufferIndex", -1);
-        sprite->indexBufferIndex = JU::TryGetValue(rawSprite, "indexBufferIndex", -1);
+        sprite->indexBufferIndex = JU::TryGetValue(rawSprite, "triangleBufferIndex", -1);
     }
 }
 

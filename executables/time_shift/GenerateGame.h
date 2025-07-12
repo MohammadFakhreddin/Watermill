@@ -25,7 +25,7 @@ public:
         glm::vec2 position {};
         glm::vec2 uv {};
     };
-    using Index = ushort;
+    using Index = uint16_t;
 
     enum class BufferType : int
     {
@@ -72,7 +72,7 @@ public:
     [[nodiscard]]
     std::vector<std::shared_ptr<SpriteRenderer>> const & GetSpriteInstances(int const spriteIndex)
     {
-        MFA_ASSERT(spriteInstanceMap.contains(spriteIndex));
+        MFA_ASSERT(instanceMap.contains(spriteIndex));
         return instanceMap[spriteIndex];
     }
 
@@ -85,6 +85,7 @@ public:
     [[nodiscard]]
     std::vector<std::shared_ptr<Buffer>> const & GetBuffers() const {return buffers;}
 
+    [[nodiscard]]
     std::shared_ptr<MFA::Blob> const & GetBlob() const {return blob;}
 
 private:

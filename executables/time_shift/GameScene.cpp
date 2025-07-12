@@ -8,11 +8,9 @@
 #include "ResourceManager.hpp"
 #include "JobSystem.hpp"
 #include "Time.hpp"
-
-#include <iostream>
-#include <utility>
-
 #include "ScopeProfiler.hpp"
+
+#include <utility>
 
 using namespace MFA;
 
@@ -190,8 +188,6 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
     // TODO: We can furthermore separate texture from sprites.
     _transforms = levelParser->GetTransforms();
 
-    auto const & jsonSprites = levelParser->GetSprites();
-
     std::weak_ptr sceneRef = shared_from_this();
 
     auto * logicalDevice = LogicalDevice::Instance;
@@ -282,6 +278,7 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
         }
     }
 
+    auto const & jsonSprites = levelParser->GetSprites();
     for (int i = 0; i < (int)jsonSprites.size(); ++i)
     {
         auto & jsonSprite = jsonSprites[i];
