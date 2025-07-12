@@ -12,6 +12,8 @@
 #include <iostream>
 #include <utility>
 
+#include "ScopeProfiler.hpp"
+
 using namespace MFA;
 
 //======================================================================================================================
@@ -183,6 +185,7 @@ void GameScene::ButtonB_Pressed(bool const value)
 
 void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
 {
+    MFA_SCOPE_Profiler("Read level from json")
     // TODO: Split buffers from sprites. There are some common sprites among them
     // TODO: We can furthermore separate texture from sprites.
     _transforms = levelParser->GetTransforms();

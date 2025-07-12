@@ -4,6 +4,7 @@
 #include <json.hpp>
 
 #include "BedrockLog.hpp"
+#include "JsonUtils.hpp"
 #include "ScopeProfiler.hpp"
 
 using namespace nlohmann;
@@ -118,7 +119,7 @@ void LevelParser::ParseCamera(MFA::Transform * transform, nlohmann::json const &
     camera->bottom = object["bottom"].get<float>();
     camera->near = object["near"].get<float>();
     camera->far = object["far"].get<float>();
-    camera->transform = transform;
+    // camera->transform = transform;
 }
 
 void LevelParser::ParseSprites(nlohmann::json const &objects)
@@ -127,23 +128,11 @@ void LevelParser::ParseSprites(nlohmann::json const &objects)
     {
         sprites.emplace_back(std::make_shared<Sprite>());
         auto const & sprite = sprites.back();
-        sprite->textureName = object["textureName"];
-        sprite->spriteName = object["spriteName"];
-        MFA_ASSERT(object.find("vertices") != object.end());
-        for (auto const &vertex : object["vertices"])
-        {
-            sprite->vertices.emplace_back(ToVec2(vertex), 0.0f);
-        }
-        MFA_ASSERT(object.find("uvs") != object.end());
-        for (auto const &uv : object["uvs"])
-        {
-            sprite->uvs.push_back(ToVec2(uv));
-        }
-        MFA_ASSERT(object.find("triangles") != object.end());
-        for (auto const &index : object["triangles"])
-        {
-            sprite->indices.emplace_back(index.get<uint16_t>());
-        }
+        sprite->textureName = JU::TryGetValue<int>(object, "textureName", -1);
+        sprite->spriteName = JU::TryGetValue(object, "spriteName", "");
+        sprite->vertexBufferIndex = JU::TryGetValue(object, "vertexBufferIndex", -1);
+        sprite->indexBufferIndex = JU::TryGetValue(object, "indexBufferIndex", -1);
+        sprite->uvBufferIndex = JU::TryGetValue(object, "uvBufferIndex", -1);
     }
 }
 
@@ -156,7 +145,6 @@ void LevelParser::ParseSpriteRenderer(Transform * transform, json const & object
         return;
     }
     auto spriteInstance = std::make_shared<SpriteInstance>();
-    spriteInstance->transform = transform;
     spriteInstance->spriteIndex = object["spriteIndex"];
     spriteInstance->flipX = object["flipX"];
     spriteInstance->flipY = object["flipY"];

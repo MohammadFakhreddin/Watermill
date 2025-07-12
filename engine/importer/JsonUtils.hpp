@@ -18,3 +18,8 @@ namespace MFA::JsonUtils
         return result;
     }
 }
+
+namespace MFA
+{
+    namespace JU = JsonUtils;
+}

@@ -13,11 +13,17 @@ public:
 
     struct Sprite
     {
+        int textureName = -1;
         std::string spriteName {};
-        std::string textureName {};
-        std::vector<glm::vec3> vertices {};
-        std::vector<glm::vec2> uvs {};
-        std::vector<uint16_t> indices {};
+        int vertexBufferIndex = -1;
+        int indexBufferIndex = -1;
+        int uvBufferIndex = -1;
+    };
+
+    struct Buffer
+    {
+        int offset = 0;
+        int size = 0;
     };
 
     struct Camera
@@ -28,18 +34,14 @@ public:
         float bottom;
         float near;
         float far;
-
-        MFA::Transform * transform;
     };
 
     struct SpriteInstance
     {
+        int spriteIndex;
         bool flipX = false;
         bool flipY = false;
         glm::vec4 color{};
-
-        MFA::Transform *transform;
-        int spriteIndex;
     };
 
     explicit LevelParser(const std::filesystem::path &json_path);
