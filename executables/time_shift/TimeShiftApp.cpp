@@ -145,7 +145,7 @@ void TimeShiftApp::Run()
                 GameScene::Params gameParams
                 {
                     .levelName = "Level 1",
-                    .levelPath = "levels/level1.json",
+                    .levelPath = "levels/Level1.json",
                     .backPressed = [weakRef]()->void
                     {
                         auto myRef = weakRef.lock();

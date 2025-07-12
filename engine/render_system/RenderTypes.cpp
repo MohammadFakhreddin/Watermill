@@ -148,13 +148,14 @@ namespace MFA::RenderTypes
 	    {
 	        CommandPoolGroup * myCommandPool = &commandPool;
 	        std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight() + 1);
-            device->AddRenderTask([commandBuffers = commandBuffers, myCommandPool, counter = std::move(counter)](CommandRecordState const & recordState)->bool
+            device->AddRenderTask([commandBuffers = commandBuffers, myCommandPool, counter](CommandRecordState const & recordState)->bool
             {
                 (*counter) -= 1;
                 if ((*counter) <= 0)
                 {
                     // We try to lock without the spin loop
-                    if (TryLock(myCommandPool->lock))
+                    // if (TryLock(myCommandPool->lock))
+                    MFA_SCOPE_LOCK(myCommandPool->lock)
                     {
                         auto logicalDevice = LogicalDevice::Instance;
                         RB::DestroyCommandBuffers(
@@ -163,7 +164,7 @@ namespace MFA::RenderTypes
                             commandBuffers.size(),
                             commandBuffers.data()
                         );
-                        Unlock(myCommandPool->lock);
+                        // Unlock(myCommandPool->lock);
                         // Releasing the update
                         return false;
                     }
