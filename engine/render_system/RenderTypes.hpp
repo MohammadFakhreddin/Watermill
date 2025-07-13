@@ -1,9 +1,8 @@
 #pragma once
 
-#include "BedrockPlatforms.hpp"
-
 #include <atomic>
 #include <memory>
+#include <thread>
 #include <vector>
 #include <vulkan/vulkan.h>
 
@@ -153,10 +152,12 @@ namespace MFA
 	    {
 	        std::vector<VkCommandBuffer> const commandBuffers;
             CommandPoolGroup & commandPool;
+	        std::thread::id const threadId;
 
 	        explicit CommandBufferGroup(
 	            std::vector<VkCommandBuffer> commandBuffers_,
-	            CommandPoolGroup & commandPool_
+	            CommandPoolGroup & commandPool_,
+	            std::thread::id threadId_
             );
 
 	        ~CommandBufferGroup();

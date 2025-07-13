@@ -12,6 +12,8 @@ namespace MFA
 
         static std::shared_ptr<JobSystem> Instance(bool createNewIfNotExists = false);
 
+        [[nodiscard]] static bool HasInstance();
+
         explicit JobSystem();
 
         ~JobSystem();

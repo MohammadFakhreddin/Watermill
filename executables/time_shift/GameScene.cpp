@@ -193,6 +193,8 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
     auto * logicalDevice = LogicalDevice::Instance;
     auto * device = logicalDevice->GetVkDevice();
     auto * commandPool = logicalDevice->GetGraphicCommandPool();
+
+    MFA_SCOPE_LOCK(commandPool->lock);
     auto commandBufferGroup = RB::BeginSecondaryCommand(
         device,
         *commandPool
@@ -283,31 +285,15 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
     {
         auto & jsonSprite = jsonSprites[i];
 
-        // std::vector<SpritePipeline::Position> tVs(jsonSprite->vertices.size());
-        // std::vector<SpriteRenderer::UV> tUs(jsonSprite->vertices.size());
-        // for (int i = 0; i < jsonSprite->vertices.size(); ++i)
-        // {
-        //     auto & oV = jsonSprite->vertices[i];
-        //     auto & tV = tVs[i];
-        //
-        //     tV = glm::vec4{oV, 1.0f};
-        //
-        //     tUs[i].x = jsonSprite->uvs[i].x;
-        //     tUs[i].y = 1.0f - jsonSprite->uvs[i].y;
-        // }
-        //
-        // auto [vertexBuffer, vertexStageBuffer] = _spriteRenderer->AllocateVertexBuffer(commandBuffer, (int)tVs.size(), tVs.data(), tUs.data());
-        // auto [indexBuffer, indexStageBuffer] = _spriteRenderer->AllocateIndexBuffer(commandBuffer, (int)jsonSprite->indices.size(), jsonSprite->indices.data());
         MFA_ASSERT(jsonSprite->vertexBufferIndex >= 0);
         auto vertexBuffer = vertexBuffers[jsonSprite->vertexBufferIndex];
+        MFA_ASSERT(vertexBuffer != nullptr);
 
         MFA_ASSERT(jsonSprite->indexBufferIndex >= 0);
         auto [indexBuffer, indexCount] = indexBuffers[jsonSprite->indexBufferIndex];
+        MFA_ASSERT(indexBuffer != nullptr);
 
         auto material = _spriteRenderer->AllocateMaterial(errorTexture);
-
-        // stageBuffers.emplace_back(vertexStageBuffer);
-        // stageBuffers.emplace_back(indexStageBuffer);
 
         std::shared_ptr sprite = _spriteRenderer->CreateSprite(vertexBuffer, indexCount, indexBuffer, material);
         _sprites.emplace_back(sprite);
@@ -355,7 +341,7 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
             ResourceManager::Instance()->RequestImage(address.c_str(), [spriteIndex, sceneRef](std::shared_ptr<RT::GpuTexture> gpuTexture)->void
             {
                 std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight());
-                LogicalDevice::Instance->AddRenderTask([spriteIndex, sceneRef, gpuTexture, counter](RT::CommandRecordState & recordState)->bool
+                LogicalDevice::AddRenderTask([spriteIndex, sceneRef, gpuTexture, counter](RT::CommandRecordState & recordState)->bool
                 {
                     auto scenePtr = sceneRef.lock();
                     if (scenePtr == nullptr)
@@ -371,7 +357,6 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
                         // Remove the task from the queue
                         return false;
                     }
-
                     return true;
                 });
             });
@@ -382,14 +367,13 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
 
     logicalDevice->AddRenderTask([commandBufferGroup = std::move(commandBufferGroup), stageBuffers](RT::CommandRecordState & recordState)->bool
     {
-        vkCmdExecuteCommands(
+        RB::ExecuteCommandBuffer(
             recordState.commandBuffer,
-            commandBufferGroup->commandBuffers.size(),
-            commandBufferGroup->commandBuffers.data()
+            *commandBufferGroup
         );
 
-        std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight());
-        Time::AddUpdateTask([stageBuffers, counter]()->bool
+        std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight() + 1);
+        LogicalDevice::AddRenderTask([stageBuffers, commandBufferGroup, counter](RT::CommandRecordState const & recordState)->bool
         {
             (*counter) -= 1;
             if (*counter <= 0)

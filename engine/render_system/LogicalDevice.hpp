@@ -172,7 +172,7 @@ namespace MFA
         SDL_Window* GetWindow() const noexcept;
 
         using RenderTask = std::function<bool(RT::CommandRecordState & recordState)>;
-        void AddRenderTask(RenderTask renderTask);
+        static void AddRenderTask(RenderTask renderTask);
 
     private:
 

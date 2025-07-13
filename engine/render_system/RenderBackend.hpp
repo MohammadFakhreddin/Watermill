@@ -367,6 +367,11 @@ namespace MFA::RenderBackend
         const VkCommandBuffer * subCommandBuffers
     );
 
+    void ExecuteCommandBuffer(
+        VkCommandBuffer primaryCommandBuffer,
+        RT::CommandBufferGroup const & commandBufferGroup
+    );
+
     void PipelineBarrier(
         VkCommandBuffer commandBuffer,
         VkPipelineStageFlags sourceStageMask,
@@ -384,6 +389,8 @@ namespace MFA::RenderBackend
     );
 
     void EndCommandBuffer(VkCommandBuffer commandBuffer);
+
+    void EndCommandBuffer(const RT::CommandBufferGroup & commandBufferGroup);
 
     void SubmitQueues(
         VkQueue queue,

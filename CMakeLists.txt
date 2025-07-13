@@ -111,12 +111,12 @@ include_directories("${CMAKE_SOURCE_DIR}/submodules/SDL2/include")
 ### KTX ###################################################
 
 # Disable all non-essential KTX features
-set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
-set(KTX_FEATURE_LOADTEST_APPS OFF CACHE BOOL "" FORCE)
-set(KTX_FEATURE_TESTS OFF CACHE BOOL "" FORCE)
-set(KTX_FEATURE_DOC OFF CACHE BOOL "" FORCE)
-include_directories(submodules/KTX-Software/include)
-add_subdirectory(submodules/KTX-Software)
+#set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
+#set(KTX_FEATURE_LOADTEST_APPS OFF CACHE BOOL "" FORCE)
+#set(KTX_FEATURE_TESTS OFF CACHE BOOL "" FORCE)
+#set(KTX_FEATURE_DOC OFF CACHE BOOL "" FORCE)
+#include_directories(submodules/KTX-Software/include)
+#add_subdirectory(submodules/KTX-Software)
 
 ### Litehtml #############################################
 
@@ -186,7 +186,4 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/executables/time_shift")
 
 ##########################################################
 
-strip_warnings_as_errors(ktx)
-#strip_warnings_as_errors(toktx)
-#strip_warnings_as_errors(fmt)
-#strip_warnings_as_errors(imageio)
+#strip_warnings_as_errors(ktx)

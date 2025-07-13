@@ -323,6 +323,30 @@ namespace MFA
         // Common part with resize
         DeviceWaitIdle();
 
+        {
+            auto commandBuffer = RB::BeginSingleTimeCommand(_vkDevice, *GetGraphicCommandPool());
+
+            RT::CommandRecordState recordState{
+                .imageIndex = 0,
+                .frameIndex = 0,
+                .isValid = true,
+
+                .commandBufferType = RenderTypes::CommandBufferType::Graphic,
+                .commandBuffer = commandBuffer,
+                .pipeline = nullptr,
+                .renderPass = nullptr,
+                .swapChain = VK_NULL_HANDLE,
+            };
+
+            while (_renderTasks.IsEmpty() == false)
+            {
+                auto task = _renderTasks.Pop();
+                task(recordState);
+            }
+
+            RB::EndAndSubmitSingleTimeCommand(_vkDevice, *GetGraphicCommandPool(), GetGraphicQueue(), commandBuffer);
+        }
+
         SDL_DelEventWatch(SDLEventWatcher, _window);
 
         // Graphic
@@ -716,7 +740,12 @@ namespace MFA
     void LogicalDevice::AddRenderTask(RenderTask renderTask)
     {
         MFA_ASSERT(renderTask != nullptr);
-        _renderTasks.Push(std::move(renderTask));
+        if (Instance == nullptr)
+        {
+            MFA_LOG_WARN("Logical device does not exist, cannot add render task");
+            return;
+        }
+         Instance->_renderTasks.Push(std::move(renderTask));
     }
 
     //-------------------------------------------------------------------------------------------------

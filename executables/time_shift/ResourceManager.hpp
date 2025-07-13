@@ -60,7 +60,7 @@ private:
         std::weak_ptr<MFA::RenderTypes::GpuTexture> gpuTexture;
     };
 
-    void RequestNextMipmap(ImageData & imageData, int nextMipLevel);
+    void RequestNextMipmap(std::weak_ptr<ImageData> imageData, int nextMipLevel);
 
     inline static std::weak_ptr<ResourceManager> _instance {};
 

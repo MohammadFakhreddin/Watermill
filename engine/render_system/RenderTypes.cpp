@@ -5,6 +5,7 @@
 #include "LogicalDevice.hpp"
 #include "ScopeLock.hpp"
 #include "Time.hpp"
+#include "JobSystem.hpp"
 
 #include <utility>
 
@@ -135,43 +136,39 @@ namespace MFA::RenderTypes
 
     CommandBufferGroup::CommandBufferGroup(
         std::vector<VkCommandBuffer> commandBuffers_,
-        CommandPoolGroup & commandPool_
+        CommandPoolGroup & commandPool_,
+        std::thread::id const threadId_
     )
         : commandBuffers(std::move(commandBuffers_))
         , commandPool(commandPool_)
+        , threadId(threadId_)
     {}
 
     CommandBufferGroup::~CommandBufferGroup()
 	{
-	    auto device = LogicalDevice::Instance;
-	    if (device)
-	    {
-	        CommandPoolGroup * myCommandPool = &commandPool;
-	        std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight() + 1);
-            device->AddRenderTask([commandBuffers = commandBuffers, myCommandPool, counter](CommandRecordState const & recordState)->bool
+	    CommandPoolGroup * myCommandPool = &commandPool;
+	    std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight() + 1);
+	    LogicalDevice::AddRenderTask([commandBuffers = commandBuffers, myCommandPool, counter](CommandRecordState const & recordState)->bool
+        {
+            (*counter) -= 1;
+            if ((*counter) <= 0)
             {
-                (*counter) -= 1;
-                if ((*counter) <= 0)
+                if (TryLock(myCommandPool->lock) == true)
                 {
-                    // We try to lock without the spin loop
-                    // if (TryLock(myCommandPool->lock))
-                    MFA_SCOPE_LOCK(myCommandPool->lock)
-                    {
-                        auto logicalDevice = LogicalDevice::Instance;
-                        RB::DestroyCommandBuffers(
-                            logicalDevice->GetVkDevice(),
-                            *myCommandPool,
-                            commandBuffers.size(),
-                            commandBuffers.data()
-                        );
-                        // Unlock(myCommandPool->lock);
-                        // Releasing the update
-                        return false;
-                    }
+                    auto logicalDevice = LogicalDevice::Instance;
+                    RB::DestroyCommandBuffers(
+                        logicalDevice->GetVkDevice(),
+                        *myCommandPool,
+                        commandBuffers.size(),
+                        commandBuffers.data()
+                    );
+                    Unlock(myCommandPool->lock);
+                    // Releasing the update
+                    return false;
                 }
-                return true;
-            });
-	    }
+            }
+            return true;
+        });
 	}
 
     //-------------------------------------------------------------------------------------------------

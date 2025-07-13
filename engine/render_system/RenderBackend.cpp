@@ -735,8 +735,6 @@ namespace MFA::RenderBackend
         VkCommandBufferLevel level
     )
     {
-        MFA_SCOPE_LOCK(commandPool.lock);
-
         std::vector<VkCommandBuffer> commandBuffers(count);
 
         VkCommandBufferAllocateInfo allocInfo = {};
@@ -756,7 +754,8 @@ namespace MFA::RenderBackend
         // Command buffer data gets recorded each time
         return std::make_unique<RT::CommandBufferGroup>(
             commandBuffers,
-            commandPool
+            commandPool,
+            std::this_thread::get_id()
         );
     }
 
@@ -1986,6 +1985,20 @@ namespace MFA::RenderBackend
 
     //-------------------------------------------------------------------------------------------------
 
+    void ExecuteCommandBuffer(
+        VkCommandBuffer primaryCommandBuffer,
+        RT::CommandBufferGroup const & commandBufferGroup
+    )
+    {
+        // MFA_SCOPE_LOCK(commandBufferGroup.commandPool.lock);
+        vkCmdExecuteCommands(primaryCommandBuffer,
+            static_cast<uint32_t>(commandBufferGroup.commandBuffers.size()),
+            commandBufferGroup.commandBuffers.data()
+        );
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
     void PipelineBarrier(
         VkCommandBuffer commandBuffer,
         VkPipelineStageFlags sourceStageMask,
@@ -2039,6 +2052,14 @@ namespace MFA::RenderBackend
         }
     }
 
+    void EndCommandBuffer(const RT::CommandBufferGroup & commandBufferGroup)
+    {
+        MFA_SCOPE_LOCK(commandBufferGroup.commandPool.lock);
+        for (auto & commandBuffer : commandBufferGroup.commandBuffers)
+        {
+            VK_Check(vkEndCommandBuffer(commandBuffer));
+        }
+    }
 
     //-------------------------------------------------------------------------------------------------
 

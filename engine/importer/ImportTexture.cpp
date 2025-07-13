@@ -12,9 +12,9 @@
 
 #include "stb_image.h"
 #include "stb_image_resize.h"
-#include "ktx.h"
-#include "vulkan/vulkan_core.h"
-#include "ktxvulkan.h"
+// #include "ktx.h"
+// #include "vulkan/vulkan_core.h"
+// #include "ktxvulkan.h"
 
 namespace MFA::Importer
 {
@@ -274,133 +274,133 @@ namespace MFA::Importer
 
     //-------------------------------------------------------------------------------------------------
 
-    static Format MapVkFormat(ktx_uint32_t vkFormat) {
-        switch (vkFormat) {
-            case VK_FORMAT_R8G8B8A8_SRGB: //return Format::UNCOMPRESSED_UNORM_R8G8B8A8_SRGB;              // VK_FORMAT_R8G8B8A8_SRGB
-            case VK_FORMAT_R8G8B8A8_UNORM: return Format::UNCOMPRESSED_UNORM_R8G8B8A8_LINEAR;           // VK_FORMAT_R8G8B8A8_UNORM
-            case VK_FORMAT_R16G16B16A16_UNORM: return Format::UNCOMPRESSED_UNORM_R16G16B16A16_LINEAR;   // VK_FORMAT_R16G16B16A16_UNORM
-            case VK_FORMAT_BC7_UNORM_BLOCK: return Format::BC7_UNorm_Linear_RGBA;                       // VK_FORMAT_BC7_UNORM_BLOCK
-            case VK_FORMAT_BC7_SRGB_BLOCK: return Format::BC7_UNorm_sRGB_RGBA;                          // VK_FORMAT_BC7_SRGB_BLOCK
-            case VK_FORMAT_BC6H_UFLOAT_BLOCK: return Format::BC6H_UFloat_Linear_RGB;                    // VK_FORMAT_BC6H_UFLOAT_BLOCK
-            case VK_FORMAT_BC6H_SFLOAT_BLOCK: return Format::BC6H_SFloat_Linear_RGB;                    // VK_FORMAT_BC6H_SFLOAT_BLOCK
-            case VK_FORMAT_ASTC_4x4_UNORM_BLOCK: return Format::ASTC_4x4_UNORM_BLOCK;
-            case VK_FORMAT_ASTC_4x4_SRGB_BLOCK: return Format::ASTC_4x4_SRGB_BLOCK;
-            case VK_FORMAT_ASTC_5x4_UNORM_BLOCK: return Format::ASTC_5x4_UNORM_BLOCK;
-            case VK_FORMAT_ASTC_5x4_SRGB_BLOCK: return Format::ASTC_5x4_SRGB_BLOCK;
-            case VK_FORMAT_ASTC_5x5_UNORM_BLOCK: return Format::ASTC_5x5_UNORM_BLOCK;
-            case VK_FORMAT_ASTC_5x5_SRGB_BLOCK: return Format::ASTC_5x5_SRGB_BLOCK;
-            case VK_FORMAT_ASTC_6x5_UNORM_BLOCK: return Format::ASTC_6x5_UNORM_BLOCK;
-            case VK_FORMAT_ASTC_6x5_SRGB_BLOCK: return Format::ASTC_6x5_SRGB_BLOCK;
-            case VK_FORMAT_ASTC_6x6_UNORM_BLOCK: return Format::ASTC_6x6_UNORM_BLOCK;
-            case VK_FORMAT_ASTC_6x6_SRGB_BLOCK: return Format::ASTC_6x6_SRGB_BLOCK;
-            case VK_FORMAT_ASTC_8x5_UNORM_BLOCK: return Format::ASTC_8x5_UNORM_BLOCK;
-            case VK_FORMAT_ASTC_8x5_SRGB_BLOCK: return Format::ASTC_8x5_SRGB_BLOCK;
-            case VK_FORMAT_ASTC_8x6_UNORM_BLOCK: return Format::ASTC_8x6_UNORM_BLOCK;
-            case VK_FORMAT_ASTC_8x6_SRGB_BLOCK: return Format::ASTC_8x6_SRGB_BLOCK;
-            case VK_FORMAT_ASTC_8x8_UNORM_BLOCK: return Format::ASTC_8x8_UNORM_BLOCK;
-            case VK_FORMAT_ASTC_8x8_SRGB_BLOCK: return Format::ASTC_8x8_SRGB_BLOCK;
-            case VK_FORMAT_ASTC_10x5_UNORM_BLOCK: return Format::ASTC_10x5_UNORM_BLOCK;
-            case VK_FORMAT_ASTC_10x5_SRGB_BLOCK: return Format::ASTC_10x5_SRGB_BLOCK;
-            case VK_FORMAT_ASTC_10x6_UNORM_BLOCK: return Format::ASTC_10x6_UNORM_BLOCK;
-            case VK_FORMAT_ASTC_10x6_SRGB_BLOCK: return Format::ASTC_10x6_SRGB_BLOCK;
-            case VK_FORMAT_ASTC_10x8_UNORM_BLOCK: return Format::ASTC_10x8_UNORM_BLOCK;
-            case VK_FORMAT_ASTC_10x8_SRGB_BLOCK: return Format::ASTC_10x8_SRGB_BLOCK;
-            case VK_FORMAT_ASTC_10x10_UNORM_BLOCK: return Format::ASTC_10x10_UNORM_BLOCK;
-            case VK_FORMAT_ASTC_10x10_SRGB_BLOCK: return Format::ASTC_10x10_SRGB_BLOCK;
-            case VK_FORMAT_ASTC_12x10_UNORM_BLOCK: return Format::ASTC_12x10_UNORM_BLOCK;
-            case VK_FORMAT_ASTC_12x10_SRGB_BLOCK: return Format::ASTC_12x10_SRGB_BLOCK;
-            case VK_FORMAT_ASTC_12x12_UNORM_BLOCK: return Format::ASTC_12x12_UNORM_BLOCK;
-            case VK_FORMAT_ASTC_12x12_SRGB_BLOCK: return Format::ASTC_12x12_SRGB_BLOCK;
-            default: MFA_ASSERT(false); return Format::INVALID;
-        }
-    }
-
-    KTX_error_code WorstMipmapLoadHandler(
-        int mipLevel,
-        int face,
-        int width,
-        int height,
-        int depth,
-        ktx_uint64_t faceLodSize,
-        void* pixels,
-        void* userData
-    )
-    {
-        // TODO: Multiple face is not supported yet.
-        auto * texture = (AS::Texture *)userData;
-        texture->SetMipmapDimension(mipLevel, AS::Texture::Dimensions{
-            .width = static_cast<uint32_t>(width),
-            .height = static_cast<uint32_t>(height),
-            .depth = (uint16_t)depth
-        });
-        texture->SetMipmapSize(mipLevel, faceLodSize);
-        auto blob = Memory::AllocSize(faceLodSize);
-        std::memcpy(blob->Ptr(), pixels, blob->Len());
-        texture->SetMipmapData(mipLevel, std::move(blob));
-
-        return KTX_SUCCESS;
-    }
-
-    std::shared_ptr<Asset::Texture> LoadKtxMetadata(char const *path)
-    {
-        MFA_ASSERT(std::filesystem::exists(path));
-
-        ktxTexture* ktx;
-
-        FILE* fp = fopen(path, "rb");
-        MFA_ASSERT(fp != nullptr);
-        auto result = ktxTexture_CreateFromStdioStream(fp, KTX_TEXTURE_CREATE_NO_FLAGS, &ktx);
-        // auto result = ktxTexture_CreateFromNamedFile(path, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx);
-
-        MFA_DEFFER([&ktx]()->void
-        {
-            ktxTexture_Destroy(ktx);
-        });
-
-        if (result != KTX_SUCCESS)
-        {
-            MFA_LOG_WARN(
-                "Failed to load ktx file with name: %s\n Reason: %s\n"
-                , path
-                , ktxErrorString(result)
-            );
-            return nullptr;
-        }
-
-        if (ktx->classId != ktxTexture2_c)
-        {
-            MFA_LOG_WARN("Only level 2 ktx is supported");
-            return nullptr;
-        }
-
-        ktxTexture2* ktx2;
-        if (ktx->classId == ktxTexture2_c) {
-            ktx2 = (ktxTexture2*)ktx;
-            // iF TEXTURE NEEDS TRANSCODING THE WE HAVE TO LOAD THE WHOLE THING
-            if (ktxTexture2_NeedsTranscoding(ktx2)) {
-                MFA_ASSERT(false);
-                KTX_error_code transcodeResult = ktxTexture2_TranscodeBasis(ktx2, KTX_TTF_RGBA32, 0);
-                if (transcodeResult != KTX_SUCCESS) {
-                    MFA_LOG_WARN("Transcoding failed: %s\n", ktxErrorString(transcodeResult));
-                    return nullptr;
-                }
-            }
-        }
-        else
-        {
-            MFA_LOG_WARN("Failed to load %s because only ktx2 is supported", path);
-            return nullptr;
-        }
-
-        auto vkFormat = ktx2->vkFormat;
-        auto const format = MapVkFormat(vkFormat);
-
-        auto const texture = std::make_shared<AS::Texture>(path, format, ktx->numFaces, ktx->numLayers, ktx->numLevels);
-
-        ktxTexture_IterateLoadLevelFaces(ktx, WorstMipmapLoadHandler, texture.get());
-
-        return texture;
-    }
+    // static Format MapVkFormat(ktx_uint32_t vkFormat) {
+    //     switch (vkFormat) {
+    //         case VK_FORMAT_R8G8B8A8_SRGB: //return Format::UNCOMPRESSED_UNORM_R8G8B8A8_SRGB;              // VK_FORMAT_R8G8B8A8_SRGB
+    //         case VK_FORMAT_R8G8B8A8_UNORM: return Format::UNCOMPRESSED_UNORM_R8G8B8A8_LINEAR;           // VK_FORMAT_R8G8B8A8_UNORM
+    //         case VK_FORMAT_R16G16B16A16_UNORM: return Format::UNCOMPRESSED_UNORM_R16G16B16A16_LINEAR;   // VK_FORMAT_R16G16B16A16_UNORM
+    //         case VK_FORMAT_BC7_UNORM_BLOCK: return Format::BC7_UNorm_Linear_RGBA;                       // VK_FORMAT_BC7_UNORM_BLOCK
+    //         case VK_FORMAT_BC7_SRGB_BLOCK: return Format::BC7_UNorm_sRGB_RGBA;                          // VK_FORMAT_BC7_SRGB_BLOCK
+    //         case VK_FORMAT_BC6H_UFLOAT_BLOCK: return Format::BC6H_UFloat_Linear_RGB;                    // VK_FORMAT_BC6H_UFLOAT_BLOCK
+    //         case VK_FORMAT_BC6H_SFLOAT_BLOCK: return Format::BC6H_SFloat_Linear_RGB;                    // VK_FORMAT_BC6H_SFLOAT_BLOCK
+    //         case VK_FORMAT_ASTC_4x4_UNORM_BLOCK: return Format::ASTC_4x4_UNORM_BLOCK;
+    //         case VK_FORMAT_ASTC_4x4_SRGB_BLOCK: return Format::ASTC_4x4_SRGB_BLOCK;
+    //         case VK_FORMAT_ASTC_5x4_UNORM_BLOCK: return Format::ASTC_5x4_UNORM_BLOCK;
+    //         case VK_FORMAT_ASTC_5x4_SRGB_BLOCK: return Format::ASTC_5x4_SRGB_BLOCK;
+    //         case VK_FORMAT_ASTC_5x5_UNORM_BLOCK: return Format::ASTC_5x5_UNORM_BLOCK;
+    //         case VK_FORMAT_ASTC_5x5_SRGB_BLOCK: return Format::ASTC_5x5_SRGB_BLOCK;
+    //         case VK_FORMAT_ASTC_6x5_UNORM_BLOCK: return Format::ASTC_6x5_UNORM_BLOCK;
+    //         case VK_FORMAT_ASTC_6x5_SRGB_BLOCK: return Format::ASTC_6x5_SRGB_BLOCK;
+    //         case VK_FORMAT_ASTC_6x6_UNORM_BLOCK: return Format::ASTC_6x6_UNORM_BLOCK;
+    //         case VK_FORMAT_ASTC_6x6_SRGB_BLOCK: return Format::ASTC_6x6_SRGB_BLOCK;
+    //         case VK_FORMAT_ASTC_8x5_UNORM_BLOCK: return Format::ASTC_8x5_UNORM_BLOCK;
+    //         case VK_FORMAT_ASTC_8x5_SRGB_BLOCK: return Format::ASTC_8x5_SRGB_BLOCK;
+    //         case VK_FORMAT_ASTC_8x6_UNORM_BLOCK: return Format::ASTC_8x6_UNORM_BLOCK;
+    //         case VK_FORMAT_ASTC_8x6_SRGB_BLOCK: return Format::ASTC_8x6_SRGB_BLOCK;
+    //         case VK_FORMAT_ASTC_8x8_UNORM_BLOCK: return Format::ASTC_8x8_UNORM_BLOCK;
+    //         case VK_FORMAT_ASTC_8x8_SRGB_BLOCK: return Format::ASTC_8x8_SRGB_BLOCK;
+    //         case VK_FORMAT_ASTC_10x5_UNORM_BLOCK: return Format::ASTC_10x5_UNORM_BLOCK;
+    //         case VK_FORMAT_ASTC_10x5_SRGB_BLOCK: return Format::ASTC_10x5_SRGB_BLOCK;
+    //         case VK_FORMAT_ASTC_10x6_UNORM_BLOCK: return Format::ASTC_10x6_UNORM_BLOCK;
+    //         case VK_FORMAT_ASTC_10x6_SRGB_BLOCK: return Format::ASTC_10x6_SRGB_BLOCK;
+    //         case VK_FORMAT_ASTC_10x8_UNORM_BLOCK: return Format::ASTC_10x8_UNORM_BLOCK;
+    //         case VK_FORMAT_ASTC_10x8_SRGB_BLOCK: return Format::ASTC_10x8_SRGB_BLOCK;
+    //         case VK_FORMAT_ASTC_10x10_UNORM_BLOCK: return Format::ASTC_10x10_UNORM_BLOCK;
+    //         case VK_FORMAT_ASTC_10x10_SRGB_BLOCK: return Format::ASTC_10x10_SRGB_BLOCK;
+    //         case VK_FORMAT_ASTC_12x10_UNORM_BLOCK: return Format::ASTC_12x10_UNORM_BLOCK;
+    //         case VK_FORMAT_ASTC_12x10_SRGB_BLOCK: return Format::ASTC_12x10_SRGB_BLOCK;
+    //         case VK_FORMAT_ASTC_12x12_UNORM_BLOCK: return Format::ASTC_12x12_UNORM_BLOCK;
+    //         case VK_FORMAT_ASTC_12x12_SRGB_BLOCK: return Format::ASTC_12x12_SRGB_BLOCK;
+    //         default: MFA_ASSERT(false); return Format::INVALID;
+    //     }
+    // }
+    //
+    // KTX_error_code WorstMipmapLoadHandler(
+    //     int mipLevel,
+    //     int face,
+    //     int width,
+    //     int height,
+    //     int depth,
+    //     ktx_uint64_t faceLodSize,
+    //     void* pixels,
+    //     void* userData
+    // )
+    // {
+    //     // TODO: Multiple face is not supported yet.
+    //     auto * texture = (AS::Texture *)userData;
+    //     texture->SetMipmapDimension(mipLevel, AS::Texture::Dimensions{
+    //         .width = static_cast<uint32_t>(width),
+    //         .height = static_cast<uint32_t>(height),
+    //         .depth = (uint16_t)depth
+    //     });
+    //     texture->SetMipmapSize(mipLevel, faceLodSize);
+    //     auto blob = Memory::AllocSize(faceLodSize);
+    //     std::memcpy(blob->Ptr(), pixels, blob->Len());
+    //     texture->SetMipmapData(mipLevel, std::move(blob));
+    //
+    //     return KTX_SUCCESS;
+    // }
+    //
+    // std::shared_ptr<Asset::Texture> LoadKtxMetadata(char const *path)
+    // {
+    //     MFA_ASSERT(std::filesystem::exists(path));
+    //
+    //     ktxTexture* ktx;
+    //
+    //     FILE* fp = fopen(path, "rb");
+    //     MFA_ASSERT(fp != nullptr);
+    //     auto result = ktxTexture_CreateFromStdioStream(fp, KTX_TEXTURE_CREATE_NO_FLAGS, &ktx);
+    //     // auto result = ktxTexture_CreateFromNamedFile(path, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx);
+    //
+    //     MFA_DEFFER([&ktx]()->void
+    //     {
+    //         ktxTexture_Destroy(ktx);
+    //     });
+    //
+    //     if (result != KTX_SUCCESS)
+    //     {
+    //         MFA_LOG_WARN(
+    //             "Failed to load ktx file with name: %s\n Reason: %s\n"
+    //             , path
+    //             , ktxErrorString(result)
+    //         );
+    //         return nullptr;
+    //     }
+    //
+    //     if (ktx->classId != ktxTexture2_c)
+    //     {
+    //         MFA_LOG_WARN("Only level 2 ktx is supported");
+    //         return nullptr;
+    //     }
+    //
+    //     ktxTexture2* ktx2;
+    //     if (ktx->classId == ktxTexture2_c) {
+    //         ktx2 = (ktxTexture2*)ktx;
+    //         // iF TEXTURE NEEDS TRANSCODING THE WE HAVE TO LOAD THE WHOLE THING
+    //         if (ktxTexture2_NeedsTranscoding(ktx2)) {
+    //             MFA_ASSERT(false);
+    //             KTX_error_code transcodeResult = ktxTexture2_TranscodeBasis(ktx2, KTX_TTF_RGBA32, 0);
+    //             if (transcodeResult != KTX_SUCCESS) {
+    //                 MFA_LOG_WARN("Transcoding failed: %s\n", ktxErrorString(transcodeResult));
+    //                 return nullptr;
+    //             }
+    //         }
+    //     }
+    //     else
+    //     {
+    //         MFA_LOG_WARN("Failed to load %s because only ktx2 is supported", path);
+    //         return nullptr;
+    //     }
+    //
+    //     auto vkFormat = ktx2->vkFormat;
+    //     auto const format = MapVkFormat(vkFormat);
+    //
+    //     auto const texture = std::make_shared<AS::Texture>(path, format, ktx->numFaces, ktx->numLayers, ktx->numLevels);
+    //
+    //     ktxTexture_IterateLoadLevelFaces(ktx, WorstMipmapLoadHandler, texture.get());
+    //
+    //     return texture;
+    // }
 
     //-------------------------------------------------------------------------------------------------
 

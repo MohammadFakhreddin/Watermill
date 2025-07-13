@@ -14,6 +14,6 @@ namespace MFA::Importer
     [[nodiscard]]
     std::shared_ptr<Asset::Texture> ErrorTexture();
 
-    std::shared_ptr<Asset::Texture> LoadKtxMetadata(char const * path);
+    // std::shared_ptr<Asset::Texture> LoadKtxMetadata(char const * path);
 
 }

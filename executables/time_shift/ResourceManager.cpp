@@ -121,7 +121,7 @@ void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & 
     }
 
     imageData->currentMipLevel = imageData->mipCount;
-    RequestNextMipmap(*imageData, imageData->currentMipLevel - 1);
+    RequestNextMipmap(imageData, imageData->currentMipLevel - 1);
 }
 
 //======================================================================================================================
@@ -134,12 +134,18 @@ void ResourceManager::ForceCleanUp()
 
 //======================================================================================================================
 
-void ResourceManager::RequestNextMipmap(ImageData &imageData, int nextMipLevel)
+void ResourceManager::RequestNextMipmap(std::weak_ptr<ImageData> imageDataWeak, int nextMipLevel)
 {
     MFA_ASSERT(nextMipLevel >= 0);
 
-    std::string imagePath{imageData.path.string()};
-    if (imageData.hasMipmaps == true)
+    auto imageData = imageDataWeak.lock();
+    if (imageData == nullptr)
+    {
+        return;
+    }
+
+    std::string imagePath{imageData->path.string()};
+    if (imageData->hasMipmaps == true)
     {
         std::filesystem::path originalPath{imagePath};
         std::filesystem::path parentPath = originalPath.parent_path().string();
@@ -152,9 +158,15 @@ void ResourceManager::RequestNextMipmap(ImageData &imageData, int nextMipLevel)
 
     std::weak_ptr rcWeak = shared_from_this();
     // TODO: In the new design, our functions should return a command buffer that they have allocated themselves and we just combine them together for execution
-    JobSystem::Instance()->AssignTask([rcWeak, name = std::string(imagePath), &imageData, nextMipLevel]()
+    JobSystem::Instance()->AssignTask([rcWeak, name = std::string(imagePath), imageDataWeak, nextMipLevel]()
     {
         if (rcWeak.lock() == nullptr)
+        {
+            return;
+        }
+
+        auto imageData = imageDataWeak.lock();
+        if (imageData == nullptr)
         {
             return;
         }
@@ -164,6 +176,7 @@ void ResourceManager::RequestNextMipmap(ImageData &imageData, int nextMipLevel)
         auto * commandPool = logicalDevice->GetGraphicCommandPool();
         auto * physicalDevice = logicalDevice->GetPhysicalDevice();
 
+        MFA_SCOPE_LOCK(commandPool->lock);
         auto commandBufferGroup = RB::BeginSecondaryCommand(
             device,
             *commandPool
@@ -174,14 +187,14 @@ void ResourceManager::RequestNextMipmap(ImageData &imageData, int nextMipLevel)
         std::shared_ptr<Asset::Texture> cpuTexture;
 
         std::filesystem::path const path = Path::Instance()->Get(name);
-        if (path.extension() == ".ktx2")
-        {
-            cpuTexture = Importer::LoadKtxMetadata(path.string().c_str());
-        }
-        else
-        {
-            cpuTexture = Importer::UncompressedImage(path.string());
-        }
+        // if (path.extension() == ".ktx2")
+        // {
+        //     cpuTexture = Importer::LoadKtxMetadata(path.string().c_str());
+        // }
+        // else
+        // {
+        cpuTexture = Importer::UncompressedImage(path.string());
+        // }
 
         auto const buffer = cpuTexture->GetMipmapBuffer(0);
         if (buffer == nullptr || buffer->IsValid() == false)
@@ -222,7 +235,7 @@ void ResourceManager::RequestNextMipmap(ImageData &imageData, int nextMipLevel)
             .commandBufferGroup = commandBufferGroup,
             .lifeTime = (int)LogicalDevice::Instance->GetMaxFramePerFlight() + 1
         });
-        Time::AddUpdateTask([imageBuffer]()->bool
+        LogicalDevice::AddRenderTask([imageBuffer](const RT::CommandRecordState & recordState)->bool
         {
             imageBuffer->lifeTime -= 1;
             if (imageBuffer->lifeTime < 0)
@@ -232,14 +245,14 @@ void ResourceManager::RequestNextMipmap(ImageData &imageData, int nextMipLevel)
             return true;
         });
 
-        imageData.gpuTexture = gpuTexture;
-        imageData.currentMipLevel = nextMipLevel;
+        imageData->gpuTexture = gpuTexture;
+        imageData->currentMipLevel = nextMipLevel;
 
-        LogicalDevice::Instance->AddRenderTask([
+        LogicalDevice::AddRenderTask([
             rcWeak,
             name = std::move(name),
-            commandBuffer,
-            &imageData
+            commandBufferGroup,
+            imageDataWeak
         ](const RT::CommandRecordState & recordState)->bool
         {
             MFA_ASSERT(JobSystem::Instance() == nullptr || JobSystem::Instance()->IsMainThread() == true);
@@ -250,38 +263,47 @@ void ResourceManager::RequestNextMipmap(ImageData &imageData, int nextMipLevel)
                 return false;
             }
 
-            vkCmdExecuteCommands(recordState.commandBuffer, 1, &commandBuffer);
+            auto imageData = imageDataWeak.lock();
+            if (imageData == nullptr)
+            {
+                return false;
+            }
 
-            auto & lock = rc->_lockMap[imageData.path.string()];
+            RB::ExecuteCommandBuffer(
+                recordState.commandBuffer,
+                *commandBufferGroup
+            );
+
+            auto & lock = rc->_lockMap[imageData->path.string()];
             MFA_SCOPE_LOCK(lock);
 
-            auto gpuTexture = imageData.gpuTexture.lock();
+            auto gpuTexture = imageData->gpuTexture.lock();
             if (gpuTexture == nullptr)
             {
                 return false;
             }
 
-            for (int i = 0; i < imageData.callbacks2.size(); ++i)
+            for (int i = 0; i < imageData->callbacks2.size(); ++i)
             {
-                auto & callback = imageData.callbacks2[i];
+                auto & callback = imageData->callbacks2[i];
                 callback(gpuTexture);
             }
 
-            auto & imageCallbacks = imageData.callbacks;
+            auto & imageCallbacks = imageData->callbacks;
             while (imageCallbacks.IsEmpty() == false)
             {
                 auto callback = imageCallbacks.Pop();
                 callback(gpuTexture);
-                imageData.callbacks2.emplace_back(callback);
+                imageData->callbacks2.emplace_back(callback);
             }
 
-            if (imageData.hasMipmaps == true && imageData.currentMipLevel > 0)
+            if (imageData->hasMipmaps == true && imageData->currentMipLevel > 0)
             {
-                rc->RequestNextMipmap(imageData, imageData.currentMipLevel - 1);
+                rc->RequestNextMipmap(imageData, imageData->currentMipLevel - 1);
             }
             else
             {
-                imageData.callbacks2.clear();
+                imageData->callbacks2.clear();
             }
 
             return false;
