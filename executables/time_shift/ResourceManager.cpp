@@ -263,6 +263,7 @@ void ResourceManager::RequestNextMipmap(std::weak_ptr<ImageData> imageDataWeak, 
 
         if (imageData->hasMipmaps == true && imageData->currentMipLevel > 0)
         {
+            // rc->RequestNextMipmap(imageData, imageData->currentMipLevel / 2);
             int cooldown = 120;
             std::shared_ptr<int> counter = std::make_shared<int>(cooldown);
             LogicalDevice::AddRenderTask([rcWeak, imageDataWeak, counter](RT::CommandRecordState const & recordState)->bool

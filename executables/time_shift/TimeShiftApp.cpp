@@ -289,8 +289,8 @@ void TimeShiftApp::Update(float const deltaTime)
 {
     if (_activeSceneID != _nextSceneID)
     {
-        MFA_SCOPE_Profiler("Switching to next scene");
-        // ResourceManager::Instance()->ForceCleanUp();
+        // MFA_SCOPE_Profiler("Switching to next scene");
+        ResourceManager::Instance()->ForceCleanUp();
         _blobMap.clear();
         _imageMap.clear();
         // TODO: We have to load stuff in another thread
@@ -307,7 +307,7 @@ void TimeShiftApp::Update(float const deltaTime)
         --counter;
         if (counter <= 0)
         {
-            MFA_SCOPE_Profiler("Destroying previous scene");
+            // MFA_SCOPE_Profiler("Destroying previous scene");
             _previousScenes.erase(_previousScenes.begin() + i);
         }
     }

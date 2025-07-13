@@ -60,6 +60,8 @@ namespace MFA
 
             bool AwakeCondition(int idx);
 
+            void AssignTask(Task const & task);
+
         private:
 
             void mainLoop();
@@ -73,6 +75,8 @@ namespace MFA
             std::unique_ptr<std::thread> mThread;
 
             std::atomic<bool> mIsBusy = false;
+
+            ThreadSafeQueue<Task> mTasks{};
 
         };
 
@@ -90,7 +94,6 @@ namespace MFA
 
         ThreadSafeQueue<std::string> mExceptions{};
 
-        ThreadSafeQueue<Task> mTasks{};
         int mNextTaskIdx {};
 
         std::thread::id mMainThreadId{};

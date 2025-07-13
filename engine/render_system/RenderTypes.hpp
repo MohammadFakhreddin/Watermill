@@ -5,6 +5,7 @@
 #include <thread>
 #include <vector>
 #include <vulkan/vulkan.h>
+#include <string>
 
 namespace MFA
 {

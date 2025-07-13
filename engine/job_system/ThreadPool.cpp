@@ -47,12 +47,11 @@ namespace MFA
 
     void ThreadPool::AssignTask(Task const & task)
     {
-        assert(task != nullptr);
+        MFA_ASSERT(task != nullptr);
 
         if (mIsAlive == true)
         {
-            mTasks.Push(task);
-            mThreadObjects[mNextTaskIdx]->Notify();
+            mThreadObjects[mNextTaskIdx]->AssignTask(task);
             mNextTaskIdx = (mNextTaskIdx + 1) % mThreadObjects.size();
         }
         else
@@ -85,7 +84,15 @@ namespace MFA
 
     bool ThreadPool::ThreadObject::AwakeCondition(int idx)
     {
-        return mParent.mTasks.IsEmpty() == false || mParent.mIsAlive == false;
+        return mTasks.IsEmpty() == false || mParent.mIsAlive == false;
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    void ThreadPool::ThreadObject::AssignTask(Task const &task)
+    {
+        mTasks.Push(task);
+        Notify();
     }
 
     //-------------------------------------------------------------------------------------------------
@@ -140,7 +147,7 @@ namespace MFA
                 Task currentTask;
                 bool isEmpty = false;
 
-                while (mParent.mTasks.TryToPop(currentTask, isEmpty) == false && isEmpty == false);
+                while (mTasks.TryToPop(currentTask, isEmpty) == false && isEmpty == false);
                 if (isEmpty == true)
                 {
 	                break;
