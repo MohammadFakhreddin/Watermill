@@ -7,7 +7,7 @@
 #include "LogicalDevice.hpp"
 #include "MenuScene.hpp"
 #include "ResourceManager.hpp"
-#include "ScopeLock.hpp"
+#include "ScopeProfiler.hpp"
 #include "ScoreboardScene.hpp"
 #include "SpritePipeline.hpp"
 #include "SpriteRenderer.hpp"
@@ -289,7 +289,7 @@ void TimeShiftApp::Update(float const deltaTime)
 {
     if (_activeSceneID != _nextSceneID)
     {
-        MFA_LOG_INFO("Switching to next scene");
+        MFA_SCOPE_Profiler("Switching to next scene");
         // ResourceManager::Instance()->ForceCleanUp();
         _blobMap.clear();
         _imageMap.clear();
@@ -307,6 +307,7 @@ void TimeShiftApp::Update(float const deltaTime)
         --counter;
         if (counter <= 0)
         {
+            MFA_SCOPE_Profiler("Destroying previous scene");
             _previousScenes.erase(_previousScenes.begin() + i);
         }
     }

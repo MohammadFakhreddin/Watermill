@@ -330,6 +330,7 @@ namespace MFA::RenderBackend
         std::vector<char const *> enabledLayer {};
 #if defined(MFA_DEBUG)
         enabledLayer.emplace_back(ValidationLayer);
+        MFA_LOG_INFO("Validation layer activated");
 #endif
 
         auto supportedLayers = FilterSupportedLayers(enabledLayer);
@@ -2054,7 +2055,7 @@ namespace MFA::RenderBackend
 
     void EndCommandBuffer(const RT::CommandBufferGroup & commandBufferGroup)
     {
-        MFA_SCOPE_LOCK(commandBufferGroup.commandPool.lock);
+        // MFA_SCOPE_LOCK(commandBufferGroup.commandPool.lock);
         for (auto & commandBuffer : commandBufferGroup.commandBuffers)
         {
             VK_Check(vkEndCommandBuffer(commandBuffer));

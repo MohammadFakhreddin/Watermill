@@ -19,15 +19,22 @@ namespace MFA
         ~JobSystem();
 
         // I think callback system might be a better choice sometimes
-        std::future<void> AssignTask(std::function<void()> task)
+        static std::future<void> AssignTask(std::function<void()> task)
         {
+            auto instance = _instance.lock();
+            if (instance == nullptr)
+            {
+                MFA_LOG_WARN("Failed to execute task");
+                return {};
+            }
+
             struct Params
             {
                 std::promise<void> promise{};
             };
             auto params = std::make_shared<Params>();
 
-            threadPool.AssignTask(
+            instance->threadPool.AssignTask(
             [task, params]()
             {
                 task();
@@ -37,8 +44,15 @@ namespace MFA
         }
 
         template <typename T>
-        std::future<T> AssignTask(std::function<T()> task)
+        static std::future<T> AssignTask(std::function<T()> task)
         {
+            auto instance = _instance.lock();
+            if (instance == nullptr)
+            {
+                MFA_LOG_WARN("Failed to execute task");
+                return {};
+            }
+
             std::promise<T> promise{};
             struct Params
             {
@@ -46,7 +60,7 @@ namespace MFA
             };
             auto params = std::make_shared<Params>();
 
-            threadPool.AssignTask([task, params]() { params->promise.set_value(task()); });
+            instance->threadPool.AssignTask([task, params]() { params->promise.set_value(task()); });
             return params->promise.get_future();
         }
 

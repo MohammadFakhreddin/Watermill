@@ -55,8 +55,8 @@ private:
         bool hasMipmaps = false;
         int mipCount = 0;
         int currentMipLevel = -1;
-        MFA::ThreadSafeQueue<ImageCallback> callbacks;
-        std::vector<ImageCallback> callbacks2;
+        // MFA::ThreadSafeQueue<ImageCallback> callbacks;
+        std::vector<ImageCallback> callbacks;
         std::weak_ptr<MFA::RenderTypes::GpuTexture> gpuTexture;
     };
 

@@ -8,8 +8,9 @@ namespace MFA
     ThreadPool::ThreadPool()
     {
         mMainThreadId = std::this_thread::get_id();
-        mNumberOfThreads = std::max(std::min(4, (int)(std::thread::hardware_concurrency() * 0.5f)), 1);
-        // mNumberOfThreads = std::max((int)(std::thread::hardware_concurrency() * 0.75f), 1);
+        // mNumberOfThreads = std::max(std::min(4, (int)(std::thread::hardware_concurrency() * 0.5f)), 1);
+        mNumberOfThreads = std::max((int)(std::thread::hardware_concurrency() * 0.5f), 1);
+        // mNumberOfThreads = 1;
         MFA_LOG_INFO("Job system is running on %d threads. Available threads are: %d", mNumberOfThreads, static_cast<int>(std::thread::hardware_concurrency()));
 
         mIsAlive = true;
@@ -139,7 +140,7 @@ namespace MFA
                 Task currentTask;
                 bool isEmpty = false;
 
-                while (mParent.mTasks.TryToPop(currentTask, isEmpty) == false);
+                while (mParent.mTasks.TryToPop(currentTask, isEmpty) == false && isEmpty == false);
                 if (isEmpty == true)
                 {
 	                break;

@@ -146,6 +146,10 @@ namespace MFA::RenderTypes
 
     CommandBufferGroup::~CommandBufferGroup()
 	{
+	    if (LogicalDevice::Instance == nullptr)
+	    {
+	        return;
+	    }
 	    CommandPoolGroup * myCommandPool = &commandPool;
 	    std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight() + 1);
 	    LogicalDevice::AddRenderTask([commandBuffers = commandBuffers, myCommandPool, counter](CommandRecordState const & recordState)->bool

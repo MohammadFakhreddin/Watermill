@@ -58,8 +58,9 @@ void GameScene::Update(float const deltaTime)
         MFA_ASSERT(std::filesystem::exists(levelPath) == true);
 
         std::weak_ptr weakRef = shared_from_this();
-        JobSystem::Instance()->AssignTask([weakRef, levelPath]()
+        JobSystem::AssignTask([weakRef, levelPath]()
         {
+            MFA_SCOPE_Profiler("Level initialization");
             auto levelContent = std::make_shared<LevelParser>(levelPath);
 
             auto ref = weakRef.lock();
@@ -93,40 +94,38 @@ void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
 
 void GameScene::Render(MFA::RT::CommandRecordState &recordState)
 {
-    if (_isReadyToRender == false)
+    if (_isReadyToRender == true)
     {
-        return;
-    }
+        auto const worldWidth = (_cameraRight - _cameraLeft);
+        auto const worldHeight = (_cameraTop - _cameraBottom);
+        auto const xCenter = (worldWidth / 2) + _cameraLeft;
+        // auto const yCenter = (worldHeight / 2) + _cameraBottom;
 
-    auto const worldWidth = (_cameraRight - _cameraLeft);
-    auto const worldHeight = (_cameraTop - _cameraBottom);
-    auto const xCenter = (worldWidth / 2) + _cameraLeft;
-    // auto const yCenter = (worldHeight / 2) + _cameraBottom;
+        auto const * device = LogicalDevice::Instance;
+        auto const windowWidth = device->GetWindowWidth();
+        auto const windowHeight = device->GetWindowHeight();
+        auto const ratio = (float)windowWidth / (float)windowHeight;
 
-    auto const * device = LogicalDevice::Instance;
-    auto const windowWidth = device->GetWindowWidth();
-    auto const windowHeight = device->GetWindowHeight();
-    auto const ratio = (float)windowWidth / (float)windowHeight;
+        auto const newWidth = ratio * worldHeight ;
+        auto const left = xCenter - newWidth / 2.0f;
+        auto const right = xCenter + newWidth / 2.0f;
+        // auto const newHeight = worldWidth / ratio;
+        // auto const bottom = yCenter - newHeight * 0.5f;
+        // auto const top = yCenter + newHeight * 0.5f;
 
-    auto const newWidth = ratio * worldHeight ;
-    auto const left = xCenter - newWidth / 2.0f;
-    auto const right = xCenter + newWidth / 2.0f;
-    // auto const newHeight = worldWidth / ratio;
-    // auto const bottom = yCenter - newHeight * 0.5f;
-    // auto const top = yCenter + newHeight * 0.5f;
+        auto const projection = glm::ortho(left, right, _cameraBottom, _cameraTop, _cameraNear, _cameraFar);
+        auto const view = glm::lookAt(_mainCameraPosition, _mainCameraPosition + Math::ForwardVec3, -Math::UpVec3);
+        auto const viewProjection = projection * view;
 
-    auto const projection = glm::ortho(left, right, _cameraBottom, _cameraTop, _cameraNear, _cameraFar);
-    auto const view = glm::lookAt(_mainCameraPosition, _mainCameraPosition + Math::ForwardVec3, -Math::UpVec3);
-    auto const viewProjection = projection * view;
-
-    for (auto & instance : _instances)
-    {
-        SpritePipeline::PushConstants pushConstants {
-            .color = instance->color,
-            .model = glm::transpose(instance->transform->GlobalTransform() * instance->scaleMat),
-            .viewProjection = glm::transpose(viewProjection),
-        };
-        _spriteRenderer->Draw(recordState, pushConstants, *instance->sprite);
+        for (auto & instance : _instances)
+        {
+            SpritePipeline::PushConstants pushConstants {
+                .color = instance->color,
+                .model = glm::transpose(instance->transform->GlobalTransform() * instance->scaleMat),
+                .viewProjection = glm::transpose(viewProjection),
+            };
+            _spriteRenderer->Draw(recordState, pushConstants, *instance->sprite);
+        }
     }
     _webViewContainer->DisplayPass(recordState);
 }
