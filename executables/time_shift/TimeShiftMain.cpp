@@ -1,3 +1,4 @@
+#include "BedrockPlatforms.hpp"
 #include "BedrockLog.hpp"
 #include "BedrockPath.hpp"
 #include "GenerateGame.h"
@@ -5,8 +6,6 @@
 #include "LogicalDevice.hpp"
 #include "ResourceManager.hpp"
 #include "TimeShiftApp.hpp"
-
-#include "ImportTexture.hpp"
 
 using namespace MFA;
 
@@ -23,14 +22,16 @@ int main()
     if (SDL_JoystickOpen(0) != nullptr) SDL_JoystickEventState(SDL_ENABLE);
 
     MFA_LOG_INFO("Beginning of a legend");
+#ifdef MFA_DEBUG
+    MFA_LOG_INFO("Running in debug mode");
+#else
+    MFA_LOG_INFO("Running in release mode");
+#endif
+
 
     MFA_ASSERT(device->IsValid() == true);
     {
         auto path = MFA::Path::Instance(true);
-
-        // auto texture = Importer::LoadKtxMetadata(path->Get("textures/sky-0.ktx2").c_str());
-        //
-        // return 0;
 
         auto resourceManager = ResourceManager::Instance(true);
         auto jobSystem = MFA::JobSystem::Instance(true);
