@@ -82,7 +82,9 @@ namespace MFA
 
 		inline static std::weak_ptr<JobSystem> _instance {};
 
-        ThreadPool threadPool{};
+        static constexpr int MaxThreadCount = 4;
+        static constexpr int MinThreadCount = 1;
+        ThreadPool threadPool{std::max(std::min(MaxThreadCount, (int)(std::thread::hardware_concurrency() * 0.5f)), MinThreadCount)};
 
     };
 } // namespace MFA

@@ -1,11 +1,11 @@
 #pragma once
 
-#include "ThreadSafeQueue.hpp"
 #include "RenderTypes.hpp"
+#include "ThreadPool.hpp"
 
+#include <filesystem>
 #include <future>
 #include <unordered_map>
-#include <filesystem>
 
 namespace MFA::RenderTypes
 {
@@ -60,7 +60,12 @@ private:
         std::weak_ptr<MFA::RenderTypes::GpuTexture> gpuTexture;
     };
 
-    void RequestNextMipmap(std::weak_ptr<ImageData> imageData, int nextMipLevel);
+    enum class Priority : int
+    {
+        Low = 0,
+        High = 1,
+    };
+    void RequestNextMipmap(std::weak_ptr<ImageData> imageData, int nextMipLevel, Priority priority);
 
     inline static std::weak_ptr<ResourceManager> _instance {};
 
@@ -68,4 +73,9 @@ private:
     std::unordered_map<std::string, std::atomic<bool>> _lockMap{};
 
     std::shared_ptr<MFA::RT::GpuTexture> _errorTexture{};
+
+    static constexpr int MaxThreadCount = 2;
+    static constexpr int MinThreadCount = 1;
+    MFA::ThreadPool threadPool{std::max(std::min(MaxThreadCount, (int)(std::thread::hardware_concurrency() * 0.5f)), MinThreadCount)};
+
 };

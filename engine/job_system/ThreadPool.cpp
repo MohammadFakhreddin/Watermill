@@ -5,11 +5,11 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    ThreadPool::ThreadPool()
+    ThreadPool::ThreadPool(int threadCount)
     {
         mMainThreadId = std::this_thread::get_id();
         // mNumberOfThreads = std::max(std::min(4, (int)(std::thread::hardware_concurrency() * 0.5f)), 1);
-        mNumberOfThreads = std::max((int)(std::thread::hardware_concurrency() * 0.5f), 1);
+        mNumberOfThreads = threadCount;// std::max((int)(std::thread::hardware_concurrency() * 0.5f), 1);
         // mNumberOfThreads = 1;
         MFA_LOG_INFO("Job system is running on %d threads. Available threads are: %d", mNumberOfThreads, static_cast<int>(std::thread::hardware_concurrency()));
 
@@ -45,7 +45,7 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    void ThreadPool::AssignTask(Task const & task)
+    void ThreadPool::AssignTask(Task const &task)
     {
         MFA_ASSERT(task != nullptr);
 
@@ -58,6 +58,13 @@ namespace MFA
         {
             task();
         }
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    void ThreadPool::AssignTask(int threadIdx, Task const &task)
+    {
+        mThreadObjects[threadIdx % mThreadObjects.size()]->AssignTask(task);
     }
 
     //-------------------------------------------------------------------------------------------------

@@ -2,7 +2,6 @@
 
 #include "BedrockPath.hpp"
 #include "ImportTexture.hpp"
-#include "JobSystem.hpp"
 #include "LogicalDevice.hpp"
 #include "RenderTypes.hpp"
 #include "ScopeLock.hpp"
@@ -71,7 +70,7 @@ void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & 
 
     std::string imagePath{nameRaw_};
     // We do not want any spin lock to exists in the main thread for any reason.
-    JobSystem::AssignTask([rcWeak, imagePath, callback]()->void
+    threadPool.AssignTask((int)Priority::High, [rcWeak, imagePath, callback]()->void
     {
         auto rc = rcWeak.lock();
         if (rc == nullptr)
@@ -132,7 +131,7 @@ void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & 
         }
 
         imageData->currentMipLevel = imageData->mipCount;
-        rc->RequestNextMipmap(imageData, imageData->currentMipLevel - 1);
+        rc->RequestNextMipmap(imageData, imageData->currentMipLevel - 1, Priority::High);
     });
 }
 
@@ -146,16 +145,15 @@ void ResourceManager::ForceCleanUp()
 
 //======================================================================================================================
 
-void ResourceManager::RequestNextMipmap(std::weak_ptr<ImageData> imageDataWeak, int nextMipLevel)
+void ResourceManager::RequestNextMipmap(std::weak_ptr<ImageData> imageDataWeak, int nextMipLevel, Priority priority)
 {
     MFA_ASSERT(nextMipLevel >= 0);
 
     // MFA_LOG_INFO("Mipmap requested: %s", imagePath.c_str());
 
     std::weak_ptr rcWeak = shared_from_this();
-    // TODO: In the new design, our functions should return a command buffer that they have allocated themselves and we just combine them together for execution
 
-    JobSystem::AssignTask([rcWeak, imageDataWeak = std::move(imageDataWeak), nextMipLevel]()
+    threadPool.AssignTask((int)priority, [priority, rcWeak, imageDataWeak = std::move(imageDataWeak), nextMipLevel]()
     {
         auto rc = rcWeak.lock();
         if (rc == nullptr)
@@ -261,11 +259,10 @@ void ResourceManager::RequestNextMipmap(std::weak_ptr<ImageData> imageDataWeak, 
             commandBufferGroup,
             imageDataWeak,
             gpuTexture,
-            nextMipLevel
+            nextMipLevel,
+            priority
         ](const RT::CommandRecordState & recordState)->bool
         {
-            MFA_ASSERT(JobSystem::Instance() == nullptr || JobSystem::Instance()->IsMainThread() == true);
-
             auto rc = rcWeak.lock();
             if (rc == nullptr)
             {
@@ -278,61 +275,46 @@ void ResourceManager::RequestNextMipmap(std::weak_ptr<ImageData> imageDataWeak, 
                 return false;
             }
 
-            auto & lock = rc->_lockMap[imageData->path.string()];
-            MFA_SCOPE_LOCK(lock);
-
             RB::ExecuteCommandBuffer(
                 recordState.commandBuffer,
                 *commandBufferGroup
             );
 
-            imageData->gpuTexture = gpuTexture;
-            imageData->currentMipLevel = nextMipLevel;
-
-            for (int i = 0; i < imageData->callbacks.size(); ++i)
+            rc->threadPool.AssignTask((int)priority, [rcWeak, gpuTexture, imageDataWeak, nextMipLevel]()->void
             {
-                auto & callback = imageData->callbacks[i];
-                callback(gpuTexture);
-            }
-
-            if (imageData->hasMipmaps == true && imageData->currentMipLevel > 0)
-            {
-                int cooldown = 60;
-                std::shared_ptr<int> counter = std::make_shared<int>(cooldown);
-                LogicalDevice::AddRenderTask([rcWeak, imageDataWeak, counter](RT::CommandRecordState const & recordState)->bool
+                auto rc = rcWeak.lock();
+                if (rc == nullptr)
                 {
-                    auto rc = rcWeak.lock();
-                    if (rc == nullptr)
-                    {
-                        return false;
-                    }
+                    return;
+                }
 
-                    auto imageData = imageDataWeak.lock();
-                    if (imageData == nullptr)
-                    {
-                        return false;
-                    }
+                auto imageData = imageDataWeak.lock();
+                if (imageData == nullptr)
+                {
+                    return;
+                }
 
-                    if (imageData->gpuTexture.lock() == nullptr)
-                    {
-                        imageData->callbacks.clear();
-                        return false;
-                    }
+                auto & lock = rc->_lockMap[imageData->path.string()];
+                MFA_SCOPE_LOCK(lock);
 
-                    (*counter) -= 1;
-                    if ((*counter) > 0)
-                    {
-                        return true;
-                    }
-                    rc->RequestNextMipmap(imageData, imageData->currentMipLevel / 2);
+                imageData->gpuTexture = gpuTexture;
+                imageData->currentMipLevel = nextMipLevel;
 
-                    return false;
-                });
-            }
-            else
-            {
-                imageData->callbacks.clear();
-            }
+                for (int i = 0; i < imageData->callbacks.size(); ++i)
+                {
+                    auto & callback = imageData->callbacks[i];
+                    callback(gpuTexture);
+                }
+
+                if (imageData->hasMipmaps == true && imageData->currentMipLevel > 0)
+                {
+                    rc->RequestNextMipmap(imageData, imageData->currentMipLevel / 2, Priority::Low);
+                }
+                else
+                {
+                    imageData->callbacks.clear();
+                }
+            });
 
             return false;
         });

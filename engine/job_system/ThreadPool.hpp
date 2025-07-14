@@ -17,7 +17,7 @@ namespace MFA
 
         using Task = std::function<void()>;
         
-        explicit ThreadPool();
+        explicit ThreadPool(int threadCount);
         // We can have a threadPool with custom number of threads
 
         ~ThreadPool();
@@ -31,6 +31,8 @@ namespace MFA
         bool IsMainThread() const;
 
         void AssignTask(Task const & task);
+
+        void AssignTask(int threadIdx, Task const & task);
 
         [[nodiscard]]
         int NumberOfAvailableThreads() const;
