@@ -60,7 +60,7 @@ void GameScene::Update(float const deltaTime)
         std::weak_ptr weakRef = shared_from_this();
         JobSystem::AssignTask([weakRef, levelPath]()
         {
-            MFA_SCOPE_Profiler("Level initialization");
+            // MFA_SCOPE_Profiler("Level initialization");
             auto levelContent = std::make_shared<LevelParser>(levelPath);
 
             auto ref = weakRef.lock();
@@ -182,7 +182,7 @@ void GameScene::ButtonB_Pressed(bool const value)
 
 void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
 {
-    MFA_SCOPE_Profiler("Read level from json")
+    // MFA_SCOPE_Profiler("Read level from json")
     // TODO: Split buffers from sprites. There are some common sprites among them
     // TODO: We can furthermore separate texture from sprites.
     _transforms = levelParser->GetTransforms();

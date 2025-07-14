@@ -65,63 +65,75 @@ ResourceManager::~ResourceManager() = default;
 
 void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & callback)
 {
+    MFA_ASSERT(callback != nullptr);
+
+    std::weak_ptr rcWeak = shared_from_this();
 
     std::string imagePath{nameRaw_};
-
-    auto & lock = _lockMap[imagePath];
-    MFA_SCOPE_LOCK(lock);
-
-    auto & imageData = _imageMap[imagePath];
-    if (imageData == nullptr)
+    // We do not want any spin lock to exists in the main thread for any reason.
+    JobSystem::AssignTask([rcWeak, imagePath, callback]()->void
     {
-        imageData = std::make_shared<ImageData>();
-        imageData->path = imagePath;
-        imageData->currentMipLevel = -1;
-
-        std::filesystem::path originalPath{imagePath};
-        std::filesystem::path parentPath = originalPath.parent_path().string();
-        std::filesystem::path stem = originalPath.stem().string();
-        std::string extension = originalPath.extension().string();
-
-        int mipIdx = 0;
-        while(true)
+        auto rc = rcWeak.lock();
+        if (rc == nullptr)
         {
-            auto mipPath = (parentPath / stem).string() + "_mip_" + std::to_string(mipIdx) + extension;
-            if (std::filesystem::exists(mipPath) == false)
-            {
-                break;
-            }
-            ++mipIdx;
+            return;
         }
 
-        imageData->mipCount = mipIdx;
-        imageData->hasMipmaps = mipIdx > 0;
+        auto & lock = rc->_lockMap[imagePath];
+        MFA_SCOPE_LOCK(lock);
+
+        auto & imageData = rc->_imageMap[imagePath];
+        if (imageData == nullptr)
+        {
+            imageData = std::make_shared<ImageData>();
+            imageData->path = imagePath;
+            imageData->currentMipLevel = -1;
+
+            std::filesystem::path originalPath{imagePath};
+            std::filesystem::path parentPath = originalPath.parent_path().string();
+            std::filesystem::path stem = originalPath.stem().string();
+            std::string extension = originalPath.extension().string();
+
+            int mipIdx = 0;
+            while(true)
+            {
+                auto mipPath = (parentPath / stem).string() + "_mip_" + std::to_string(mipIdx) + extension;
+                if (std::filesystem::exists(mipPath) == false)
+                {
+                    break;
+                }
+                ++mipIdx;
+            }
+
+            imageData->mipCount = mipIdx;
+            imageData->hasMipmaps = mipIdx > 0;
+            imageData->currentMipLevel = imageData->mipCount;
+        }
+        else
+        {
+            auto imageShared = imageData->gpuTexture.lock();
+            if (imageShared != nullptr)
+            {
+                callback(imageShared);
+
+                // We have loaded the highest mip level already
+                if (imageData->hasMipmaps == false || imageData->currentMipLevel == 0)
+                {
+                    return;
+                }
+            }
+        }
+
+        imageData->callbacks.emplace_back(callback);
+        // To make sure we are not requesting things multiple times
+        if (imageData->callbacks.size() != 1)
+        {
+            return;
+        }
+
         imageData->currentMipLevel = imageData->mipCount;
-    }
-    else
-    {
-        auto imageShared = imageData->gpuTexture.lock();
-        if (imageShared != nullptr)
-        {
-            callback(imageShared);
-
-            // We have loaded the highest mip level already
-            if (imageData->hasMipmaps == false || imageData->currentMipLevel == 0)
-            {
-                return;
-            }
-        }
-    }
-
-    imageData->callbacks.emplace_back(callback);
-    // To make sure we are not requesting things multiple times
-    if (imageData->callbacks.size() != 1)
-    {
-        return;
-    }
-
-    imageData->currentMipLevel = imageData->mipCount;
-    RequestNextMipmap(imageData, imageData->currentMipLevel - 1);
+        rc->RequestNextMipmap(imageData, imageData->currentMipLevel - 1);
+    });
 }
 
 //======================================================================================================================
@@ -138,30 +150,12 @@ void ResourceManager::RequestNextMipmap(std::weak_ptr<ImageData> imageDataWeak, 
 {
     MFA_ASSERT(nextMipLevel >= 0);
 
-    auto imageData = imageDataWeak.lock();
-    if (imageData == nullptr)
-    {
-        return;
-    }
-
-    std::string imagePath{imageData->path.string()};
-    if (imageData->hasMipmaps == true)
-    {
-        std::filesystem::path originalPath{imagePath};
-        std::filesystem::path parentPath = originalPath.parent_path().string();
-        std::filesystem::path stem = originalPath.stem().string();
-        std::string extension = originalPath.extension().string();
-        auto mipPath = (parentPath / stem).string() + "_mip_" + std::to_string(nextMipLevel) + originalPath.extension().string();
-
-        imagePath = mipPath;
-    }
-
     // MFA_LOG_INFO("Mipmap requested: %s", imagePath.c_str());
 
     std::weak_ptr rcWeak = shared_from_this();
     // TODO: In the new design, our functions should return a command buffer that they have allocated themselves and we just combine them together for execution
 
-    JobSystem::Instance()->AssignTask([rcWeak, name = std::string(imagePath), imageDataWeak, nextMipLevel]()
+    JobSystem::AssignTask([rcWeak, imageDataWeak = std::move(imageDataWeak), nextMipLevel]()
     {
         auto rc = rcWeak.lock();
         if (rc == nullptr)
@@ -173,6 +167,18 @@ void ResourceManager::RequestNextMipmap(std::weak_ptr<ImageData> imageDataWeak, 
         if (imageData == nullptr)
         {
             return;
+        }
+
+        std::string name{imageData->path.string()};
+        if (imageData->hasMipmaps == true)
+        {
+            std::filesystem::path originalPath{name};
+            std::filesystem::path parentPath = originalPath.parent_path().string();
+            std::filesystem::path stem = originalPath.stem().string();
+            std::string extension = originalPath.extension().string();
+            auto mipPath = (parentPath / stem).string() + "_mip_" + std::to_string(nextMipLevel) + originalPath.extension().string();
+
+            name = mipPath;
         }
 
         auto * logicalDevice = LogicalDevice::Instance;
@@ -249,58 +255,6 @@ void ResourceManager::RequestNextMipmap(std::weak_ptr<ImageData> imageDataWeak, 
             return true;
         });
 
-        auto & lock = rc->_lockMap[imageData->path.string()];
-        MFA_SCOPE_LOCK(lock);
-
-        imageData->gpuTexture = gpuTexture;
-        imageData->currentMipLevel = nextMipLevel;
-
-        for (int i = 0; i < imageData->callbacks.size(); ++i)
-        {
-            auto & callback = imageData->callbacks[i];
-            callback(gpuTexture);
-        }
-
-        if (imageData->hasMipmaps == true && imageData->currentMipLevel > 0)
-        {
-            // rc->RequestNextMipmap(imageData, imageData->currentMipLevel / 2);
-            int cooldown = 120;
-            std::shared_ptr<int> counter = std::make_shared<int>(cooldown);
-            LogicalDevice::AddRenderTask([rcWeak, imageDataWeak, counter](RT::CommandRecordState const & recordState)->bool
-            {
-                auto rc = rcWeak.lock();
-                if (rc == nullptr)
-                {
-                    return false;
-                }
-
-                auto imageData = imageDataWeak.lock();
-                if (imageData == nullptr)
-                {
-                    return false;
-                }
-
-                if (imageData->gpuTexture.lock() == nullptr)
-                {
-                    imageData->callbacks.clear();
-                    return false;
-                }
-
-                (*counter) -= 1;
-                if ((*counter) > 0)
-                {
-                    return true;
-                }
-                rc->RequestNextMipmap(imageData, imageData->currentMipLevel / 2);
-
-                return false;
-            });
-        }
-        else
-        {
-            imageData->callbacks.clear();
-        }
-
         LogicalDevice::AddRenderTask([
             rcWeak,
             name = std::move(name),
@@ -327,17 +281,58 @@ void ResourceManager::RequestNextMipmap(std::weak_ptr<ImageData> imageDataWeak, 
             auto & lock = rc->_lockMap[imageData->path.string()];
             MFA_SCOPE_LOCK(lock);
 
-            auto gpuTexture = imageData->gpuTexture.lock();
-            if (gpuTexture == nullptr)
-            {
-                imageData->callbacks.clear();
-                return false;
-            }
-
             RB::ExecuteCommandBuffer(
                 recordState.commandBuffer,
                 *commandBufferGroup
             );
+
+            imageData->gpuTexture = gpuTexture;
+            imageData->currentMipLevel = nextMipLevel;
+
+            for (int i = 0; i < imageData->callbacks.size(); ++i)
+            {
+                auto & callback = imageData->callbacks[i];
+                callback(gpuTexture);
+            }
+
+            if (imageData->hasMipmaps == true && imageData->currentMipLevel > 0)
+            {
+                int cooldown = 60;
+                std::shared_ptr<int> counter = std::make_shared<int>(cooldown);
+                LogicalDevice::AddRenderTask([rcWeak, imageDataWeak, counter](RT::CommandRecordState const & recordState)->bool
+                {
+                    auto rc = rcWeak.lock();
+                    if (rc == nullptr)
+                    {
+                        return false;
+                    }
+
+                    auto imageData = imageDataWeak.lock();
+                    if (imageData == nullptr)
+                    {
+                        return false;
+                    }
+
+                    if (imageData->gpuTexture.lock() == nullptr)
+                    {
+                        imageData->callbacks.clear();
+                        return false;
+                    }
+
+                    (*counter) -= 1;
+                    if ((*counter) > 0)
+                    {
+                        return true;
+                    }
+                    rc->RequestNextMipmap(imageData, imageData->currentMipLevel / 2);
+
+                    return false;
+                });
+            }
+            else
+            {
+                imageData->callbacks.clear();
+            }
 
             return false;
         });

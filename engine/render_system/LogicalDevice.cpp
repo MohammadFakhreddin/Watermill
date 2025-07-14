@@ -745,7 +745,7 @@ namespace MFA
             MFA_LOG_WARN("Logical device does not exist, cannot add render task");
             return;
         }
-         Instance->_renderTasks.Push(std::move(renderTask));
+        Instance->_renderTasks.Push(std::move(renderTask));
     }
 
     //-------------------------------------------------------------------------------------------------
@@ -805,28 +805,30 @@ namespace MFA
         recordState.commandBuffer = commandBuffer;
 
         {
-            int const count = (int)_pRenderTasks.size();
-            for (int i = 0; i < count; i++)
             {
-                RenderTask task = _pRenderTasks.front();
-                _pRenderTasks.pop();
-                if (task(recordState) == true)
+                int const count = (int)_pRenderTasks.size();
+                for (int i = 0; i < count; i++)
                 {
-                    _pRenderTasks.push(task);
-                }
-            }
-        }
-        {
-            int const count = (int)_renderTasks.ItemCount();
-            for (int i = 0; i < count; i++)
-            {
-                RenderTask task;
-                bool isEmpty;
-                if (_renderTasks.TryToPop(task, isEmpty))
-                {
+                    RenderTask task = _pRenderTasks.front();
+                    _pRenderTasks.pop();
                     if (task(recordState) == true)
                     {
-                        _pRenderTasks.emplace(task);
+                        _pRenderTasks.push(task);
+                    }
+                }
+            }
+            {
+                int const count = (int)_renderTasks.ItemCount();
+                for (int i = 0; i < count; i++)
+                {
+                    RenderTask task;
+                    bool isEmpty;
+                    if (_renderTasks.TryToPop(task, isEmpty))
+                    {
+                        if (task(recordState) == true)
+                        {
+                            _pRenderTasks.emplace(task);
+                        }
                     }
                 }
             }

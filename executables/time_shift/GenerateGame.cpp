@@ -44,7 +44,7 @@ LevelParser::LevelParser(const std::filesystem::path &json_path)
 {
     try
     {
-        MFA_SCOPE_Profiler("Level parser")
+        // MFA_SCOPE_Profiler("Level parser")
         MFA_ASSERT(std::filesystem::exists(json_path));
         // MFA_LOG_INFO("Started parsing file");
 
