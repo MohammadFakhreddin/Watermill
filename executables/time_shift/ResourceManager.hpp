@@ -44,7 +44,7 @@ public:
     static void ForceCleanUp();
 
     [[nodiscard]]
-    static std::shared_ptr<MFA::RT::GpuTexture> const & ErrorTexture()
+    static std::shared_ptr<MFA::RT::GpuTexture> ErrorTexture()
     {
         auto rc = _instance.lock();
         if (rc == nullptr)
