@@ -70,6 +70,26 @@ public:
         return outData;
     }
 
+    void PopAll()
+    {
+        bool expectedValue = false;
+        bool const desiredValue = true;
+
+        while(true)
+        {
+            if (mLock.compare_exchange_strong(expectedValue, desiredValue) == false) {
+                continue;
+            }
+            break;
+        }
+
+        while (mData.empty() == false)
+        {
+            mData.pop();
+        }
+        mLock = false;
+    }
+
     [[nodiscard]]
     bool IsEmpty() {
         MFA_SCOPE_LOCK(mLock)

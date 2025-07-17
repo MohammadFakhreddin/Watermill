@@ -32,7 +32,11 @@ namespace MFA
 
         void AssignTask(Task const & task);
 
-        void AssignTask(int threadIdx, Task const & task);
+        void AssignTask(int threadIdx, Task const & task) const;
+
+        void CancelTasks() const;
+
+        void Terminate();
 
         [[nodiscard]]
         int NumberOfAvailableThreads() const;
@@ -63,6 +67,8 @@ namespace MFA
             bool AwakeCondition(int idx);
 
             void AssignTask(Task const & task);
+
+            void CancelTasks();
 
         private:
 

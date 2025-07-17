@@ -26,25 +26,32 @@ namespace MFA
     }
 }
 
-class ResourceManager : public std::enable_shared_from_this<ResourceManager>
+class ResourceManager
 {
 public:
 
-    static std::shared_ptr<ResourceManager> Instance(bool createNewIfNotExists = false);
+    static std::shared_ptr<ResourceManager> Instantiate();
+
+    static void Destroy();
 
     explicit ResourceManager();
     ~ResourceManager();
 
     using ImageCallback = std::function<void(std::shared_ptr<MFA::RT::GpuTexture>)>;
-    void RequestImage(char const * name, const ImageCallback & callback);
+    static void RequestImage(char const * name, const ImageCallback & callback);
 
     // Temporary we should not need this
-    void ForceCleanUp();
+    static void ForceCleanUp();
 
     [[nodiscard]]
-    std::shared_ptr<MFA::RT::GpuTexture> const & ErrorTexture() const
+    static std::shared_ptr<MFA::RT::GpuTexture> const & ErrorTexture()
     {
-        return _errorTexture;
+        auto rc = _instance.lock();
+        if (rc == nullptr)
+        {
+            return nullptr;
+        }
+        return rc->_errorTexture;
     }
 
 private:

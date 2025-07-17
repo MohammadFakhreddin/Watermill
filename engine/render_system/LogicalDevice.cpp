@@ -338,10 +338,14 @@ namespace MFA
                 .swapChain = VK_NULL_HANDLE,
             };
 
-            while (_renderTasks.IsEmpty() == false)
             {
-                auto task = _renderTasks.Pop();
-                task(recordState);
+                _renderTasks.PopAll();
+
+                while (_pRenderTasks.empty() == false)
+                {
+                    auto task = _pRenderTasks.front();
+                    _pRenderTasks.pop();
+                }
             }
 
             RB::EndAndSubmitSingleTimeCommand(_vkDevice, *GetGraphicCommandPool(), GetGraphicQueue(), commandBuffer);

@@ -6,20 +6,33 @@
 #include "RenderTypes.hpp"
 #include "ScopeLock.hpp"
 #include "Time.hpp"
+#include "imgui.h"
+#include "tiny_gltf_loader.h"
 
 using namespace MFA;
 
 //======================================================================================================================
 
-std::shared_ptr<ResourceManager> ResourceManager::Instance(bool const createNewIfNotExists)
+std::shared_ptr<ResourceManager> ResourceManager::Instantiate()
 {
     std::shared_ptr<ResourceManager> shared_ptr = _instance.lock();
-    if (shared_ptr == nullptr && createNewIfNotExists == true)
+    if (shared_ptr == nullptr)
     {
         shared_ptr = std::make_shared<ResourceManager>();
         _instance = shared_ptr;
     }
     return shared_ptr;
+}
+
+void ResourceManager::Destroy()
+{
+    auto rc = _instance.lock();
+    if (rc == nullptr)
+    {
+        return;
+    }
+    _instance.reset();
+    rc->threadPool.Terminate();
 }
 
 //======================================================================================================================
@@ -66,11 +79,16 @@ void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & 
 {
     MFA_ASSERT(callback != nullptr);
 
-    std::weak_ptr rcWeak = shared_from_this();
+    std::weak_ptr rcWeak = _instance;
+    auto rc = rcWeak.lock();
+    if (rc == nullptr)
+    {
+        return;
+    }
 
     std::string imagePath{nameRaw_};
     // We do not want any spin lock to exists in the main thread for any reason.
-    threadPool.AssignTask((int)Priority::High, [rcWeak, imagePath, callback]()->void
+    rc->threadPool.AssignTask((int)Priority::High, [rcWeak, imagePath, callback]()->void
     {
         auto rc = rcWeak.lock();
         if (rc == nullptr)
@@ -139,8 +157,14 @@ void ResourceManager::RequestImage(char const * nameRaw_, const ImageCallback & 
 
 void ResourceManager::ForceCleanUp()
 {
-    _imageMap.clear();
-    _lockMap.clear();
+    auto rc = _instance.lock();
+    if (rc == nullptr)
+    {
+        return;
+    }
+
+    rc->_imageMap.clear();
+    rc->_lockMap.clear();
 }
 
 //======================================================================================================================
@@ -151,7 +175,7 @@ void ResourceManager::RequestNextMipmap(std::weak_ptr<ImageData> imageDataWeak, 
 
     // MFA_LOG_INFO("Mipmap requested: %s", imagePath.c_str());
 
-    std::weak_ptr rcWeak = shared_from_this();
+    std::weak_ptr rcWeak = _instance;
 
     threadPool.AssignTask((int)priority, [priority, rcWeak, imageDataWeak = std::move(imageDataWeak), nextMipLevel]()
     {

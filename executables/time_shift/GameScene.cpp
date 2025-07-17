@@ -18,7 +18,7 @@ using namespace MFA;
 
 GameScene::GameScene(WebViewContainer::Params const &webviewParams, Params gameParams) : _params(std::move(gameParams))
 {
-    MFA_LOG_INFO("Loading level %s", _params.levelName.c_str());
+    // MFA_LOG_INFO("Loading level %s", _params.levelName.c_str());
 
     auto const *device = MFA::LogicalDevice::Instance;
 
@@ -42,7 +42,7 @@ GameScene::GameScene(WebViewContainer::Params const &webviewParams, Params gameP
 
 GameScene::~GameScene()
 {
-    MFA_LOG_INFO("Destroying level %s", _params.levelName.c_str());
+    // MFA_LOG_INFO("Destroying level %s", _params.levelName.c_str());
 }
 
 //======================================================================================================================
@@ -200,7 +200,7 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
     );
     auto commandBuffer = commandBufferGroup->commandBuffers[0];
 
-    auto errorTexture = ResourceManager::Instance()->ErrorTexture();
+    auto errorTexture = ResourceManager::ErrorTexture();
 
     std::unordered_map<int, std::shared_ptr<RT::BufferAndMemory>> vertexBuffers{};
     std::unordered_map<int, std::tuple<std::shared_ptr<RT::BufferAndMemory>, int>> indexBuffers{};
@@ -337,7 +337,7 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
         if (std::filesystem::exists(address))
         {
             int spriteIndex = i;
-            ResourceManager::Instance()->RequestImage(address.c_str(), [spriteIndex, sceneRef](std::shared_ptr<RT::GpuTexture> gpuTexture)->void
+            ResourceManager::RequestImage(address.c_str(), [spriteIndex, sceneRef](std::shared_ptr<RT::GpuTexture> gpuTexture)->void
             {
                 std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight());
                 LogicalDevice::AddRenderTask([spriteIndex, sceneRef, gpuTexture, counter](RT::CommandRecordState & recordState)->bool

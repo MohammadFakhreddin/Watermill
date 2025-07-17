@@ -10,7 +10,9 @@ namespace MFA
     {
     public:
 
-        static std::shared_ptr<JobSystem> Instance(bool createNewIfNotExists = false);
+        static std::shared_ptr<JobSystem> Instantiate();
+
+        static void Destroy();
 
         [[nodiscard]] static bool HasInstance();
 

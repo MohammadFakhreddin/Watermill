@@ -33,15 +33,15 @@ int main()
     {
         auto path = MFA::Path::Instance(true);
 
-        auto resourceManager = ResourceManager::Instance(true);
-        auto jobSystem = MFA::JobSystem::Instance(true);
+        auto jobSystem = MFA::JobSystem::Instantiate();
+        auto resourceManager = ResourceManager::Instantiate();
 
         auto app = std::make_shared<TimeShiftApp>();
         app->Run();
 
         // We have to make sure all thread all complete
-        jobSystem.reset();
-        resourceManager.reset();
+        ResourceManager::Destroy();
+        JobSystem::Destroy();
     }
 
     MFA_LOG_INFO("End of a legend");

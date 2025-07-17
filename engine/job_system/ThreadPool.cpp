@@ -32,15 +32,7 @@ namespace MFA
 
     ThreadPool::~ThreadPool()
     {
-        mIsAlive = false;
-        for (auto const & thread : mThreadObjects)
-        {
-            thread->Notify();
-        }
-        for (auto const & thread : mThreadObjects)
-        {
-            thread->Join();
-        }
+        Terminate();
     }
 
     //-------------------------------------------------------------------------------------------------
@@ -62,9 +54,34 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    void ThreadPool::AssignTask(int threadIdx, Task const &task)
+    void ThreadPool::AssignTask(int threadIdx, Task const &task) const
     {
         mThreadObjects[threadIdx % mThreadObjects.size()]->AssignTask(task);
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    void ThreadPool::CancelTasks() const
+    {
+        for (auto const &thread : mThreadObjects)
+        {
+            thread->CancelTasks();
+        }
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    void ThreadPool::Terminate()
+    {
+        mIsAlive = false;
+        for (auto const & thread : mThreadObjects)
+        {
+            thread->Notify();
+        }
+        for (auto const & thread : mThreadObjects)
+        {
+            thread->Join();
+        }
     }
 
     //-------------------------------------------------------------------------------------------------
@@ -104,9 +121,19 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
+    void ThreadPool::ThreadObject::CancelTasks()
+    {
+        mTasks.PopAll();
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
     void ThreadPool::ThreadObject::Join() const
     {
-        mThread->join();
+        if (mThread->joinable())
+        {
+            mThread->join();
+        }
     }
 
     //-------------------------------------------------------------------------------------------------

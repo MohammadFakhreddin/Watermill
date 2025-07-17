@@ -290,7 +290,7 @@ void TimeShiftApp::Update(float const deltaTime)
     if (_activeSceneID != _nextSceneID)
     {
         // MFA_SCOPE_Profiler("Switching to next scene");
-        ResourceManager::Instance()->ForceCleanUp();
+        ResourceManager::ForceCleanUp();
         _blobMap.clear();
         _imageMap.clear();
         // TODO: We have to load stuff in another thread
