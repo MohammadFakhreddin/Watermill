@@ -163,6 +163,7 @@ void ResourceManager::ForceCleanUp()
         return;
     }
 
+    rc->threadPool.CancelTasks();
     rc->_imageMap.clear();
     rc->_lockMap.clear();
 }
