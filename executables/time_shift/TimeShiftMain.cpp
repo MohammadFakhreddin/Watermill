@@ -1,7 +1,7 @@
 #include "BedrockPlatforms.hpp"
 #include "BedrockLog.hpp"
 #include "BedrockPath.hpp"
-#include "GenerateGame.h"
+#include "LevelParser.hpp"
 #include "JobSystem.hpp"
 #include "LogicalDevice.hpp"
 #include "ResourceManager.hpp"

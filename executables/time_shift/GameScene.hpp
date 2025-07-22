@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GenerateGame.h"
+#include "LevelParser.hpp"
 #include "IScene.hpp"
 #include "SpriteRenderer.hpp"
 #include "Transform.hpp"

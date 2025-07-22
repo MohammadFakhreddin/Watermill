@@ -7,8 +7,6 @@
 #include <filesystem>
 #include <json.hpp>
 
-// TODO: Rename this file to Level parse after it is working
-
 class LevelParser {
 public:
 

@@ -2,7 +2,7 @@
 
 #include "BedrockMath.hpp"
 #include "BedrockPath.hpp"
-#include "GenerateGame.h"
+#include "LevelParser.hpp"
 #include "LogicalDevice.hpp"
 #include "camera/ObserverCamera.hpp"
 #include "ResourceManager.hpp"
