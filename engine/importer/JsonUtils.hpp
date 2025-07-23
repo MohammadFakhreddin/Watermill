@@ -19,6 +19,26 @@ namespace MFA::JsonUtils
         }
         return result;
     }
+
+    template<typename T>
+    static std::vector<T> TryGetArray(
+        nlohmann::json const & jsonObject,
+        std::string const & keyName,
+        std::function<T(nlohmann::json const &)> ParseItem = [](nlohmann::json const & j) { return j.get<T>(); }
+    )
+    {
+        std::vector<T> result {};
+        const auto findResult = jsonObject.find(keyName);
+        if (findResult != jsonObject.end())
+        {
+            result.clear();
+            for (auto & rawItem : jsonObject[keyName])
+            {
+                result.emplace_back(ParseItem(rawItem));
+            }
+        }
+        return result;
+    }
 }
 
 namespace MFA

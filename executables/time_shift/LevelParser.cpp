@@ -8,10 +8,9 @@
 #include <fstream>
 #include <json.hpp>
 
-using namespace nlohmann;
 using namespace MFA;
 
-static glm::vec3 ToVec3(json const & j)
+static glm::vec3 ToVec3(nlohmann::json const & j)
 {
     glm::vec3 vec;
     j.at("x").get_to(vec.x);
@@ -20,7 +19,7 @@ static glm::vec3 ToVec3(json const & j)
     return vec;
 };
 
-static glm::vec2 ToVec2(json const & j)
+static glm::vec2 ToVec2(nlohmann::json const & j)
 {
     glm::vec2 vec;
     j.at("x").get_to(vec.x);
@@ -28,7 +27,7 @@ static glm::vec2 ToVec2(json const & j)
     return vec;
 }
 
-static glm::vec4 ToColor(json const & j)
+static glm::vec4 ToColor(nlohmann::json const & j)
 {
     glm::vec4 color;
     j.at("r").get_to(color.x);
@@ -49,29 +48,39 @@ LevelParser::LevelParser(const std::filesystem::path &json_path)
         // MFA_LOG_INFO("Started parsing file");
 
         std::ifstream file(json_path);
-        json data = json::parse(file);
+        nlohmann::json data = nlohmann::json::parse(file);
         if (data.is_discarded())
         {
             MFA_LOG_ERROR("JSON file is invalid");
             return;
         }
 
-        ParseBuffers(JU::TryGetValue(data, "buffers", json{}));
-        ParseTextures(JU::TryGetValue(data, "textures", json{}));
-        ParseSprites(JU::TryGetValue(data, "sprites", json{}));
-        ParseCameras(JU::TryGetValue(data, "cameras", json{}));
-        ParseSpriteRenderers(JU::TryGetValue(data, "spriteRenderers", json{}));
-        ParseTransforms(nullptr, JU::TryGetValue(data, "transforms", json{}));
+        ParseBuffers(JU::TryGetValue(data, "buffers", nlohmann::json{}));
+        ParseTextures(JU::TryGetValue(data, "textures", nlohmann::json{}));
+        ParseSprites(JU::TryGetValue(data, "sprites", nlohmann::json{}));
+        ParseCameras(JU::TryGetValue(data, "cameras", nlohmann::json{}));
+        ParseSpriteRenderers(JU::TryGetValue(data, "spriteRenderers", nlohmann::json{}));
+        ParseBoxColliders2D(JU::TryGetValue(data, "boxColliders", nlohmann::json{}));
+        ParsePatrolEnemies(JU::TryGetValue(data, "patrolEnemies", nlohmann::json{}));
+        ParseTransforms(nullptr, JU::TryGetValue(data, "transforms", nlohmann::json{}));
 
         {
 #ifdef MFA_DEBUG
-            for (auto const & instance : instances)
+            for (auto const & instance : renderers)
             {
                 MFA_ASSERT(instance->transform != nullptr);
             }
             for (auto const & camera : cameras)
             {
                 MFA_ASSERT(camera->transform != nullptr);
+            }
+            for (auto const & collider : colliders)
+            {
+                MFA_ASSERT(collider->transform != nullptr);
+            }
+            for (auto const & patrolEnemy : patrolEnemies)
+            {
+                MFA_ASSERT(patrolEnemy->transform != nullptr);
             }
 #endif
         }
@@ -110,15 +119,15 @@ void LevelParser::ParseTextures(nlohmann::json const &rawTextures)
 
 //======================================================================================================================
 
-void LevelParser::ParseTransforms(Transform *parent, json const &rawChildren)
+void LevelParser::ParseTransforms(Transform *parent, nlohmann::json const &rawChildren)
 {
     for (auto const &object : rawChildren)
     {
         transforms.emplace_back(std::make_shared<Transform>());
         auto &transform = transforms.back();
-        transform->SetLocalPosition(ToVec3(JU::TryGetValue(object, "position", json{})));
-        transform->SetEulerAngles(ToVec3(JU::TryGetValue(object, "rotation", json{})));
-        transform->SetLocalScale(ToVec3(JU::TryGetValue(object, "scale", json{})));
+        transform->SetLocalPosition(ToVec3(JU::TryGetValue(object, "position", nlohmann::json{})));
+        transform->SetEulerAngles(ToVec3(JU::TryGetValue(object, "rotation", nlohmann::json{})));
+        transform->SetLocalScale(ToVec3(JU::TryGetValue(object, "scale", nlohmann::json{})));
         transform->name = JU::TryGetValue<std::string>(object, "name", "");
         transform->tag = JU::TryGetValue<std::string>(object, "tag", "");
 
@@ -127,19 +136,59 @@ void LevelParser::ParseTransforms(Transform *parent, json const &rawChildren)
             transform->SetParent(parent);
         }
 
-        int rendererIndex = JU::TryGetValue<int>(object, "spriteRenderer", -1);
-        if (rendererIndex >= 0)
-        {
-            instances[rendererIndex]->transform = transform.get();
+        {// Components
+            auto const findResult = object.find("components");
+            if (findResult != object.end())
+            {
+                for (auto & rawComponent : object["components"])
+                {
+                    auto type = JU::TryGetValue<ComponentType>(
+                        rawComponent,
+                        "type",
+                        ComponentType::Invalid
+                    );
+                    MFA_ASSERT(type != ComponentType::Invalid);
+
+                    auto const index = JU::TryGetValue<int>(rawComponent, "index", -1);
+                    MFA_ASSERT(index >= 0);
+
+                    switch (type)
+                    {
+                        case ComponentType::SpriteRenderer:
+                        {
+                            MFA_ASSERT(index < renderers.size());
+                            renderers[index]->transform = transform.get();
+                            break;
+                        }
+                        case ComponentType::Camera:
+                        {
+                            MFA_ASSERT(index < cameras.size());
+                            cameras[index]->transform = transform.get();
+                            break;
+                        }
+                        case ComponentType::BoxCollider2D:
+                        {
+                            MFA_ASSERT(index < colliders.size());
+                            colliders[index]->transform = transform.get();
+                            break;
+                        }
+                        case ComponentType::PatrolEnemy:
+                        {
+                            MFA_ASSERT(index < patrolEnemies.size());
+                            patrolEnemies[index]->transform = transform.get();
+                            break;
+                        }
+                        default:
+                        {
+                            MFA_LOG_ERROR("Unknown component type: {}", static_cast<int>(type));
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
-        int cameraIndex = JU::TryGetValue<int>(object, "camera", -1);
-        if (cameraIndex >= 0)
-        {
-            cameras[cameraIndex]->transform = transform.get();
-        }
-
-        if (!object["children"].empty())
+        if (object["children"].empty() == false)
         {
             ParseTransforms(transform.get(), object["children"]);
         }
@@ -185,6 +234,8 @@ void LevelParser::ParseCameras(nlohmann::json const & rawCameras)
 
 void LevelParser::ParseSpriteRenderers(nlohmann::json const & rawSpriteRenderers)
 {
+    renderers.clear();
+    rendererMap.clear();
     for (auto const & rawSpriteRenderer : rawSpriteRenderers)
     {
         auto spriteInstance = std::make_shared<SpriteRenderer>();
@@ -193,10 +244,45 @@ void LevelParser::ParseSpriteRenderers(nlohmann::json const & rawSpriteRenderers
         spriteInstance->flipY = rawSpriteRenderer["flipY"];
         spriteInstance->color = ToColor(rawSpriteRenderer["color"]);
 
-        instanceMap[spriteInstance->spriteIndex].emplace_back(spriteInstance);
-        instances.emplace_back(spriteInstance);
+        rendererMap[spriteInstance->spriteIndex].emplace_back(spriteInstance);
+        renderers.emplace_back(spriteInstance);
     }
+}
 
+//======================================================================================================================
+
+void LevelParser::ParseBoxColliders2D(nlohmann::json const &rawBoxColliders)
+{
+    for (auto const & rawBoxCollider : rawBoxColliders)
+    {
+        auto boxCollider = std::make_shared<BoxCollider2D>();
+        boxCollider->isTrigger = JU::TryGetValue(rawBoxCollider, "isTrigger", false);
+        boxCollider->offset = ToVec2(JU::TryGetValue(rawBoxCollider, "offset", nlohmann::json{}));
+        boxCollider->size = ToVec2(JU::TryGetValue(rawBoxCollider, "size", nlohmann::json{}));
+
+        colliders.emplace_back(boxCollider);
+    }
+}
+
+//======================================================================================================================
+
+void LevelParser::ParsePatrolEnemies(nlohmann::json const & rawPatrolEnemies)
+{
+    for (auto const & rawPatrolEnemy : rawPatrolEnemies)
+    {
+        auto patrolEnemy = std::make_shared<PatrolEnemy>();
+        patrolEnemy->movementSpeed = JU::TryGetValue(rawPatrolEnemy, "movementSpeed", 0.0f);
+        patrolEnemy->patrolPositions = {};
+        patrolEnemy->patrolPositions = JU::TryGetArray<glm::vec2>(
+            rawPatrolEnemy,
+            "patrolPositions",
+            [](nlohmann::json const & json)
+            {
+                return ToVec2(json);
+            }
+        );
+        patrolEnemies.emplace_back(patrolEnemy);
+    }
 }
 
 //======================================================================================================================

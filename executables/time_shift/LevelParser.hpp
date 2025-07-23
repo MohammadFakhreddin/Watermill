@@ -10,6 +10,21 @@
 class LevelParser {
 public:
 
+    enum class ComponentType : int
+    {
+        Invalid = 0,
+        SpriteRenderer = 1,
+        Camera = 2,
+        BoxCollider2D = 3,
+        PatrolEnemy = 4
+    };
+
+    struct Component
+    {
+        ComponentType type = ComponentType::Invalid;
+        int index = -1;
+    };
+
     struct Sprite
     {
         std::string textureName {};
@@ -62,6 +77,23 @@ public:
         MFA::Transform * transform = nullptr;
     };
 
+    struct BoxCollider2D
+    {
+        bool isTrigger {};
+        glm::vec2 offset {};
+        glm::vec2 size {};
+
+        MFA::Transform * transform = nullptr;
+    };
+
+    struct PatrolEnemy
+    {
+        float movementSpeed {};
+        std::vector<glm::vec2> patrolPositions {};
+
+        MFA::Transform * transform = nullptr;
+    };
+
     explicit LevelParser(const std::filesystem::path &json_path);
 
     [[nodiscard]]
@@ -70,8 +102,8 @@ public:
     [[nodiscard]]
     std::vector<std::shared_ptr<SpriteRenderer>> const & GetSpriteInstances(int const spriteIndex)
     {
-        MFA_ASSERT(instanceMap.contains(spriteIndex));
-        return instanceMap[spriteIndex];
+        MFA_ASSERT(rendererMap.contains(spriteIndex));
+        return rendererMap[spriteIndex];
     }
 
     [[nodiscard]]
@@ -94,10 +126,18 @@ private:
     void ParseCameras(nlohmann::json const & rawCameras);
     void ParseSpriteRenderers(nlohmann::json const & rawSpriteRenderers);
     void ParseTransforms(MFA::Transform * parent, nlohmann::json const & rawChildren);
+    void ParseBoxColliders2D(nlohmann::json const & rawBoxColliders);
+    void ParsePatrolEnemies(nlohmann::json const & rawPatrolEnemies);
 
     std::vector<std::shared_ptr<MFA::Transform>> transforms {};
-    std::unordered_map<int, std::vector<std::shared_ptr<SpriteRenderer>>> instanceMap {};
-    std::vector<std::shared_ptr<SpriteRenderer>> instances{};
+
+    std::unordered_map<int, std::vector<std::shared_ptr<SpriteRenderer>>> rendererMap {};
+    std::vector<std::shared_ptr<SpriteRenderer>> renderers{};
+
+    std::vector<std::shared_ptr<BoxCollider2D>> colliders {};
+
+    std::vector<std::shared_ptr<PatrolEnemy>> patrolEnemies {};
+
     std::vector<std::shared_ptr<Sprite>> sprites {};
     std::vector<std::shared_ptr<Camera>> cameras {};
     std::vector<std::string> textures {};
