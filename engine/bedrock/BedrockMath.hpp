@@ -24,6 +24,9 @@ namespace MFA::Math
     inline static constexpr glm::vec3 RightVec3{ 1.0f, 0.0f, 0.0f };
     inline static constexpr glm::vec3 UpVec3{ 0.0f, 1.0f, 0.0f };
 
+    inline static constexpr glm::vec2 RightVec2{ 1.0f, 0.0f };
+    inline static constexpr glm::vec2 UpVec2{ 0.0f, 1.0f };
+
     inline static constexpr glm::dvec4 DForwardVec4W1{ 0.0f, 0.0f, 1.0f, 1.0f };
     inline static constexpr glm::dvec4 DRightVec4W1{ 1.0f, 0.0f, 0.0f, 1.0f };
     inline static constexpr glm::dvec4 DUpVec4W1{ 0.0f, 1.0f, 0.0f, 1.0f };
@@ -137,6 +140,13 @@ namespace MFA::Math
     glm::vec3 MoveTowards(
         glm::vec3 const & from,
         glm::vec3 const & to,
+        float maxDistance
+    );
+
+    [[nodiscard]]
+    glm::vec2 MoveTowards(
+        glm::vec2 const & from,
+        glm::vec2 const & to,
         float maxDistance
     );
 

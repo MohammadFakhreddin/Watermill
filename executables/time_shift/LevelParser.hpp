@@ -118,6 +118,12 @@ public:
     [[nodiscard]]
     std::shared_ptr<MFA::Blob> const & GetBlob() const {return blob;}
 
+    [[nodiscard]]
+    std::vector<std::shared_ptr<BoxCollider2D>> GetColliders() const {return colliders;}
+
+    [[nodiscard]]
+    std::vector<std::shared_ptr<PatrolEnemy>> GetPatrolEnemy() const {return patrolEnemies;}
+
 private:
 
     void ParseBuffers(nlohmann::json const & rawBuffers);

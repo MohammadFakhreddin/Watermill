@@ -164,17 +164,27 @@ namespace MFA
 
 	//-------------------------------------------------------------------------------------------------
 
-	glm::vec3 const & Transform::GlobalPosition()
+	glm::vec3 const &Transform::GlobalPosition()
+    {
+        if (mGlobalPositionDirty == true)
+        {
+            mGlobalPosition = GlobalTransform() * glm::vec4{0.0, 0.0, 0.0, 1.0f};
+            mGlobalPositionDirty = false;
+        }
+        return mGlobalPosition;
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    void Transform::SetGlobalPosition(glm::vec3 const & newPosition)
 	{
-		if (mGlobalPositionDirty == true)
-		{
-			mGlobalPosition = GlobalTransform() * glm::vec4{0.0, 0.0, 0.0, 1.0f};
-			mGlobalPositionDirty = false;
-		}
-		return mGlobalPosition;
+	    auto & globalPosition = GlobalPosition();
+        auto difference = newPosition - globalPosition;
+	    auto localPosition = GetLocalPosition();
+	    SetLocalPosition(localPosition + difference);
 	}
 
-	//-------------------------------------------------------------------------------------------------
+    //-------------------------------------------------------------------------------------------------
 
 	Rotation const &Transform::GlobalRotation()
     {

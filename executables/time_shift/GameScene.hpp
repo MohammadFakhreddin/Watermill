@@ -6,6 +6,7 @@
 #include "Transform.hpp"
 #include "WebViewContainer.hpp"
 #include "camera/ArcballCamera.hpp"
+#include "PatrolEnemy.hpp"
 
 #include <future>
 
@@ -68,6 +69,7 @@ private:
     };
     std::vector<std::shared_ptr<SpriteInstance>> _instances;
     std::shared_ptr<SpriteRenderer> _spriteRenderer;
+    std::vector<std::shared_ptr<PatrolEnemy>> _patrolEnemies;
 
     float _cameraLeft{};
     float _cameraRight{};

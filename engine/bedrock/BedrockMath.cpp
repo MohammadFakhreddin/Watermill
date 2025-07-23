@@ -454,6 +454,20 @@ namespace MFA::Math
 
     //-------------------------------------------------------------------------------------------------
 
+    glm::vec2 MoveTowards(glm::vec2 const& from, glm::vec2 const& to, float const maxDistance)
+    {
+        auto const vector = to - from;
+        auto const distance = glm::length(vector);
+        if (distance < glm::epsilon<float>())
+        {
+            return to;
+        }
+        float const t = std::min(maxDistance/distance, 1.0f);
+        return glm::mix(from, to, t);
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
     glm::quat RotateTowards(glm::quat const& from, glm::quat const& to, float const maxDegreeDelta)
     {
         MFA_ASSERT(maxDegreeDelta > 0.0f);

@@ -81,6 +81,13 @@ void GameScene::Update(float const deltaTime)
         MFA_STRING(text, "Time: %d", (int)_passedTime);
         _webViewContainer->SetText(_timeText, text.c_str());
     }
+
+    {// Updating enemies
+        for (auto const & enemy : _patrolEnemies)
+        {
+            enemy->Update(deltaTime);
+        }
+    }
 }
 
 //======================================================================================================================
@@ -279,86 +286,103 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
         }
     }
 
-    auto const & jsonSprites = levelParser->GetSprites();
-    for (int i = 0; i < (int)jsonSprites.size(); ++i)
-    {
-        auto & jsonSprite = jsonSprites[i];
-
-        MFA_ASSERT(jsonSprite->vertexBufferIndex >= 0);
-        auto vertexBuffer = vertexBuffers[jsonSprite->vertexBufferIndex];
-        MFA_ASSERT(vertexBuffer != nullptr);
-
-        MFA_ASSERT(jsonSprite->indexBufferIndex >= 0);
-        auto [indexBuffer, indexCount] = indexBuffers[jsonSprite->indexBufferIndex];
-        MFA_ASSERT(indexBuffer != nullptr);
-
-        auto material = _spriteRenderer->AllocateMaterial(errorTexture);
-
-        std::shared_ptr sprite = _spriteRenderer->CreateSprite(vertexBuffer, indexCount, indexBuffer, material);
-        _sprites.emplace_back(sprite);
-
-        auto const & instances = levelParser->GetSpriteInstances(i);
-        for (auto const & instance : instances)
+    {// Parsing sprites
+        auto const & jsonSprites = levelParser->GetSprites();
+        for (int i = 0; i < (int)jsonSprites.size(); ++i)
         {
-            glm::vec3 flipScale {1.0f, 1.0f, 1.0f};
-            if (instance->flipX == true)
-            {
-                flipScale.x *= -1.0f;
-            }
-            if (instance->flipY == true)
-            {
-                flipScale.y *= -1.0f;
-            }
-            auto scaleMat = glm::scale(glm::mat4(1), flipScale);
+            auto & jsonSprite = jsonSprites[i];
 
-            auto myInstance = std::make_shared<SpriteInstance>();
-            myInstance->scaleMat = scaleMat;
-            myInstance->sprite = sprite.get();
-            myInstance->transform = instance->transform;
-            myInstance->color = instance->color;
+            MFA_ASSERT(jsonSprite->vertexBufferIndex >= 0);
+            auto vertexBuffer = vertexBuffers[jsonSprite->vertexBufferIndex];
+            MFA_ASSERT(vertexBuffer != nullptr);
 
-            bool inserted = false;
-            for (int j = 0 ; j < _instances.size(); j++)
+            MFA_ASSERT(jsonSprite->indexBufferIndex >= 0);
+            auto [indexBuffer, indexCount] = indexBuffers[jsonSprite->indexBufferIndex];
+            MFA_ASSERT(indexBuffer != nullptr);
+
+            auto material = _spriteRenderer->AllocateMaterial(errorTexture);
+
+            std::shared_ptr sprite = _spriteRenderer->CreateSprite(vertexBuffer, indexCount, indexBuffer, material);
+            _sprites.emplace_back(sprite);
+
+            auto const & instances = levelParser->GetSpriteInstances(i);
+            for (auto const & instance : instances)
             {
-                if (_instances[j]->transform->GlobalPosition().z < myInstance->transform->GlobalPosition().z)
+                glm::vec3 flipScale {1.0f, 1.0f, 1.0f};
+                if (instance->flipX == true)
                 {
-                    _instances.insert(_instances.begin() + j, myInstance);
-                    inserted = true;
-                    break;
+                    flipScale.x *= -1.0f;
+                }
+                if (instance->flipY == true)
+                {
+                    flipScale.y *= -1.0f;
+                }
+                auto scaleMat = glm::scale(glm::mat4(1), flipScale);
+
+                auto myInstance = std::make_shared<SpriteInstance>();
+                myInstance->scaleMat = scaleMat;
+                myInstance->sprite = sprite.get();
+                myInstance->transform = instance->transform;
+                myInstance->color = instance->color;
+
+                bool inserted = false;
+                for (int j = 0 ; j < _instances.size(); j++)
+                {
+                    if (_instances[j]->transform->GlobalPosition().z < myInstance->transform->GlobalPosition().z)
+                    {
+                        _instances.insert(_instances.begin() + j, myInstance);
+                        inserted = true;
+                        break;
+                    }
+                }
+                if (inserted == false)
+                {
+                    _instances.emplace_back(std::move(myInstance));
                 }
             }
-            if (inserted == false)
+
+            auto const address = Path::Instance()->Get("textures/" + jsonSprites[i]->textureName);
+            if (std::filesystem::exists(address))
             {
-                _instances.emplace_back(std::move(myInstance));
+                int spriteIndex = i;
+                ResourceManager::RequestImage(address.c_str(), [spriteIndex, sceneRef](std::shared_ptr<RT::GpuTexture> gpuTexture)->void
+                {
+                    std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight());
+                    LogicalDevice::AddRenderTask([spriteIndex, sceneRef, gpuTexture, counter](RT::CommandRecordState & recordState)->bool
+                    {
+                        auto scenePtr = sceneRef.lock();
+                        if (scenePtr == nullptr)
+                        {
+                           return false;
+                        }
+                        auto * scene = (GameScene *)scenePtr.get();
+                        auto & sprite = scene->_sprites[spriteIndex];
+                        scene->_spriteRenderer->UpdateMaterial(recordState.frameIndex, *sprite->material, gpuTexture);
+                        (*counter) -= 1;
+                        if (*counter <= 0)
+                        {
+                            // Remove the task from the queue
+                            return false;
+                        }
+                        return true;
+                    });
+                });
             }
         }
+    }
 
-        auto const address = Path::Instance()->Get("textures/" + jsonSprites[i]->textureName);
-        if (std::filesystem::exists(address))
+    {// Parsing colliders
+        // auto const & jsonColliders = levelParser->GetColliders();
+        // TODO
+    }
+
+    {// Parsing patrol enemies
+        auto const & jsonEnemies = levelParser->GetPatrolEnemy();
+        for (int i = 0; i < (int)jsonEnemies.size(); ++i)
         {
-            int spriteIndex = i;
-            ResourceManager::RequestImage(address.c_str(), [spriteIndex, sceneRef](std::shared_ptr<RT::GpuTexture> gpuTexture)->void
-            {
-                std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight());
-                LogicalDevice::AddRenderTask([spriteIndex, sceneRef, gpuTexture, counter](RT::CommandRecordState & recordState)->bool
-                {
-                    auto scenePtr = sceneRef.lock();
-                    if (scenePtr == nullptr)
-                    {
-                       return false;
-                    }
-                    auto * scene = (GameScene *)scenePtr.get();
-                    auto & sprite = scene->_sprites[spriteIndex];
-                    scene->_spriteRenderer->UpdateMaterial(recordState.frameIndex, *sprite->material, gpuTexture);
-                    (*counter) -= 1;
-                    if (*counter <= 0)
-                    {
-                        // Remove the task from the queue
-                        return false;
-                    }
-                    return true;
-                });
-            });
+            auto rawEnemy = jsonEnemies[i];
+            auto patrolEnemy = std::make_shared<PatrolEnemy>(rawEnemy->transform, rawEnemy->movementSpeed, rawEnemy->patrolPositions);
+            _patrolEnemies.emplace_back(std::move(patrolEnemy));
         }
     }
 

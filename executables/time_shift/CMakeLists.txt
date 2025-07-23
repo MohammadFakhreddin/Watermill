@@ -22,6 +22,8 @@ list(
     "${CMAKE_CURRENT_SOURCE_DIR}/SpriteRenderer.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ResourceManager.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ResourceManager.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/PatrolEnemy.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/PatrolEnemy.hpp"
 )
 
 ### Linking libraries ####################################

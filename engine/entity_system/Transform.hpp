@@ -48,6 +48,8 @@ namespace MFA
         [[nodiscard]]
         glm::vec3 const & GlobalPosition();
 
+        void SetGlobalPosition(glm::vec3 const & newPosition);
+
         [[nodiscard]]
         Rotation const & GlobalRotation();
 
