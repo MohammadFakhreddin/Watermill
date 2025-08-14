@@ -91,8 +91,8 @@ namespace MFA::Asset
 	void Texture::SetMipmapData(uint8_t const mipLevel, std::shared_ptr<Blob> const &data)
     {
         MFA_ASSERT(mipLevel < mMipCount);
-
         mMipmaps[mipLevel].data = data;
+        mMipmaps[mipLevel].size = data->Len();
     }
 
     //-------------------------------------------------------------------------------------------------

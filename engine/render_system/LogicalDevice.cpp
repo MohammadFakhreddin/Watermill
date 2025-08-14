@@ -323,46 +323,13 @@ namespace MFA
         // Common part with resize
         DeviceWaitIdle();
 
-        {
-            auto commandBuffer = RB::BeginSingleTimeCommand(_vkDevice, *GetGraphicCommandPool());
-
-            RT::CommandRecordState recordState{
-                .imageIndex = 0,
-                .frameIndex = 0,
-                .isValid = true,
-
-                .commandBufferType = RenderTypes::CommandBufferType::Graphic,
-                .commandBuffer = commandBuffer,
-                .pipeline = nullptr,
-                .renderPass = nullptr,
-                .swapChain = VK_NULL_HANDLE,
-            };
-
-            {
-                _renderTasks.PopAll();
-
-                while (_pRenderTasks.empty() == false)
-                {
-                    auto task = _pRenderTasks.front();
-                    _pRenderTasks.pop();
-                }
-            }
-
-            RB::EndAndSubmitSingleTimeCommand(_vkDevice, *GetGraphicCommandPool(), GetGraphicQueue(), commandBuffer);
-        }
+        // Note: We ignore all the render tasks in the queue
 
         SDL_DelEventWatch(SDLEventWatcher, _window);
 
         // Graphic
         _graphicCommandBuffer.reset();
         _graphicCommandPoolMap.clear();
-        // for (auto & [key, pool] : _graphicCommandPoolMap)
-        // {
-        //     RB::DestroyCommandPool(
-        //         _vkDevice,
-        //         pool
-        //     );
-        // }
 
         // Compute
         RB::DestroySemaphore(
@@ -372,13 +339,6 @@ namespace MFA
 
         _computeCommandBuffer.reset();
         _computeCommandPoolMap.clear();
-        // for (auto & [key, pool] : _computeCommandPoolMap)
-        // {
-        //     RB::DestroyCommandPool(
-        //         _vkDevice,
-        //         pool
-        //     );
-        // }
 
         // Presentation
         RB::DestroySemaphore(
@@ -702,10 +662,7 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    VkSurfaceFormatKHR LogicalDevice::GetSurfaceFormat() const noexcept
-    {
-	    return _surfaceFormat;
-    }
+    VkSurfaceFormatKHR LogicalDevice::GetSurfaceFormat() const noexcept { return _surfaceFormat; }
 
     //-------------------------------------------------------------------------------------------------
 

@@ -287,6 +287,18 @@ void TimeShiftApp::Run()
 
 void TimeShiftApp::Update(float const deltaTime)
 {
+    // Note the order matters
+    for (int i = (int)_previousScenes.size() - 1; i >= 0; i--)
+    {
+        auto & [oldScene, counter] = _previousScenes[i];
+        --counter;
+        if (counter <= 0)
+        {
+            // MFA_SCOPE_Profiler("Destroying previous scene");
+            _previousScenes.erase(_previousScenes.begin() + i);
+        }
+    }
+
     if (_activeSceneID != _nextSceneID)
     {
         // MFA_SCOPE_Profiler("Switching to next scene");
@@ -300,17 +312,6 @@ void TimeShiftApp::Update(float const deltaTime)
     }
 
     _currentScene->Update(deltaTime);
-
-    for (int i = (int)_previousScenes.size() - 1; i >= 0; i--)
-    {
-        auto & [oldScene, counter] = _previousScenes[i];
-        --counter;
-        if (counter <= 0)
-        {
-            // MFA_SCOPE_Profiler("Destroying previous scene");
-            _previousScenes.erase(_previousScenes.begin() + i);
-        }
-    }
 
     //
     // MFA_LOG_INFO(

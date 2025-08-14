@@ -113,9 +113,6 @@ namespace MFA
         RT::CommandPoolGroup * GetGraphicCommandPool();
 
         [[nodiscard]]
-        std::vector<VkSemaphore> const& GetGraphicSemaphores() const noexcept;
-
-        [[nodiscard]]
         std::vector<VkFence> const& GetGraphicFences() const noexcept;
 
         [[nodiscard]]
@@ -132,9 +129,6 @@ namespace MFA
 
         [[nodiscard]]
         VkSurfaceFormatKHR GetSurfaceFormat() const noexcept;
-
-        [[nodiscard]]
-        VkSemaphore GetGraphicSemaphore(RT::CommandRecordState const& recordState) const noexcept;
 
         [[nodiscard]]
         VkSemaphore GetComputeSemaphore(RT::CommandRecordState const& recordState) const noexcept;

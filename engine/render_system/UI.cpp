@@ -432,11 +432,11 @@ namespace MFA
         }
         else
         {
-            ApplyDarkStyles();    
+            ApplyDarkStyles();
         }
         _darkMode = !params.lightMode;
 
-        io.SetClipboardTextFn = _IMGUISetClipboardText; 
+        io.SetClipboardTextFn = _IMGUISetClipboardText;
         io.GetClipboardTextFn = _IMGUIGetClipboardText;
 
         MFA_ASSERT(Instance == nullptr);
@@ -506,7 +506,7 @@ namespace MFA
                 // TODO: We do not need to allocated every frame
                 // auto const vertexData = Memory::AllocSize(vertexSize);
                 // auto const indexData = Memory::AllocSize(indexSize);
-                
+
                 auto& cpuVertexBuffer = _cpuVertexBuffers[recordState.frameIndex];
                 auto& cpuIndexBuffer = _cpuIndexBuffers[recordState.frameIndex];
                 if (cpuVertexBuffer == nullptr || cpuVertexBuffer->Len() < vertexSize)
@@ -567,7 +567,7 @@ namespace MFA
 
                 RB::UpdateHostVisibleBuffer(
                     device,
-                    *gpuIndexBuffer, 
+                    *gpuIndexBuffer,
                     *cpuIndexBuffer
                 );
 
@@ -722,7 +722,7 @@ namespace MFA
         // ImGui::PopItemWidth();
         ImGui::End();
 	}
-    
+
     //-------------------------------------------------------------------------------------------------
 
     bool UI::InputText(char const * text, std::string & value)
@@ -866,7 +866,7 @@ namespace MFA
             windowWidth = 0.0f;
             windowHeight = 0.0f;
         }
-	    
+
         io.DisplaySize = ImVec2(static_cast<float>(windowWidth), static_cast<float>(windowHeight));
 	}
 
@@ -1062,6 +1062,15 @@ namespace MFA
             1
         );
         textureAsset->SetMipmapData(0, Memory::Alloc(pixels, imageSize));
+        using Dimensions = Asset::Texture::Dimensions;
+        textureAsset->SetMipmapDimension(
+            0,
+            {
+                .width = static_cast<decltype(Dimensions::width)>(width),
+                .height = static_cast<decltype(Dimensions::width)>(height),
+                .depth = static_cast<decltype(Dimensions::width)>(depth)
+            }
+        );
 
         auto const device = LogicalDevice::Instance;
 
