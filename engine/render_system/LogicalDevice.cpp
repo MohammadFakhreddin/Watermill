@@ -312,8 +312,6 @@ namespace MFA
 
         _isValid = true;
 
-        // TODO: Temporary
-        IsAlive = true;
         Instance = this;
     }
 
@@ -321,16 +319,10 @@ namespace MFA
 
     LogicalDevice::~LogicalDevice()
     {
-        // TODO: Temporary
-        IsAlive = false;
-
         // Common part with resize
         DeviceWaitIdle();
 
-        {// Note: We ignore all the render tasks in the queue
-            _renderTasks.PopAll();
-            _pRenderTasks = {};
-        }
+        Private_CleanRenderTasks();
 
         SDL_DelEventWatch(SDLEventWatcher, _window);
 
@@ -716,6 +708,44 @@ namespace MFA
         Instance->_renderTasks.Push(std::move(renderTask));
     }
 
+    void LogicalDevice::CleanRenderTasks()
+    {
+        if (Instance == nullptr)
+        {
+            MFA_LOG_WARN("Logical device does not exist, cannot clear render task");
+            return;
+        }
+        Instance->Private_CleanRenderTasks();
+    }
+
+    void LogicalDevice::Private_CleanRenderTasks()
+    {
+        _renderTasks.PopAll();
+        _pRenderTasks = {};
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    void LogicalDevice::ScheduleForDestruction(RT::CommandBufferGroup &commandBufferGroup)
+    {
+        if (Instance == nullptr)
+        {
+            MFA_LOG_WARN("Logical device does not exist, cannot clear render task");
+            return;
+        }
+        Instance->Private_ScheduleForDestruction(commandBufferGroup);
+    }
+
+    void LogicalDevice::Private_ScheduleForDestruction(RT::CommandBufferGroup &commandBufferGroup)
+    {
+        _pendingCommandBuffers.emplace_back();
+        auto & pendingCommandBuffer = _pendingCommandBuffers.back();
+        pendingCommandBuffer.commandBuffers = commandBufferGroup.commandBuffers;
+        pendingCommandBuffer.commandPool = &commandBufferGroup.commandPool;
+        pendingCommandBuffer.threadId = commandBufferGroup.threadId;
+        pendingCommandBuffer.lifeTime = GetMaxFramePerFlight() + 1;
+    }
+
     //-------------------------------------------------------------------------------------------------
 
     VkCommandBuffer LogicalDevice::GetComputeCommandBuffer(RT::CommandRecordState const& recordState) const
@@ -797,6 +827,28 @@ namespace MFA
                         {
                             _pRenderTasks.emplace(task);
                         }
+                    }
+                }
+            }
+        }
+
+        {
+            for (int i = _pendingCommandBuffers.size() - 1; i >= 0; i--)
+            {
+                auto & pending = _pendingCommandBuffers[i];
+                pending.lifeTime -= 1;
+                if (pending.lifeTime <= 0)
+                {
+                    if (TryLock(pending.commandPool->lock) == true)
+                    {
+                        RB::DestroyCommandBuffers(
+                            GetVkDevice(),
+                            *pending.commandPool,
+                            pending.commandBuffers.size(),
+                            pending.commandBuffers.data()
+                        );
+                        Unlock(pending.commandPool->lock);
+                        _pendingCommandBuffers.erase(_pendingCommandBuffers.begin() + i);
                     }
                 }
             }

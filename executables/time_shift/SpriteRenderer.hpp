@@ -32,6 +32,8 @@ public:
 
     explicit SpriteRenderer(std::shared_ptr<Pipeline> pipeline);
 
+    ~SpriteRenderer();
+
     static std::tuple<std::shared_ptr<MFA::RenderTypes::BufferAndMemory>, std::shared_ptr<MFA::RT::BufferGroup>>
     AllocateVertexBuffer(
         VkCommandBuffer commandBuffer,
@@ -48,13 +50,15 @@ public:
     );
 
     [[nodiscard]]
-    std::shared_ptr<Material> AllocateMaterial(std::shared_ptr<MFA::RT::GpuTexture> albedo) const;
+    std::shared_ptr<Material> AllocateMaterial(const std::shared_ptr<MFA::RT::GpuTexture> &albedo) const;
 
     void UpdateMaterial(
         int frameIndex,
         Material & material,
         std::shared_ptr<MFA::RT::GpuTexture> albedo
     ) const;
+
+    void ClearMaterials(int count, Material ** materials) const;
 
     [[nodiscard]]
     static std::unique_ptr<Sprite> CreateSprite(

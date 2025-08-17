@@ -97,7 +97,6 @@ private:
     std::vector<SceneRecipe> _sceneRecipes {};
 
     std::shared_ptr<IScene> _currentScene;
-    std::vector<std::tuple<std::shared_ptr<IScene>, int>> _previousScenes {};
     SceneID _activeSceneID = SceneID::Invalid;
     SceneID _nextSceneID = SceneID::Invalid;
 

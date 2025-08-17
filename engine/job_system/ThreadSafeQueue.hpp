@@ -14,7 +14,8 @@ public:
     bool TryToPush(T newData) {
         bool expectedValue = false;
         bool const desiredValue = true;
-        if (mLock.compare_exchange_strong(expectedValue, desiredValue) == false) {
+        if (mLock.compare_exchange_strong(expectedValue, desiredValue) == false)
+        {
             return false;
         }
 
@@ -77,16 +78,15 @@ public:
 
         while(true)
         {
-            if (mLock.compare_exchange_strong(expectedValue, desiredValue) == false) {
+            if (mLock.compare_exchange_strong(expectedValue, desiredValue) == false)
+            {
                 continue;
             }
             break;
         }
 
-        while (mData.empty() == false)
-        {
-            mData.pop();
-        }
+        mData = {};
+
         mLock = false;
     }
 
