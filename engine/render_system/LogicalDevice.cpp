@@ -323,7 +323,10 @@ namespace MFA
         // Common part with resize
         DeviceWaitIdle();
 
-        // Note: We ignore all the render tasks in the queue
+        {// Note: We ignore all the render tasks in the queue
+            _renderTasks.PopAll();
+            _pRenderTasks = {};
+        }
 
         SDL_DelEventWatch(SDLEventWatcher, _window);
 
