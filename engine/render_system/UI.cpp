@@ -368,7 +368,7 @@ namespace MFA
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;        // Enable Docking
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;      // Enable Multi-Viewport / Platform Windows
 
-        _iniLocation = Path::Instance()->Get("imgui.ini");
+        _iniLocation = Path::Get("imgui.ini");
         io.IniFilename = _iniLocation.c_str();
 
         ImGuiStyle& style = ImGui::GetStyle();
@@ -460,8 +460,13 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-	void UI::Update()
+	void UI::Update(float const deltaTimeInSec)
 	{
+        ImGuiIO& io = ImGui::GetIO();
+        MFA_ASSERT(io.Fonts->IsBuilt() && "Font atlas not built! It is generally built by the renderer backend. Missing call to renderer _NewFrame() function? e.g. ImGui_ImplOpenGL3_NewFrame().");
+
+        io.DeltaTime = deltaTimeInSec;
+
         ImGui::NewFrame();
         _hasFocus = false;
         UpdateSignal.Emit();
@@ -470,15 +475,11 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-	bool UI::Render(
-        RT::CommandRecordState& recordState,
-        float const deltaTimeInSec
-    )
+	bool UI::Render(RT::CommandRecordState& recordState)
 	{
         ImGuiIO& io = ImGui::GetIO();
         MFA_ASSERT(io.Fonts->IsBuilt() && "Font atlas not built! It is generally built by the renderer backend. Missing call to renderer _NewFrame() function? e.g. ImGui_ImplOpenGL3_NewFrame().");
 
-        io.DeltaTime = deltaTimeInSec;
         UpdateMousePositionAndButtons();
         UpdateMouseCursor();
 
@@ -691,21 +692,21 @@ namespace MFA
 
 	//-------------------------------------------------------------------------------------------------
 
-	bool UI::HasFocus() const
+	bool UI::_HasFocus() const
 	{
         return _hasFocus;
 	}
 
     //-------------------------------------------------------------------------------------------------
 
-	void UI::BeginWindow(std::string const& windowName, ImGuiWindowFlags flags)
+	void UI::Private_BeginWindow(std::string const& windowName, ImGuiWindowFlags flags)
 	{
         BeginWindow(windowName.c_str(), flags);
     }
 
     //-------------------------------------------------------------------------------------------------
 
-    void UI::BeginWindow(char const * windowName, ImGuiWindowFlags flags)
+    void UI::Private_BeginWindow(char const * windowName, ImGuiWindowFlags flags)
     {
         ImGui::Begin(windowName, nullptr, flags);
         // ImGui::PushItemWidth(ImGui::GetWindowWidth());
@@ -713,7 +714,7 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-	void UI::EndWindow()
+	void UI::Private_EndWindow()
 	{
         if (ImGui::IsWindowFocused() || ImGui::IsWindowHovered())
         {
@@ -739,7 +740,7 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    ImTextureID UI::AddTexture(VkSampler sampler, VkImageView imageView)
+    ImTextureID UI::Private_AddTexture(VkSampler sampler, VkImageView imageView)
     {
         auto *device = LogicalDevice::Instance->GetVkDevice();
 
@@ -770,7 +771,7 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    void UI::UpdateTexture(ImTextureID textureID, VkSampler sampler, VkImageView imageView)
+    void UI::Private_UpdateTexture(ImTextureID textureID, VkSampler sampler, VkImageView imageView)
     {
         auto *device = LogicalDevice::Instance->GetVkDevice();
         auto const ID = (uintptr_t)textureID;
@@ -807,7 +808,7 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    void UI::RemoveTexture(ImTextureID textureID)
+    void UI::_RemoveTexture(ImTextureID textureID)
     {
         uintptr_t const ID = (uintptr_t)textureID;
         // MFA_ASSERT(_imageDescriptorSetGroups.contains(ID));

@@ -25,7 +25,7 @@ GameScene::GameScene(WebViewContainer::Params const &webviewParams, Params gameP
     _spriteRenderer = _params.spriteRenderer;
     MFA_ASSERT(_spriteRenderer != nullptr);
 
-    auto const htmlPath = MFA::Path::Instance()->Get("ui/game/Game.html");
+    auto const htmlPath = MFA::Path::Get("ui/game/Game.html");
 
     litehtml::position clip;
     clip.x = 0;
@@ -38,6 +38,9 @@ GameScene::GameScene(WebViewContainer::Params const &webviewParams, Params gameP
     _webViewContainer->SetText(_webViewContainer->GetElementById("level"), _params.levelName.c_str());
     _webViewContainer->SetText(_webViewContainer->GetElementById("score"), "Score: 0");
     _timeText = _webViewContainer->GetElementById("time");
+
+    // Initialize Physics2D system
+    _physics2D = std::make_unique<Physics2D>();
 }
 
 GameScene::~GameScene()
@@ -54,7 +57,7 @@ void GameScene::Update(float const deltaTime)
     {
         _initialized = true;
         // TODO: We can sort images based on size and load the largest ones last as well
-        auto levelPath = MFA::Path::Instance()->Get(_params.levelPath);
+        auto levelPath = MFA::Path::Get(_params.levelPath);
         MFA_ASSERT(std::filesystem::exists(levelPath) == true);
 
         std::weak_ptr weakRef = shared_from_this();
@@ -88,6 +91,29 @@ void GameScene::Update(float const deltaTime)
             enemy->Update(deltaTime);
         }
     }
+
+    // {// Update physics entities positions
+    //     for (auto & physicsEntity : _physicsEntities)
+    //     {
+    //         auto & collider = physicsEntity.collider;
+    //         if (collider && collider->transform)
+    //         {
+    //             auto globalTransform = collider->transform->GlobalTransform();
+    //             glm::vec2 position = glm::vec2(globalTransform[3].x, globalTransform[3].z);
+    //             position += collider->offset;
+    //
+    //             glm::vec2 halfSize = collider->size * 0.5f;
+    //             glm::vec2 min = position - halfSize;
+    //             glm::vec2 max = position + halfSize;
+    //
+    //             // Update the physics body position
+    //             _physics2D->MoveAABB(physicsEntity.physicsId, min, max, !collider->isTrigger);
+    //         }
+    //     }
+    // }
+
+    // Update physics system
+    _physics2D->Update();
 }
 
 //======================================================================================================================
@@ -341,7 +367,7 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
                 }
             }
 
-            auto const address = Path::Instance()->Get("textures/" + jsonSprites[i]->textureName);
+            auto const address = Path::Get("textures/" + jsonSprites[i]->textureName);
             if (std::filesystem::exists(address))
             {
                 int spriteIndex = i;
@@ -371,9 +397,41 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
         }
     }
 
-    {// Parsing colliders
-        // auto const & jsonColliders = levelParser->GetColliders();
-        // TODO
+    {// Parsing colliders and register with physics system
+        auto const & jsonColliders = levelParser->GetColliders();
+        for (auto const & collider : jsonColliders)
+        {
+            if (collider && collider->transform)
+            {
+                // Register the collider with the physics system
+                Physics2D::Layer layer = 1; // Default layer
+                Physics2D::Layer layerMask = 0xFFFFFFFF; // Collide with all layers by default
+                
+                auto physicsId = _physics2D->Register(
+                    Physics2D::Type::AABB,
+                    layer,
+                    layerMask,
+                    [collider](Physics2D::Layer hitLayer) {
+                        // Collision callback - can be customized per collider
+                        // For now, just a placeholder
+                    }
+                );
+                
+                // Store the physics entity reference
+                _physicsEntities.push_back({physicsId, collider});
+                
+                // Set initial position
+                auto globalTransform = collider->transform->GlobalTransform();
+                glm::vec2 position = glm::vec2(globalTransform[3].x, globalTransform[3].z);
+                position += collider->offset;
+                
+                glm::vec2 halfSize = collider->size * 0.5f;
+                glm::vec2 min = position - halfSize;
+                glm::vec2 max = position + halfSize;
+                
+                _physics2D->MoveAABB(physicsId, min, max, false);
+            }
+        }
     }
 
     {// Parsing patrol enemies

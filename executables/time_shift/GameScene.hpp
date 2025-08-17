@@ -7,8 +7,7 @@
 #include "WebViewContainer.hpp"
 #include "camera/ArcballCamera.hpp"
 #include "PatrolEnemy.hpp"
-
-#include <future>
+#include "Physics2D.hpp"
 
 class GameScene final : public IScene
 {
@@ -70,6 +69,14 @@ private:
     std::vector<std::shared_ptr<SpriteInstance>> _instances;
     std::shared_ptr<SpriteRenderer> _spriteRenderer;
     std::vector<std::shared_ptr<PatrolEnemy>> _patrolEnemies;
+
+    struct PhysicsEntity
+    {
+        Physics2D::EntityID physicsId;
+        std::shared_ptr<LevelParser::BoxCollider2D> collider;
+    };
+    std::vector<PhysicsEntity> _physicsEntities;
+    std::unique_ptr<Physics2D> _physics2D;
 
     float _cameraLeft{};
     float _cameraRight{};

@@ -6,13 +6,6 @@
 
 namespace MFA
 {
-    
-    //==========================================================
-
-    std::unique_ptr<Time> Time::Instantiate(int maxFramerate, int minFramerate)
-    {
-        return std::make_unique<Time>(maxFramerate, minFramerate);
-    }
 
     //==========================================================
 

@@ -157,14 +157,14 @@ void SpritePipeline::CreatePipeline()
     // Vertex shader
     {
         bool success = Importer::CompileShaderToSPV(
-            Path::Instance()->Get("shaders/sprite_pipeline/SpritePipeline.vert.hlsl"),
-            Path::Instance()->Get("shaders/sprite_pipeline/SpritePipeline.vert.spv"),
+            Path::Get("shaders/sprite_pipeline/SpritePipeline.vert.hlsl"),
+            Path::Get("shaders/sprite_pipeline/SpritePipeline.vert.spv"),
             "vert"
         );
         MFA_ASSERT(success == true);
     }
     auto cpuVertexShader = Importer::ShaderFromSPV(
-        Path::Instance()->Get("shaders/sprite_pipeline/SpritePipeline.vert.spv"),
+        Path::Get("shaders/sprite_pipeline/SpritePipeline.vert.spv"),
         VK_SHADER_STAGE_VERTEX_BIT,
         "main"
     );
@@ -173,14 +173,14 @@ void SpritePipeline::CreatePipeline()
     // Fragment shader
     {
         bool success = Importer::CompileShaderToSPV(
-            Path::Instance()->Get("shaders/sprite_pipeline/SpritePipeline.frag.hlsl"),
-            Path::Instance()->Get("shaders/sprite_pipeline/SpritePipeline.frag.spv"),
+            Path::Get("shaders/sprite_pipeline/SpritePipeline.frag.hlsl"),
+            Path::Get("shaders/sprite_pipeline/SpritePipeline.frag.spv"),
             "frag"
         );
         MFA_ASSERT(success == true);
     }
     auto cpuFragmentShader = Importer::ShaderFromSPV(
-        Path::Instance()->Get("shaders/sprite_pipeline/SpritePipeline.frag.spv"),
+        Path::Get("shaders/sprite_pipeline/SpritePipeline.frag.spv"),
         VK_SHADER_STAGE_FRAGMENT_BIT,
         "main"
     );

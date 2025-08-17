@@ -12,6 +12,7 @@
 #include "SpritePipeline.hpp"
 #include "SpriteRenderer.hpp"
 #include "Time.hpp"
+#include "UI.hpp"
 #include "renderer/BorderPipeline.hpp"
 #include "renderer/BorderRenderer.hpp"
 #include "renderer/SolidFillPipeline.hpp"
@@ -247,7 +248,8 @@ void TimeShiftApp::Run()
     SDL_GL_SetSwapInterval(0);
     SDL_Event e;
 
-    auto time = Time::Instantiate(120, 30);
+    auto time = std::make_unique<Time>(120, 30);
+    // auto ui = std::make_unique<UI>(_displayRenderPass, UI::Params{.lightMode = false});
 
     bool shouldQuit = false;
 
@@ -265,11 +267,14 @@ void TimeShiftApp::Run()
 
         device->Update();
 
-    	Update(Time::DeltaTimeSec());
+        auto const deltaTimeSec = Time::DeltaTimeSec();
+    	Update(deltaTimeSec);
+        // ui->Update(deltaTimeSec);
 
         auto recordState = device->AcquireRecordState(swapChainResource->GetSwapChainImages().swapChain);
         if (recordState.isValid == true)
         {
+            // ui->Render(recordState);
             Render(recordState);
             device->SubmitQueues(recordState);
             device->Present(recordState, swapChainResource->GetSwapChainImages().swapChain);
@@ -510,8 +515,8 @@ void TimeShiftApp::InitFontPipeline()
     auto const fontSampler = RB::CreateSampler(device->GetVkDevice(), fontSamplerParams);
     MFA_ASSERT(fontSampler != nullptr);
     _fontPipeline = std::make_shared<TextOverlayPipeline>(_displayRenderPass, fontSampler);
-    AddFont("JetBrainsMono", Path::Instance()->Get("fonts/JetBrains-Mono/JetBrainsMono-Bold.ttf").c_str());
-    AddFont("PublicSans", Path::Instance()->Get("fonts/PublicSans/PublicSans-Bold.ttf").c_str());
+    AddFont("JetBrainsMono", Path::Get("fonts/JetBrains-Mono/JetBrainsMono-Bold.ttf").c_str());
+    AddFont("PublicSans", Path::Get("fonts/PublicSans/PublicSans-Bold.ttf").c_str());
 }
 
 //=============================================================
@@ -578,7 +583,7 @@ std::tuple<std::shared_ptr<RT::GpuTexture>, glm::vec2> TimeShiftApp::RequestImag
     {
         auto * device = LogicalDevice::Instance;
 
-        auto const path = Path::Instance()->Get(imageName);
+        auto const path = Path::Get(imageName);
 
         auto const commandBuffer = RB::BeginSingleTimeCommand(device->GetVkDevice(), *device->GetGraphicCommandPool());
 

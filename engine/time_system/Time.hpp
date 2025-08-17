@@ -14,8 +14,6 @@ namespace MFA
 
         using UpdateTask = std::function<bool()>;
 
-        static std::unique_ptr<Time> Instantiate(int maxFramerate = 120,int minFramerate = 30);
-
         explicit Time(int maxFramerate, int minFramerate);
 
         ~Time();

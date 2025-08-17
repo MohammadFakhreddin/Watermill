@@ -15,7 +15,7 @@ ScoreboardScene::ScoreboardScene(
 {
     auto const * device = LogicalDevice::Instance;
 
-    auto const htmlPath = Path::Instance()->Get("ui/scoreboard/Scoreboard.html");
+    auto const htmlPath = Path::Get("ui/scoreboard/Scoreboard.html");
 
     litehtml::position clip;
     clip.x = 0;

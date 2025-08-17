@@ -175,15 +175,16 @@ include_directories("${CMAKE_SOURCE_DIR}/shared")
 
 ### WebView ##############################################
 
-#link_libraries(litehtml)
 add_subdirectory("${CMAKE_SOURCE_DIR}/webview")
 include_directories("${CMAKE_SOURCE_DIR}/webview")
 
+### Physics ##############################################
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/physics_2d")
+include_directories("${CMAKE_SOURCE_DIR}/physics_2d")
+
 ##########################################################
 
-#add_subdirectory("${CMAKE_SOURCE_DIR}/executables/default")
 add_subdirectory("${CMAKE_SOURCE_DIR}/executables/time_shift")
 
 ##########################################################
-
-#strip_warnings_as_errors(ktx)

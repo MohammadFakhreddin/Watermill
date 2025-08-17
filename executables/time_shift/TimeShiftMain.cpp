@@ -31,7 +31,7 @@ int main()
 
     MFA_ASSERT(device->IsValid() == true);
     {
-        auto path = MFA::Path::Instance(true);
+        auto path = std::make_unique<Path>();
 
         auto jobSystem = MFA::JobSystem::Instantiate();
         auto resourceManager = ResourceManager::Instantiate();

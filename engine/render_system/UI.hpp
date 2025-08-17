@@ -27,41 +27,16 @@ namespace MFA
 
 		~UI();
 
-	    [[nodiscard]]
-	    ImFont* AddFont(char const * path);
+        void Update(float deltaTimeInSec);
 
-        void Update();
+        bool Render(RT::CommandRecordState& recordState);
 
-        bool Render(
-            RT::CommandRecordState& recordState,
-            float deltaTimeInSec
-        );
-
-        inline static UI* Instance = nullptr;
+        void DisplayDockSpace();
 
         Signal<> UpdateSignal{};
 	    Signal<> MenuBarSignal{};
 
-        [[nodiscard]]
-        bool HasFocus() const;
-
-        void BeginWindow(std::string const& windowName, ImGuiWindowFlags flags = 0);
-
-        void BeginWindow(char const * windowName, ImGuiWindowFlags flags = 0);
-
-        void EndWindow();
-
         static bool InputText(char const * text, std::string & value);
-
-        [[nodiscard]]
-        bool IsDarkMode() const { return _darkMode;};
-
-	    [[nodiscard]]
-	    ImTextureID AddTexture(VkSampler sampler, VkImageView imageView);
-
-        void UpdateTexture(ImTextureID textureID, VkSampler sampler, VkImageView imageView);
-
-	    void RemoveTexture(ImTextureID textureID);
 
 	    template<typename T>
         static void List(
@@ -136,9 +111,111 @@ namespace MFA
 	        value = enums[idx];
 	    }
 
-	    void DisplayDockSpace();
+		// Static wrapper functions for private non-static methods
+		[[nodiscard]]
+		static ImFont* AddFont(char const * path)
+		{
+			if (Instance != nullptr)
+			{
+				return Instance->_AddFont(path);
+			}
+			return nullptr;
+		}
+
+		[[nodiscard]]
+		static bool HasFocus()
+		{
+			if (Instance != nullptr)
+			{
+				return Instance->_HasFocus();
+			}
+			return false;
+		}
+
+		static void BeginWindow(std::string const& windowName, ImGuiWindowFlags flags = 0)
+		{
+			if (Instance != nullptr)
+			{
+				Instance->Private_BeginWindow(windowName, flags);
+			}
+		}
+
+		static void BeginWindow(char const * windowName, ImGuiWindowFlags flags = 0)
+		{
+			if (Instance != nullptr)
+			{
+				Instance->Private_BeginWindow(windowName, flags);
+			}
+		}
+
+		static void EndWindow()
+		{
+			if (Instance != nullptr)
+			{
+				Instance->Private_EndWindow();
+			}
+		}
+
+		[[nodiscard]]
+		static bool IsDarkMode()
+		{
+			if (Instance != nullptr)
+			{
+				return Instance->Private_IsDarkMode();
+			}
+			return false;
+		}
+
+		[[nodiscard]]
+		static ImTextureID AddTexture(VkSampler sampler, VkImageView imageView)
+		{
+			if (Instance != nullptr)
+			{
+				return Instance->Private_AddTexture(sampler, imageView);
+			}
+			return nullptr;
+		}
+
+		static void UpdateTexture(ImTextureID textureID, VkSampler sampler, VkImageView imageView)
+		{
+			if (Instance != nullptr)
+			{
+				Instance->Private_UpdateTexture(textureID, sampler, imageView);
+			}
+		}
+
+		static void RemoveTexture(ImTextureID textureID)
+		{
+			if (Instance != nullptr)
+			{
+				Instance->_RemoveTexture(textureID);
+			}
+		}
 
 	private:
+
+		// Private non-static methods (called by static wrappers)
+		[[nodiscard]]
+		ImFont* _AddFont(char const * path);
+
+		[[nodiscard]]
+		bool _HasFocus() const;
+
+		void Private_BeginWindow(std::string const& windowName, ImGuiWindowFlags flags = 0);
+
+		void Private_BeginWindow(char const * windowName, ImGuiWindowFlags flags = 0);
+
+		void Private_EndWindow();
+
+		[[nodiscard]]
+		bool Private_IsDarkMode() const { return _darkMode; }
+
+		[[nodiscard]]
+		ImTextureID Private_AddTexture(VkSampler sampler, VkImageView imageView);
+
+		void Private_UpdateTexture(ImTextureID textureID, VkSampler sampler, VkImageView imageView);
+
+		void _RemoveTexture(ImTextureID textureID);
 
         struct PushConstants
         {
@@ -165,6 +242,8 @@ namespace MFA
         int EventWatch(SDL_Event* event);
 
 	private:
+
+	    inline static UI* Instance = nullptr;
 
         std::shared_ptr<DisplayRenderPass> _displayRenderPass{};
 

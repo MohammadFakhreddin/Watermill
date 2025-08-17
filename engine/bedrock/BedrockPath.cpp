@@ -12,21 +12,11 @@ static bool LogCalledOnce = false;
 
 //-------------------------------------------------------------------------------------------------
 
-std::shared_ptr<MFA::Path> MFA::Path::Instance(bool const makeNewIfNotExists)
-{
-	std::shared_ptr<Path> shared_ptr = _instance.lock();
-	if (shared_ptr == nullptr && makeNewIfNotExists == true)
-	{
-		shared_ptr = std::make_shared<Path>();
-		_instance = shared_ptr;
-	}
-	return shared_ptr;
-}
-
-//-------------------------------------------------------------------------------------------------
-
 MFA::Path::Path()
 {
+	MFA_ASSERT(mInstance == nullptr);
+	mInstance = this;
+	
 #if defined(ASSET_DIR)
 	mAssetPath = std::filesystem::absolute(std::string(TO_LITERAL(ASSET_DIR))).string();
 #endif
@@ -61,18 +51,36 @@ MFA::Path::Path()
 
 //-------------------------------------------------------------------------------------------------
 
-MFA::Path::~Path() = default;
-
-//-------------------------------------------------------------------------------------------------
-
-std::string MFA::Path::Get(std::string const& address) const
+MFA::Path::~Path()
 {
-	return Get(address.c_str());
+    MFA_ASSERT(mInstance == this);
+	if (mInstance == this)
+	{
+		mInstance = nullptr;
+	}
 }
 
 //-------------------------------------------------------------------------------------------------
 
-std::string MFA::Path::Get(char const *address) const
+std::string MFA::Path::Get(std::string const& address)
+{
+	if (mInstance != nullptr)
+	{
+		return mInstance->Private_Get(address.c_str());
+	}
+	return address;
+}
+
+std::string MFA::Path::Get(char const *address)
+{
+	if (mInstance != nullptr)
+	{
+		return mInstance->Private_Get(address);
+	}
+	return "";
+}
+
+std::string MFA::Path::Private_Get(char const *address) const
 {
     /*if (std::filesystem::exists(address) == true)
     {
@@ -102,13 +110,34 @@ std::string MFA::Path::Get(char const *address, char const *relativePath)
 
 //-------------------------------------------------------------------------------------------------
 
-std::string MFA::Path::Relative(char const *address) const
+std::string MFA::Path::Relative(char const *address)
+{
+    if (mInstance != nullptr)
+    {
+        return mInstance->Private_Relative(address);
+    }
+    return "";
+}
+
+std::string MFA::Path::Private_Relative(char const *address) const
 {
     if (std::strncmp(address, mAssetPath.c_str(), mAssetPath.size()) == 0)
     {
         return std::string(address).substr(mAssetPath.size());
     }
     return address;
+}
+
+//-------------------------------------------------------------------------------------------------
+
+std::string const & MFA::Path::AssetPath()
+{
+    static std::string empty;
+    if (mInstance != nullptr)
+    {
+        return mInstance->Private_AssetPath();
+    }
+    return empty;
 }
 
 //-------------------------------------------------------------------------------------------------

@@ -219,7 +219,7 @@ void ResourceManager::RequestNextMipmap(std::weak_ptr<ImageData> imageDataWeak, 
 
         std::shared_ptr<Asset::Texture> cpuTexture;
 
-        std::filesystem::path const path = Path::Instance()->Get(name);
+        std::filesystem::path const path = Path::Get(name);
         // if (path.extension() == ".ktx2")
         // {
         //     cpuTexture = Importer::LoadKtxMetadata(path.string().c_str());

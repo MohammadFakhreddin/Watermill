@@ -11,29 +11,36 @@ namespace MFA
 	{
 	public:
 
-		static std::shared_ptr<Path> Instance(bool makeNewIfNotExists = false);
-
 		explicit Path();
 
 		~Path();
 
 		// Returns correct address based on platform
 		[[nodiscard]]
-		std::string Get(std::string const& address) const;
+		static std::string Get(std::string const& address);
 
 	    [[nodiscard]]
-        std::string Get(char const * address) const;
+        static std::string Get(char const * address);
 
 	    static std::string Get(char const *address, char const *relativePath);
 
-	    std::string Relative(char const * address) const;
+	    static std::string Relative(char const * address);
 
         [[nodiscard]]
-	    std::string const & AssetPath() const {return mAssetPath;}
+	    static std::string const & AssetPath();
 
 	private:
 
-		inline static std::weak_ptr<Path> _instance {};
+	    [[nodiscard]]
+        std::string Private_Get(char const * address) const;
+
+	    std::string Private_Relative(char const * address) const;
+
+	    [[nodiscard]]
+        std::string const & Private_AssetPath() const {return mAssetPath;}
+
+        inline static Path * mInstance;
+
 		std::string mAssetPath {};
 
 	};

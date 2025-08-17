@@ -6,7 +6,6 @@
 #include "BedrockPath.hpp"
 #include "LogicalDevice.hpp"
 #include "Time.hpp"
-#include "litehtml/el_text.h"
 
 using namespace MFA;
 
@@ -20,7 +19,7 @@ MenuScene::MenuScene(
 {
     auto const * device = LogicalDevice::Instance;
 
-    auto const htmlPath = Path::Instance()->Get("ui/menu/Menu.html");
+    auto const htmlPath = Path::Get("ui/menu/Menu.html");
 
     litehtml::position clip;
     clip.x = 0;

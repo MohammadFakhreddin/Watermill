@@ -77,14 +77,14 @@ void GridPipeline::CreatePipeline()
     // Vertex shader
 	{
 		bool success = Importer::CompileShaderToSPV(
-			Path::Instance()->Get("shaders/grid_pipeline/GridPipeline.vert.hlsl"),
-			Path::Instance()->Get("shaders/grid_pipeline/GridPipeline.vert.spv"),
+			Path::Get("shaders/grid_pipeline/GridPipeline.vert.hlsl"),
+			Path::Get("shaders/grid_pipeline/GridPipeline.vert.spv"),
 			"vert"
 		);
 		MFA_ASSERT(success == true);
 	}
 	auto cpuVertexShader = Importer::ShaderFromSPV(
-		Path::Instance()->Get("shaders/grid_pipeline/GridPipeline.vert.spv"),
+		Path::Get("shaders/grid_pipeline/GridPipeline.vert.spv"),
 		VK_SHADER_STAGE_VERTEX_BIT,
 		"main"
 	);
@@ -96,14 +96,14 @@ void GridPipeline::CreatePipeline()
 	// Fragment shader
 	{
 		bool success = Importer::CompileShaderToSPV(
-			Path::Instance()->Get("shaders/grid_pipeline/GridPipeline.frag.hlsl"),
-			Path::Instance()->Get("shaders/grid_pipeline/GridPipeline.frag.hlsl.spv"),
+			Path::Get("shaders/grid_pipeline/GridPipeline.frag.hlsl"),
+			Path::Get("shaders/grid_pipeline/GridPipeline.frag.hlsl.spv"),
 			"frag"
 		);
 		MFA_ASSERT(success == true);
 	}
 	auto cpuFragmentShader = Importer::ShaderFromSPV(
-		Path::Instance()->Get("shaders/grid_pipeline/GridPipeline.frag.hlsl.spv"),
+		Path::Get("shaders/grid_pipeline/GridPipeline.frag.hlsl.spv"),
 		VK_SHADER_STAGE_FRAGMENT_BIT,
 		"main"
 	);
