@@ -173,8 +173,9 @@ namespace MFA
         void UpdateSurface();
 
     public:
-
+        // TODO: Make instance private
         inline static LogicalDevice* Instance = nullptr;
+        inline static std::atomic<bool> IsAlive = false;
 
         Signal<> ResizeEventSignal1{};
         Signal<> ResizeEventSignal2{};

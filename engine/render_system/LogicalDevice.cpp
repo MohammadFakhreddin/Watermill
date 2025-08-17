@@ -312,6 +312,8 @@ namespace MFA
 
         _isValid = true;
 
+        // TODO: Temporary
+        IsAlive = true;
         Instance = this;
     }
 
@@ -319,6 +321,8 @@ namespace MFA
 
     LogicalDevice::~LogicalDevice()
     {
+        // TODO: Temporary
+        IsAlive = false;
 
         // Common part with resize
         DeviceWaitIdle();
