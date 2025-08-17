@@ -249,7 +249,19 @@ void TimeShiftApp::Run()
     SDL_Event e;
 
     auto time = std::make_unique<Time>(120, 30);
-    // auto ui = std::make_unique<UI>(_displayRenderPass, UI::Params{.lightMode = false});
+
+    UI::Params params{};
+    params.fontCallback = [this](ImGuiIO & io)->void
+    {
+        ImFont* font = io.Fonts->AddFontFromFileTTF(
+            Path::Get("fonts/JetBrains-Mono/JetBrainsMono-Bold.ttf").c_str(),
+            20.0f
+        );
+        MFA_ASSERT(font != nullptr);
+    };
+    params.lightMode = false;
+    _ui = std::make_unique<UI>(_displayRenderPass, params);
+    _ui->UpdateSignal.Register([&]()->void{OnUI();});
 
     bool shouldQuit = false;
 
@@ -269,12 +281,11 @@ void TimeShiftApp::Run()
 
         auto const deltaTimeSec = Time::DeltaTimeSec();
     	Update(deltaTimeSec);
-        // ui->Update(deltaTimeSec);
+        _ui->Update(deltaTimeSec);
 
         auto recordState = device->AcquireRecordState(swapChainResource->GetSwapChainImages().swapChain);
         if (recordState.isValid == true)
         {
-            // ui->Render(recordState);
             Render(recordState);
             device->SubmitQueues(recordState);
             device->Present(recordState, swapChainResource->GetSwapChainImages().swapChain);
@@ -330,21 +341,32 @@ void TimeShiftApp::Update(float const deltaTime)
 
 //=============================================================
 
-void TimeShiftApp::Render(RT::CommandRecordState & recordState)
+void TimeShiftApp::Render(RT::CommandRecordState &recordState)
 {
-    auto* device = LogicalDevice::Instance;
+    auto *device = LogicalDevice::Instance;
 
-    device->BeginCommandBuffer(
-        recordState,
-        RT::CommandBufferType::Graphic
-    );
+    device->BeginCommandBuffer(recordState, RT::CommandBufferType::Graphic);
 
     _currentScene->UpdateBuffer(recordState);
     _displayRenderPass->Begin(recordState);
     _currentScene->Render(recordState);
+    _ui->Render(recordState);
     _displayRenderPass->End(recordState);
 
     device->EndCommandBuffer(recordState);
+}
+
+//=============================================================
+
+void TimeShiftApp::OnUI()
+{
+    if (_debugMenuEnabled == false)
+    {
+        return;
+    }
+    ImGui::Begin("Settings");
+    ImGui::Text("Fuck auto complete");
+    ImGui::End();
 }
 
 //=============================================================
@@ -372,7 +394,7 @@ void TimeShiftApp::OnSDL_Event(SDL_Event* event)
         }
         else if (event->key.keysym.sym == SDLK_F1)
         {
-            _nextSceneID = SceneID::Menu;
+            _debugMenuEnabled = !_debugMenuEnabled;
         }
     }
 

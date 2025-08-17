@@ -8,6 +8,8 @@
 #include <functional>
 #include <unordered_map>
 
+#include "UI.hpp"
+
 // TODO: Resource manager
 // TODO: Optimized json
 // TODO: User interface fix
@@ -36,6 +38,8 @@ private:
     void Update(float deltaTime);
 
     void Render(MFA::RT::CommandRecordState & recordState);
+
+    void OnUI();
 
     void Resize();
 
@@ -66,6 +70,7 @@ private:
     bool IsInputB_Pressed() const { return _inputB;}
 
     std::shared_ptr<MFA::DisplayRenderPass> _displayRenderPass;
+    std::unique_ptr<MFA::UI> _ui;
 
     std::shared_ptr<MFA::SolidFillRenderer> _solidFillRenderer;
     std::shared_ptr<MFA::BorderRenderer> _borderRenderer;
@@ -99,4 +104,6 @@ private:
     glm::vec2 _inputAxis{};
     bool _inputA{};
     bool _inputB{};
+
+    bool _debugMenuEnabled = false;
 };
