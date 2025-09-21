@@ -1,8 +1,9 @@
 #pragma once
 
 namespace MFA {
-class IShadingPipeline {
-public:
-    virtual void Reload() = 0;
-};
+    class IShadingPipeline {
+    public:
+        virtual ~IShadingPipeline() = default;
+        virtual void Reload() = 0;
+    };
 }
