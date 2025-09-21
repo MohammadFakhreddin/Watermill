@@ -173,6 +173,11 @@ include_directories("${CMAKE_SOURCE_DIR}/engine/render_system")
 add_subdirectory("${CMAKE_SOURCE_DIR}/shared")
 include_directories("${CMAKE_SOURCE_DIR}/shared")
 
+### GizmoDebugger ########################################
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/gizmos")
+include_directories("${CMAKE_SOURCE_DIR}/gizmos")
+
 ### WebView ##############################################
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/webview")

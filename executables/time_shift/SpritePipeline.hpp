@@ -1,7 +1,6 @@
 #pragma once
 
 #include "render_pass/DisplayRenderPass.hpp"
-#include "renderer/IShadingPipeline.hpp"
 
 #include <glm/glm.hpp>
 

@@ -10,7 +10,6 @@
 
 namespace MFA
 {
-
 	class UI
 	{
 	public:
@@ -48,7 +47,6 @@ namespace MFA
 	    {
 	        if (ImGui::TreeNode(title))
 	        {
-
 	            ImGui::PushItemWidth(100);
 	            if (ImGui::Button("+") && list.size() < 50)
 	            {
@@ -111,23 +109,12 @@ namespace MFA
 	        value = enums[idx];
 	    }
 
-		// Static wrapper functions for private non-static methods
-		[[nodiscard]]
-		static ImFont* AddFont(char const * path)
-		{
-			if (Instance != nullptr)
-			{
-				return Instance->_AddFont(path);
-			}
-			return nullptr;
-		}
-
 		[[nodiscard]]
 		static bool HasFocus()
 		{
 			if (Instance != nullptr)
 			{
-				return Instance->_HasFocus();
+				return Instance->Private_HasFocus();
 			}
 			return false;
 		}
@@ -188,7 +175,7 @@ namespace MFA
 		{
 			if (Instance != nullptr)
 			{
-				Instance->_RemoveTexture(textureID);
+				Instance->Private_RemoveTexture(textureID);
 			}
 		}
 
@@ -196,10 +183,10 @@ namespace MFA
 
 		// Private non-static methods (called by static wrappers)
 		[[nodiscard]]
-		ImFont* _AddFont(char const * path);
+		ImFont* Private_AddFont(char const * path);
 
 		[[nodiscard]]
-		bool _HasFocus() const;
+		bool Private_HasFocus() const;
 
 		void Private_BeginWindow(std::string const& windowName, ImGuiWindowFlags flags = 0);
 
@@ -215,7 +202,7 @@ namespace MFA
 
 		void Private_UpdateTexture(ImTextureID textureID, VkSampler sampler, VkImageView imageView);
 
-		void _RemoveTexture(ImTextureID textureID);
+		void Private_RemoveTexture(ImTextureID textureID);
 
         struct PushConstants
         {

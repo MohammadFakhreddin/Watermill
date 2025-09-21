@@ -2,9 +2,10 @@
 
 #include "RenderTypes.hpp"
 #include "render_pass/DisplayRenderPass.hpp"
-#include "IShadingPipeline.hpp"
 
 #include <glm/glm.hpp>
+
+#include "pipeline/IShadingPipeline.hpp"
 
 namespace MFA
 {

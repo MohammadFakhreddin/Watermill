@@ -690,9 +690,9 @@ namespace MFA
         return true;
 	}
 
-	//-------------------------------------------------------------------------------------------------
+    //-------------------------------------------------------------------------------------------------
 
-	bool UI::_HasFocus() const
+    bool UI::Private_HasFocus() const
 	{
         return _hasFocus;
 	}
@@ -808,7 +808,7 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    void UI::_RemoveTexture(ImTextureID textureID)
+    void UI::Private_RemoveTexture(ImTextureID textureID)
     {
         uintptr_t const ID = (uintptr_t)textureID;
         // MFA_ASSERT(_imageDescriptorSetGroups.contains(ID));
