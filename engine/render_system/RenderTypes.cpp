@@ -145,31 +145,13 @@ namespace MFA::RenderTypes
     {}
 
     CommandBufferGroup::~CommandBufferGroup()
-	{
-	    CommandPoolGroup * myCommandPool = &commandPool;
-	    std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight() + 1);
-	    LogicalDevice::AddRenderTask([commandBuffers = commandBuffers, myCommandPool, counter](CommandRecordState const & recordState)->bool
-        {
-            (*counter) -= 1;
-            if ((*counter) <= 0)
-            {
-                if (TryLock(myCommandPool->lock) == true)
-                {
-                    auto logicalDevice = LogicalDevice::Instance;
-                    RB::DestroyCommandBuffers(
-                        logicalDevice->GetVkDevice(),
-                        *myCommandPool,
-                        commandBuffers.size(),
-                        commandBuffers.data()
-                    );
-                    Unlock(myCommandPool->lock);
-                    // Releasing the update
-                    return false;
-                }
-            }
-            return true;
-        });
-	}
+    {
+	    if (LogicalDevice::Instance == nullptr)
+	    {
+	        return;
+	    }
+	    LogicalDevice::ScheduleForDestruction(*this);
+    }
 
     //-------------------------------------------------------------------------------------------------
 

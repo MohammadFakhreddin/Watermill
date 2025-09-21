@@ -92,5 +92,4 @@ private:
 
     bool _initialized = false;
     bool _isReadyToRender = false;
-
 };

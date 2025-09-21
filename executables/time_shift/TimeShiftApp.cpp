@@ -279,13 +279,24 @@ void TimeShiftApp::Run()
 
         device->Update();
 
-        auto const deltaTimeSec = Time::DeltaTimeSec();
-    	Update(deltaTimeSec);
-        _ui->Update(deltaTimeSec);
+        if (_activeSceneID != _nextSceneID)
+        {
+            LogicalDevice::Instance->DeviceWaitIdle();
+            _currentScene = nullptr;
+            LogicalDevice::Instance->CleanRenderTasks();
+            ResourceManager::ForceCleanUp();
+            _blobMap.clear();
+            _imageMap.clear();
+            _currentScene = _sceneRecipes[(int)_nextSceneID]();
+            _activeSceneID = _nextSceneID;
+        }
 
         auto recordState = device->AcquireRecordState(swapChainResource->GetSwapChainImages().swapChain);
         if (recordState.isValid == true)
         {
+            auto const deltaTimeSec = Time::DeltaTimeSec();
+            Update(deltaTimeSec);
+            _ui->Update(deltaTimeSec);
             Render(recordState);
             device->SubmitQueues(recordState);
             device->Present(recordState, swapChainResource->GetSwapChainImages().swapChain);
@@ -303,40 +314,7 @@ void TimeShiftApp::Run()
 
 void TimeShiftApp::Update(float const deltaTime)
 {
-    // Note the order matters
-    for (int i = (int)_previousScenes.size() - 1; i >= 0; i--)
-    {
-        auto & [oldScene, counter] = _previousScenes[i];
-        --counter;
-        if (counter <= 0)
-        {
-            // MFA_SCOPE_Profiler("Destroying previous scene");
-            _previousScenes.erase(_previousScenes.begin() + i);
-        }
-    }
-
-    if (_activeSceneID != _nextSceneID)
-    {
-        // MFA_SCOPE_Profiler("Switching to next scene");
-        ResourceManager::ForceCleanUp();
-        _blobMap.clear();
-        _imageMap.clear();
-        // TODO: We have to load stuff in another thread
-        _previousScenes.emplace_back(std::tuple{std::move(_currentScene), LogicalDevice::Instance->GetMaxFramePerFlight() + 1});
-        _currentScene = _sceneRecipes[(int)_nextSceneID]();
-        _activeSceneID = _nextSceneID;
-    }
-
     _currentScene->Update(deltaTime);
-
-    //
-    // MFA_LOG_INFO(
-    //     "Input axis: %f, %f\nInput A: %d, Input B: %d"
-    //     , _inputAxis.x
-    //     , _inputAxis.y
-    //     , _inputA == true ? 1 : 0
-    //     , _inputB == true ? 1 : 0
-    // );
 }
 
 //=============================================================
@@ -365,7 +343,7 @@ void TimeShiftApp::OnUI()
         return;
     }
     ImGui::Begin("Settings");
-    ImGui::Text("Fuck auto complete");
+    ImGui::Text("Frame rate: %.3f", 1.0f / Time::DeltaTimeSec());
     ImGui::End();
 }
 

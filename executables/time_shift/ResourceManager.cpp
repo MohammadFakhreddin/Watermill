@@ -5,9 +5,6 @@
 #include "LogicalDevice.hpp"
 #include "RenderTypes.hpp"
 #include "ScopeLock.hpp"
-#include "Time.hpp"
-#include "imgui.h"
-#include "tiny_gltf_loader.h"
 
 using namespace MFA;
 
@@ -210,7 +207,7 @@ void ResourceManager::RequestNextMipmap(std::weak_ptr<ImageData> imageDataWeak, 
         auto * physicalDevice = logicalDevice->GetPhysicalDevice();
 
         MFA_SCOPE_LOCK(commandPool->lock);
-        auto commandBufferGroup = RB::BeginSecondaryCommand(
+        std::shared_ptr commandBufferGroup = RB::BeginSecondaryCommand(
             device,
             *commandPool
         );

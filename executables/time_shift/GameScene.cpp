@@ -46,13 +46,20 @@ GameScene::GameScene(WebViewContainer::Params const &webviewParams, Params gameP
 GameScene::~GameScene()
 {
     // MFA_LOG_INFO("Destroying level %s", _params.levelName.c_str());
+    {// Freeing up material descriptor sets
+        std::vector<SpriteRenderer::Material *> materials(_sprites.size());
+        for (int i = 0; i < (int)_sprites.size(); i++)
+        {
+            materials[i] = _sprites[i]->material.get();
+        }
+        _spriteRenderer->ClearMaterials(materials.size(), materials.data());
+    }
 }
 
 //======================================================================================================================
 
 void GameScene::Update(float const deltaTime)
 {
-
     if (_initialized == false)
     {
         _initialized = true;
@@ -446,15 +453,22 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
 
     RB::EndCommandBuffer(commandBuffer);
 
-    logicalDevice->AddRenderTask([commandBufferGroup = std::move(commandBufferGroup), stageBuffers](RT::CommandRecordState & recordState)->bool
+    std::weak_ptr weakRef = shared_from_this();
+    logicalDevice->AddRenderTask([commandBufferGroup = std::move(commandBufferGroup), stageBuffers, weakRef](RT::CommandRecordState & recordState)->bool
     {
+        auto strongRef = weakRef.lock();
+        if (strongRef == nullptr)
+        {
+            return false;
+        }
+
         RB::ExecuteCommandBuffer(
             recordState.commandBuffer,
             *commandBufferGroup
         );
 
         std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight() + 1);
-        LogicalDevice::AddRenderTask([stageBuffers, commandBufferGroup, counter](RT::CommandRecordState const & recordState)->bool
+        LogicalDevice::AddRenderTask([stageBuffers, counter](RT::CommandRecordState const & recordState)->bool
         {
             (*counter) -= 1;
             if (*counter <= 0)

@@ -8,9 +8,8 @@ using namespace MFA;
 
 //------------------------------------------------------------------------------------------------------------------
 
-SpriteRenderer::SpriteRenderer(std::shared_ptr<Pipeline> pipeline)
-    : _pipeline(std::move(pipeline))
-{}
+SpriteRenderer::SpriteRenderer(std::shared_ptr<Pipeline> pipeline) : _pipeline(std::move(pipeline)) {}
+SpriteRenderer::~SpriteRenderer() = default;
 
 //------------------------------------------------------------------------------------------------------------------
 
@@ -86,11 +85,11 @@ SpriteRenderer::AllocateIndexBuffer(
 
 //------------------------------------------------------------------------------------------------------------------
 
-std::shared_ptr<SpriteRenderer::Material> SpriteRenderer::AllocateMaterial(std::shared_ptr<RT::GpuTexture> albedo) const
+std::shared_ptr<SpriteRenderer::Material> SpriteRenderer::AllocateMaterial(const std::shared_ptr<RT::GpuTexture> &albedo) const
 {
     MFA_ASSERT(albedo != nullptr);
 
-    int frameCount = LogicalDevice::Instance->GetMaxFramePerFlight();
+    int const frameCount = LogicalDevice::Instance->GetMaxFramePerFlight();
     std::vector<std::shared_ptr<MFA::RT::GpuTexture>> albedoList (frameCount);
     for (int i = 0; i < frameCount; ++i)
     {
@@ -101,10 +100,9 @@ std::shared_ptr<SpriteRenderer::Material> SpriteRenderer::AllocateMaterial(std::
         .descriptorSet = _pipeline->CreateDescriptorSet(frameCount, *albedo),
         .albedoList = albedoList
     });
+
     return material;
 }
-
-//------------------------------------------------------------------------------------------------------------------
 
 void SpriteRenderer::UpdateMaterial(
     int const frameIndex,
@@ -115,6 +113,14 @@ void SpriteRenderer::UpdateMaterial(
     MFA_ASSERT(albedo != nullptr);
     _pipeline->UpdateDescriptorSet(frameIndex, material.descriptorSet, *albedo);
     material.albedoList[frameIndex] = std::move(albedo);
+}
+
+void SpriteRenderer::ClearMaterials(int const count, Material ** materials) const
+{
+    for (int i = 0; i < count; ++i)
+    {
+        _pipeline->FreeDescriptorSet(materials[i]->descriptorSet);
+    }
 }
 
 //------------------------------------------------------------------------------------------------------------------

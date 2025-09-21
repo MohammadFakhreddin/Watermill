@@ -168,12 +168,20 @@ namespace MFA
         using RenderTask = std::function<bool(RT::CommandRecordState & recordState)>;
         static void AddRenderTask(RenderTask renderTask);
 
+        static void CleanRenderTasks();
+
+        static void ScheduleForDestruction(RT::CommandBufferGroup & commandBufferGroup);
+
     private:
 
         void UpdateSurface();
 
-    public:
+        void Private_CleanRenderTasks();
 
+        void Private_ScheduleForDestruction(RT::CommandBufferGroup & commandBufferGroup);
+
+    public:
+        // TODO: Make instance private
         inline static LogicalDevice* Instance = nullptr;
 
         Signal<> ResizeEventSignal1{};
@@ -239,6 +247,15 @@ namespace MFA
 
         ThreadSafeQueue<RenderTask> _renderTasks{};
         std::queue<RenderTask> _pRenderTasks{};
+
+        struct PendingCommandBuffer
+        {
+            std::vector<VkCommandBuffer> commandBuffers;
+            RT::CommandPoolGroup * commandPool;
+            std::thread::id threadId;
+            int lifeTime {};
+        };
+        std::vector<PendingCommandBuffer> _pendingCommandBuffers{};
     };
 
 };

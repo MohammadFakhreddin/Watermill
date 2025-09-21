@@ -149,7 +149,7 @@ namespace MFA
             ~CommandPoolGroup();
         };
 
-	    struct CommandBufferGroup
+	    struct CommandBufferGroup : std::enable_shared_from_this<CommandBufferGroup>
 	    {
 	        std::vector<VkCommandBuffer> const commandBuffers;
             CommandPoolGroup & commandPool;
@@ -162,6 +162,11 @@ namespace MFA
             );
 
 	        ~CommandBufferGroup();
+
+            CommandBufferGroup(CommandBufferGroup const&) noexcept = delete;
+	        CommandBufferGroup(CommandBufferGroup&&) noexcept = delete;
+	        CommandBufferGroup& operator= (CommandBufferGroup const& rhs) noexcept = delete;
+	        CommandBufferGroup& operator= (CommandBufferGroup&& rhs) noexcept = delete;
 	    };
 
         struct CommandRecordState
