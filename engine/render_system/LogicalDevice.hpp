@@ -34,7 +34,7 @@ namespace MFA
         void OnResizeEvent(SDL_Event * event);
 
         void Update();
-
+        // TODO: We can make these functions static
         RT::CommandRecordState AcquireRecordState(VkSwapchainKHR swapChain);
 
         [[nodiscard]]

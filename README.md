@@ -25,7 +25,7 @@
 - `shared/` — Common rendering utilities and components
 - `webview/` — HTML/CSS rendering integration with Vulkan
 - `physics_2d/` — 2D physics system (in development)
-- `gizmos/` — Debug visualization tools (in development)
+- `gizmos/` — [Debug visualization tools](gizmos/Gizmos.md)
 - `assets/` — Shaders, textures, models, and game resources
 - `docs/` — [Comprehensive documentation](docs/README.md)
 

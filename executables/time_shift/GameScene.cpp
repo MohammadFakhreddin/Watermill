@@ -156,12 +156,13 @@ void GameScene::Render(MFA::RT::CommandRecordState &recordState)
         auto const projection = glm::ortho(left, right, _cameraBottom, _cameraTop, _cameraNear, _cameraFar);
         auto const view = glm::lookAt(_mainCameraPosition, _mainCameraPosition + Math::ForwardVec3, -Math::UpVec3);
         auto const viewProjection = projection * view;
-
+        // TODO: We need instance rendering
         for (auto & instance : _instances)
         {
             SpritePipeline::PushConstants pushConstants {
                 .color = instance->color,
                 .model = glm::transpose(instance->transform->GlobalTransform() * instance->scaleMat),
+                // TODO: This should be a separate buffer
                 .viewProjection = glm::transpose(viewProjection),
             };
             _spriteRenderer->Draw(recordState, pushConstants, *instance->sprite);

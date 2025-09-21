@@ -30,7 +30,7 @@ namespace MFA
         explicit LinePipeline(
             std::shared_ptr<DisplayRenderPass> displayRenderPass,
             std::shared_ptr<RT::BufferGroup> viewProjectionBuffer,
-            int maxSets
+            int maxSets // TODO: Instead of having this, we have to dynamically create a bigger pool.
         );
 
         ~LinePipeline();

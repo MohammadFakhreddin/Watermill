@@ -249,7 +249,7 @@ void Physics2D::Update()
             _itemList.emplace_back(&value);
         }
     }
-	/*
+	/*// TODO: We have to restore the acceleration structure. This can be a good practive for you.
     if (_isNonStaticGridDirty == true)
     {
         for (auto const & [key, item] : _nonStaticItemMap)

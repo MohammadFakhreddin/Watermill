@@ -1,16 +1,31 @@
 #pragma once
 
-#include "LineRenderer.hpp"
-#include "PointPipeline.hpp"
+#include <ext/matrix_transform.hpp>
+#include <functional>
+
+
+#include "RenderTypes.hpp"
 #include "render_pass/DisplayRenderPass.hpp"
 
 namespace MFA
 {
+    // Forward declarations
+    class LineRenderer;
+    class PointRenderer;
+    class LinePipeline;
+    class PointPipeline;
+    class HostVisibleBufferTracker;
+
     class Gizmos
     {
     public:
 
-        explicit Gizmos(std::shared_ptr<DisplayRenderPass> displayRenderPass);
+        explicit Gizmos(
+            std::shared_ptr<DisplayRenderPass> const & displayRenderPass,
+            glm::mat4 viewProjection = glm::identity<glm::mat4>()
+        );
+
+        ~Gizmos();
 
         static void DrawLine(
             glm::vec3 const& from,
@@ -36,7 +51,9 @@ namespace MFA
             }
         }
 
-        void Render(RT::CommandRecordState& recordState, glm::mat4 const & viewProjection);
+        void SetViewProjection(glm::mat4 const & viewProjection) const;
+
+        void Render(RT::CommandRecordState& recordState);
 
     private:
 
@@ -54,9 +71,13 @@ namespace MFA
 
         inline static Gizmos * Instance = nullptr;
 
-        // std::shared_ptr<DisplayRenderPass> _displayRenderPass{};
+        // Renderers
         std::unique_ptr<LineRenderer> _lineRenderer{};
-        std::unique_ptr<PointPipeline> _pointPipeline{};
+        std::unique_ptr<PointRenderer> _pointRenderer{};
 
+        // ViewProjection buffer tracker
+        std::unique_ptr<HostVisibleBufferTracker> _viewProjectionTracker{};
+
+        std::vector<std::function<void(RT::CommandRecordState &)>> _renderTasks{};
     };
 }
