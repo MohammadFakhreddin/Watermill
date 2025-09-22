@@ -24,6 +24,8 @@ list(
     "${CMAKE_CURRENT_SOURCE_DIR}/ResourceManager.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/PatrolEnemy.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/PatrolEnemy.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Constants.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Constants.hpp"
 )
 
 ### Linking libraries ####################################
@@ -44,6 +46,7 @@ target_link_libraries(${EXECUTABLE} Importer)
 target_link_libraries(${EXECUTABLE} TimeSystem)
 target_link_libraries(${EXECUTABLE} JobSystem)
 target_link_libraries(${EXECUTABLE} RenderSystem)
+target_link_libraries(${EXECUTABLE} Gizmos)
 target_link_libraries(${EXECUTABLE} Shared)
 target_link_libraries(${EXECUTABLE} Webview)
 target_link_libraries(${EXECUTABLE} Physics2D)

@@ -31,13 +31,15 @@ public:
 
     void Update(float deltaTime) override;
 
-    void UpdateBuffer(MFA::RT::CommandRecordState &recordState) override;
+    void UpdateBuffers(MFA::RT::CommandRecordState &recordState) override;
 
     void Render(MFA::RT::CommandRecordState &recordState) override;
 
     void Resize() override;
 
     void Reload() override;
+
+    void OnUI() override;
 
     void UpdateInputAxis(const glm::vec2 &inputAxis) override;
 
@@ -48,6 +50,10 @@ public:
 private:
 
     void ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser);
+
+    static void DeterminePhysicsLayer(const std::string& tag,
+                                      MFA::Physics2D::Layer& outLayer,
+                                      MFA::Physics2D::Layer& outLayerMask);
 
     std::unique_ptr<WebViewContainer> _webViewContainer;
     std::vector<litehtml::element::ptr> _buttons{};
@@ -70,13 +76,14 @@ private:
     std::shared_ptr<SpriteRenderer> _spriteRenderer;
     std::vector<std::shared_ptr<PatrolEnemy>> _patrolEnemies;
 
-    struct PhysicsEntity
-    {
-        Physics2D::EntityID physicsId;
-        std::shared_ptr<LevelParser::BoxCollider2D> collider;
-    };
-    std::vector<PhysicsEntity> _physicsEntities;
-    std::unique_ptr<Physics2D> _physics2D;
+    // struct PhysicsEntity
+    // {
+    //     MFA::Physics2D::EntityID physicsId;
+    //     std::shared_ptr<LevelParser::BoxCollider2D> collider;
+    // };
+    // std::vector<PhysicsEntity> _physicsEntities;
+    std::unique_ptr<MFA::Physics2D> _physics2D;
+    // TODO: We need a physics bddy for each object with boxCollider2d
 
     float _cameraLeft{};
     float _cameraRight{};
@@ -92,4 +99,6 @@ private:
 
     bool _initialized = false;
     bool _isReadyToRender = false;
+
+    bool _debugPhysics = false;
 };

@@ -250,18 +250,23 @@ void TimeShiftApp::Run()
 
     auto time = std::make_unique<Time>(120, 30);
 
-    UI::Params params{};
-    params.fontCallback = [this](ImGuiIO & io)->void
-    {
-        ImFont* font = io.Fonts->AddFontFromFileTTF(
-            Path::Get("fonts/JetBrains-Mono/JetBrainsMono-Bold.ttf").c_str(),
-            20.0f
-        );
-        MFA_ASSERT(font != nullptr);
-    };
-    params.lightMode = false;
-    _ui = std::make_unique<UI>(_displayRenderPass, params);
-    _ui->UpdateSignal.Register([&]()->void{OnUI();});
+    {// UI
+        UI::Params params{};
+        params.fontCallback = [this](ImGuiIO & io)->void
+        {
+            ImFont* font = io.Fonts->AddFontFromFileTTF(
+                Path::Get("fonts/JetBrains-Mono/JetBrainsMono-Bold.ttf").c_str(),
+                20.0f
+            );
+            MFA_ASSERT(font != nullptr);
+        };
+        params.lightMode = false;
+        _ui = std::make_unique<UI>(_displayRenderPass, params);
+        _ui->UpdateSignal.Register([&]()->void{OnUI();});
+    }
+    {// Gizmos
+        _gizmos = std::make_unique<Gizmos>(_displayRenderPass);
+    }
 
     bool shouldQuit = false;
 
@@ -325,10 +330,16 @@ void TimeShiftApp::Render(RT::CommandRecordState &recordState)
 
     device->BeginCommandBuffer(recordState, RT::CommandBufferType::Graphic);
 
-    _currentScene->UpdateBuffer(recordState);
+    _currentScene->UpdateBuffers(recordState);
+    _gizmos->UpdateBuffers(recordState);
+
+
     _displayRenderPass->Begin(recordState);
+
     _currentScene->Render(recordState);
     _ui->Render(recordState);
+    _gizmos->Render(recordState);
+
     _displayRenderPass->End(recordState);
 
     device->EndCommandBuffer(recordState);
@@ -342,9 +353,15 @@ void TimeShiftApp::OnUI()
     {
         return;
     }
+
     ImGui::Begin("Settings");
     ImGui::Text("Frame rate: %.3f", 1.0f / Time::DeltaTimeSec());
     ImGui::End();
+
+    if (_currentScene != nullptr)
+    {
+        _currentScene->OnUI();
+    }
 }
 
 //=============================================================

@@ -15,7 +15,7 @@ list(
 
 )
 
-set(LIBRARY_NAME "GizmoDebugger")
+set(LIBRARY_NAME "Gizmos")
 add_library(${LIBRARY_NAME} ${LIBRARY_SOURCES})
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/")
 target_link_libraries(${LIBRARY_NAME} RenderSystem)

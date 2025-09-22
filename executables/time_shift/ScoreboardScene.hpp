@@ -19,13 +19,15 @@ public:
 
     void Update(float deltaTime) override;
 
-    void UpdateBuffer(MFA::RT::CommandRecordState &recordState) override;
+    void UpdateBuffers(MFA::RT::CommandRecordState &recordState) override;
 
     void Render(MFA::RT::CommandRecordState &recordState) override;
 
     void Resize() override;
 
     void Reload() override;
+
+    void OnUI() override;
 
     void UpdateInputAxis(const glm::vec2 &inputAxis) override;
 

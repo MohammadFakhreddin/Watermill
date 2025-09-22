@@ -10,6 +10,9 @@ namespace MFA
     public:
 
         explicit PointRenderer(std::shared_ptr<PointPipeline> pointPipeline);
+
+        void UpdateBuffers(RT::CommandRecordState& recordState);
+
         // Note: This function is not optimized and is used for debug purposes only!
         void Draw(
             RT::CommandRecordState& recordState,
@@ -19,8 +22,6 @@ namespace MFA
         );
 
     private:
-
-        void PrepareBuffers(RT::CommandRecordState& recordState);
 
         std::shared_ptr<PointPipeline> _pointPipeline{};
         std::shared_ptr<RT::BufferAndMemory> _vertexBuffer{};

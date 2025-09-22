@@ -58,6 +58,8 @@ namespace MFA
         std::string name;
         std::string tag;
 
+        // TODO: Add an signal to listen to the class being dirty
+
     private:
 
         void SetLocalTransformDirty();

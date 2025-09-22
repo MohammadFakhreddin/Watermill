@@ -42,7 +42,7 @@ void MenuScene::Update(float deltaTime)
 
 //======================================================================================================================
 
-void MenuScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
+void MenuScene::UpdateBuffers(MFA::RT::CommandRecordState &recordState)
 {
     _webViewContainer->UpdateBuffer(recordState);
 }
@@ -83,6 +83,10 @@ void MenuScene::Reload()
 
     _webViewContainer->OnReload(clip);
 }
+
+//======================================================================================================================
+
+void MenuScene::OnUI() {}
 
 //======================================================================================================================
 

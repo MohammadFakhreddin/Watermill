@@ -20,7 +20,6 @@ PatrolEnemy::PatrolEnemy(
     glm::vec2 targetPosition = _patrolPoints[_currentIndex];
     glm::vec3 currentPosition = _transform->GlobalPosition();
     _transform->SetGlobalPosition(glm::vec3{targetPosition, currentPosition.z});
-
 }
 
 //======================================================================================================================

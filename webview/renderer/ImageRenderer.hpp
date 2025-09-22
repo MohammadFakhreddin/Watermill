@@ -3,7 +3,7 @@
 #include "BufferTracker.hpp"
 #include "ImagePipeline.hpp"
 
-#include <optional> o
+#include <optional>
 
 namespace MFA
 {

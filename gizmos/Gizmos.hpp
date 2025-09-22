@@ -51,7 +51,9 @@ namespace MFA
             }
         }
 
-        void SetViewProjection(glm::mat4 const & viewProjection) const;
+        static void SetViewProjection(glm::mat4 const & viewProjection);
+
+        void UpdateBuffers(RT::CommandRecordState & recordState) const;
 
         void Render(RT::CommandRecordState& recordState);
 
@@ -68,6 +70,8 @@ namespace MFA
             glm::vec4 const& color,
             float pointSize
         );
+
+        void Private_SetViewProjection(glm::mat4 const & viewProjection) const;
 
         inline static Gizmos * Instance = nullptr;
 

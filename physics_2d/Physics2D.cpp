@@ -1,945 +1,1069 @@
 #include "Physics2D.hpp"
 
 #include "BedrockAssert.hpp"
+#include "Gizmos.hpp"
 
 #include <glm/gtx/quaternion.hpp>
 #include <set>
 #include <utility>
 
-using ID = Physics2D::EntityID;
-
-//-----------------------------------------------------------------------
-
-Physics2D::Physics2D()
+namespace MFA
 {
-	Instance = this;
-}
+    using ID = Physics2D::EntityID;
 
-//-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
 
-Physics2D::~Physics2D()
-{
-    Instance = nullptr;
-}
-
-//-----------------------------------------------------------------------
-
-ID Physics2D::Register(
-    Type const type, 
-    Layer const layer,
-    Layer const layerMask,
-	OnHit onHit
-)
-{
-    auto const id = AllocateID();
-
-	auto& item = _itemMap[id];
-    item.id = id;
-    item.type = type;
-	item.layer = layer;
-    item.layerMask = layerMask;
-    item.onHit = std::move(onHit);
-
-    _isMapDirty = true;
-
-    return id;
-}
-
-//-----------------------------------------------------------------------
-
-bool Physics2D::UnRegister(EntityID const id)
-{
-    auto const findResult = _itemMap.find(id);
-    if (findResult != _itemMap.end())
+    Physics2D::Physics2D()
     {
-        _itemMap.erase(findResult);
+        Instance = this;
+    }
+
+    //-----------------------------------------------------------------------
+
+    Physics2D::~Physics2D()
+    {
+        Instance = nullptr;
+    }
+
+    //-----------------------------------------------------------------------
+
+    ID Physics2D::Register(
+        Type const type,
+        Layer const layer,
+        Layer const layerMask,
+        OnHit onHit
+    )
+    {
+        auto const id = AllocateID();
+
+        auto& item = _itemMap[id];
+        item.id = id;
+        item.type = type;
+        item.layer = layer;
+        item.layerMask = layerMask;
+        item.onHit = std::move(onHit);
+
         _isMapDirty = true;
-        return true;
+
+        return id;
     }
 
-    return false;
-}
+    //-----------------------------------------------------------------------
 
-//-----------------------------------------------------------------------
-
-bool Physics2D::MoveAABB(
-    EntityID const id, 
-    glm::vec2 const & min, 
-	glm::vec2 const & max,
-    bool const checkForCollision
-)
-{
-    auto const findResult = _itemMap.find(id);
-    if (findResult != _itemMap.end())
+    bool Physics2D::UnRegister(EntityID const id)
     {
-        Entity item = findResult->second;
-
-        MFA_ASSERT(item.type == Type::AABB);
-
-        auto const & v0 = min;
-        auto const & v2 = max;
-        auto const v1 = glm::vec2{ v2.x, v0.y };
-        auto const v3 = glm::vec2{ v0.x, v2.y };
-
-        auto& aabb = item.aabb;
-        aabb.min = min;
-        aabb.max = max;
-
-        auto& box = item.box;
-        box.v0 = v0;
-        box.v2 = v2;
-        box.v1 = v1;
-        box.v3 = v3;
-        box.center = (v0 + v1 + v2 + v3) * 0.25f;
-
-        if (checkForCollision == true)
+        auto const findResult = _itemMap.find(id);
+        if (findResult != _itemMap.end())
         {
-            bool const hasCollision = CheckForAABB_Collision(item);
-            if (hasCollision == true)
-            {
-                return false;
-            }
+            _itemMap.erase(findResult);
+            _isMapDirty = true;
+            return true;
         }
 
-        findResult->second = item;
-
-    	return true;
-    }
-    return false;
-}
-
-//-----------------------------------------------------------------------
-
-bool Physics2D::MoveSphere(
-    EntityID const id, 
-    glm::vec2 const & center, 
-	float const radius,
-    bool checkForCollision
-)
-{
-    auto const findResult = _itemMap.find(id);
-    if (findResult != _itemMap.end())
-    {
-        Entity item = findResult->second;
-
-        MFA_ASSERT(item.type == Type::Sphere);
-
-        auto& sphere = item.sphere;
-        sphere.center = center;
-        sphere.radius = radius;
-
-        auto& aabb = item.aabb;
-        aabb.min.x = center.x - radius;
-        aabb.min.y = center.y - radius;
-        aabb.max.x = center.x + radius;
-        aabb.max.y = center.y + radius;
-
-        if (checkForCollision == true)
-        {
-            bool const hasCollision = CheckForSphereCollision(item);
-            if (hasCollision == true)
-            {
-                return false;
-            }
-        }
-
-        findResult->second = item;
-
-        return true;
-    }
-
-    return false;
-}
-
-//-----------------------------------------------------------------------
-
-bool Physics2D::MoveBox(
-    EntityID const id, 
-    glm::vec2 const& v0, 
-	glm::vec2 const& v1, 
-	glm::vec2 const& v2, 
-	glm::vec2 const& v3,
-    bool checkForCollision
-)
-{
-    auto const findResult = _itemMap.find(id);
-    if (findResult != _itemMap.end())
-    {
-        Entity item = findResult->second;
-
-        MFA_ASSERT(item.type == Type::Box);
-
-        auto& box = item.box;
-        box.v0 = v0;
-        box.v1 = v1;
-        box.v2 = v2;
-        box.v3 = v3;
-
-        box.center = (box.v0 + box.v1 + box.v2 + box.v3) * 0.25f;
-        
-        box.v0v1N_dirty = true;
-        box.v1v2N_dirty = true;
-        box.v2v3N_dirty = true;
-        box.v3v0N_dirty = true;
-
-        auto& aabb = item.aabb;
-        AABB2D::Min(v0, v1, aabb.min);
-        AABB2D::Min(aabb.min, v2, aabb.min);
-        AABB2D::Min(aabb.min, v3, aabb.min);
-
-        AABB2D::Max(v0, v1, aabb.max);
-        AABB2D::Max(aabb.max, v2, aabb.max);
-        AABB2D::Max(aabb.max, v3, aabb.max);
-
-        if (checkForCollision == true)
-        {
-            bool const hasCollision = CheckForBoxCollision(item);
-            if (hasCollision == true)
-            {
-                return false;
-            }
-        }
-
-        findResult->second = item;
-
-        return true;
-    }
-
-    return false;
-}
-
-//-----------------------------------------------------------------------
-
-//bool Physics2D::MovePolygon(EntityID const id, std::vector<glm::vec2> const& vertices)
-//{
-//    auto const findResult = _nonStaticItemMap.find(id);
-//    if (findResult != _nonStaticItemMap.end())
-//    {
-//        _isNonStaticGridDirty = true;
-//
-//        auto& polygon = findResult->second.polygon;
-//        polygon.vertices = vertices;
-//        
-//        auto& aabb = findResult->second.aabb;
-//        AABB2D::Min(polygon.vertices[0], polygon.vertices[1], aabb.min);
-//        AABB2D::Max(polygon.vertices[0], polygon.vertices[1], aabb.max);
-//
-//        for (int i = 2; i < static_cast<int>(polygon.vertices.size()); ++i)
-//        {
-//            AABB2D::Min(polygon.vertices[i], aabb.min, aabb.min);
-//            AABB2D::Max(polygon.vertices[i], aabb.max, aabb.max);
-//        }
-//
-//        return true;
-//    }
-//    return false;
-//}
-
-//-----------------------------------------------------------------------
-
-void Physics2D::Update()
-{
-    if (_isMapDirty == true)
-    {
-        _isMapDirty = false;
-
-        _itemList.clear();
-        for (auto & [key, value] : _itemMap)
-        {
-            _itemList.emplace_back(&value);
-        }
-    }
-	/*// TODO: We have to restore the acceleration structure. This can be a good practive for you.
-    if (_isNonStaticGridDirty == true)
-    {
-        for (auto const & [key, item] : _nonStaticItemMap)
-        {
-            _nonStaticCellSize += item.aabb.max - item.aabb.min;
-        }
-        _nonStaticCellSize /= static_cast<double>(_nonStaticItemMap.size());
-        _nonStaticCellSize *= 2.0f;
-
-        _nonStaticGrid.clear();
-        for (auto & [key, item] : _nonStaticItemMap)
-        {
-            auto const min = item.aabb.min;
-            auto const max = item.aabb.max;
-
-            int const minX = static_cast<int>(std::floor(min.x / _nonStaticCellSize.x));
-            int const minY = static_cast<int>(std::floor(min.y / _nonStaticCellSize.y));
-            
-            int const maxX = static_cast<int>(std::ceil(max.x / _nonStaticCellSize.x));
-            int const maxY = static_cast<int>(std::ceil(max.y / _nonStaticCellSize.y));
-            
-            for (int x = minX; x <= maxX; ++x)
-            {
-                for (int y = minY; y <= maxY; ++y)
-                {
-					_nonStaticGrid[glm::ivec2{ x, y }].emplace_back(&item);
-                }
-            }
-        }
-    }
-    if (_isStaticGridDirty == true)
-    {
-        for (auto const & [key, item] : _staticItemMap)
-        {
-            _staticCellSize += item.aabb.max - item.aabb.min;
-        }
-        _staticCellSize /= static_cast<double>(_staticItemMap.size());
-        _staticCellSize *= 2.0f;
-
-        _staticGrid.clear();
-        for (auto & [key, item] : _staticItemMap)
-        {
-            auto const min = item.aabb.min;
-            auto const max = item.aabb.max;
-
-            int const minX = static_cast<int>(std::floor(min.x / _staticCellSize.x));
-            int const minY = static_cast<int>(std::floor(min.y / _staticCellSize.y));
-
-            int const maxX = static_cast<int>(std::ceil(max.x / _staticCellSize.x));
-            int const maxY = static_cast<int>(std::ceil(max.y / _staticCellSize.y));
-
-            for (int x = minX; x <= maxX; ++x)
-            {
-                for (int y = minY; y <= maxY; ++y)
-                {
-                    _staticGrid[glm::ivec2{ x, y }].emplace_back(&item);
-                }
-            }
-        }
-    }
-    */
-}
-
-//-----------------------------------------------------------------------
-
-
-//-----------------------------------------------------------------------
-
-bool Physics2D::Raycast(
-    Layer const layerMask,
-    std::set<EntityID> const & excludeIds,
-    Ray const& ray,
-    float maxDistance,
-    HitInfo& outHitInfo
-)
-{
-    auto const startPos = ray.origin - ray.direction * 1e-5f;
-    auto const endPos = ray.origin + ray.direction * (maxDistance + 1e-5f);
-    maxDistance += 2e-5f;
-
-    glm::vec2 max{};
-	AABB2D::Max(startPos, endPos, max);
-
-    glm::vec2 min{};
-    AABB2D::Min(startPos, endPos, min);
-
-    AABB2D const aabb{ .min = min, .max = max };
-    
-/*
-    {// Static
-        int const minX = static_cast<int>(std::floor(min.x / _staticCellSize.x));
-        int const minY = static_cast<int>(std::floor(min.y / _staticCellSize.y));
-
-        int const maxX = static_cast<int>(std::ceil(max.x / _staticCellSize.x));
-        int const maxY = static_cast<int>(std::ceil(max.y / _staticCellSize.y));
-
-        for (int x = minX; x <= maxX; ++x)
-        {
-            for (int y = minY; y <= maxY; ++y)
-            {
-                auto & items =  _staticGrid[glm::ivec2{ x, y }];
-                set.insert(items.begin(), items.end());
-            }
-        }
-    }
-
-    {// Non static
-        int const minX = static_cast<int>(std::floor(min.x / _nonStaticCellSize.x));
-        int const minY = static_cast<int>(std::floor(min.y / _nonStaticCellSize.y));
-
-        int const maxX = static_cast<int>(std::ceil(max.x / _nonStaticCellSize.x));
-        int const maxY = static_cast<int>(std::ceil(max.y / _nonStaticCellSize.y));
-
-        for (int x = minX; x <= maxX; ++x)
-        {
-            for (int y = minY; y <= maxY; ++y)
-            {
-                auto& items = _nonStaticGrid[glm::ivec2{ x, y }];
-                set.insert(items.begin(), items.end());
-            }
-        }
-    }
-    */
-    
-    bool hit = false;
-    
-    for (auto * item : _itemList)
-    {
-	    if (excludeIds.contains(item->id) == false && (item->layer & layerMask) > 0)
-	    {
-            if (item->aabb.Overlap(aabb) == true)
-            {
-                float time{};
-                glm::vec2 normal{};
-                bool hasCollision = false;
-
-                switch (item->type)
-                {
-	                case Type::Sphere:
-	                {
-	                    hasCollision = RaySphereIntersection(
-	                        ray,
-	                        maxDistance,
-	                        item->sphere,
-	                        time,
-	                        normal
-	                    );
-
-	                    break;
-	                }
-					case Type::AABB:
-	                case Type::Box:
-	                {
-	                    hasCollision = RayBoxIntersection(
-							ray,
-	                        maxDistance,
-	                        item->box,
-	                        time,
-	                        normal
-	                    );
-	                    break;
-	                }
-	                default:
-	                {
-	                    MFA_LOG_ERROR("Item type not handled");
-	                }
-                }
-
-                if (hasCollision == true && (hit == false || time < outHitInfo.hitTime))
-                {
-                    hit = true;
-                    outHitInfo.layer = item->layer;
-                    outHitInfo.onHit = item->onHit;
-                    outHitInfo.hitNormal = normal;
-                    outHitInfo.hitTime = time;
-                    outHitInfo.entityId = item->id;
-                }
-		    }
-	    }
-    }
-    
-    if (hit == true)
-    {
-        outHitInfo.hitPoint = ray.origin + (outHitInfo.hitTime * maxDistance * ray.direction);
-    }
-
-    return hit;
-}
-
-//-----------------------------------------------------------------------
-
-ID Physics2D::AllocateID()
-{
-    auto const id = _nextId;
-    ++_nextId;
-    return id;
-}
-
-//-----------------------------------------------------------------------
-
-glm::vec2 Physics2D::OrthogonalDirection(glm::vec2 const& v0, glm::vec2 const& v1, glm::vec2 const & center)
-{
-    auto const direction = v1 - v0;
-    glm::vec3 const normal3 = glm::cross(
-        glm::vec3 {direction.x, 0.0f, direction.y},
-        glm::vec3 {0.0f, 1.0f, 0.0f}
-    );
-    MFA_ASSERT((std::abs(normal3.y) - glm::epsilon<float>() < 0));
-    auto normal2 = glm::vec2{normal3.x, normal3.z};
-    if (glm::dot(normal2, v0 - center) < 0)
-    {
-        normal2 = -normal2;
-    }
-    return glm::normalize(normal2);
-}
-
-//-----------------------------------------------------------------------
-
-void Physics2D::OrthogonalDirection(
-    bool & inOutIsDirty, 
-    glm::vec2 & inOutNormal, 
-    glm::vec2 const & v0, 
-    glm::vec2 const & v1, 
-    glm::vec2 const & center
-)
-{
-    if (inOutIsDirty == true)
-    {
-        inOutIsDirty = false;
-        inOutNormal = OrthogonalDirection(v0, v1, center);
-    }
-}
-
-//-----------------------------------------------------------------------
-
-bool Physics2D::RaySphereIntersection(
-    Ray const& ray,
-    float const rayMaxDistance,
-    Sphere const& sphere,
-    float& outTime,
-    glm::vec2& outNormal
-)
-{
-    glm::vec2 const& P = ray.origin;
-    glm::vec2 const D = ray.direction * rayMaxDistance;
-    glm::vec2 const& F = sphere.center;
-    float const & r = sphere.radius;
-
-    float const A = glm::dot(D, D);
-    if (std::abs(A) < glm::epsilon<float>())
-    {
         return false;
     }
 
-	glm::vec2 const PMinF = P - F;
-	float const B = 2.0f * glm::dot(D, PMinF);
-    float const C = glm::dot(PMinF, PMinF) - (r * r);
+    //-----------------------------------------------------------------------
 
-    float const B2Min4AC = (B * B) - (4.0f * A * C);
-    if (B2Min4AC < 0.0f)
+    bool Physics2D::MoveAABB(
+        EntityID const id,
+        glm::vec2 const & min,
+        glm::vec2 const & max,
+        bool const checkForCollision
+    )
     {
+        auto const findResult = _itemMap.find(id);
+        if (findResult != _itemMap.end())
+        {
+            Entity item = findResult->second;
+
+            MFA_ASSERT(item.type == Type::AABB);
+
+            // TODO: We have to return if the movement is less than a threshold.
+
+            auto const & v0 = min;
+            auto const & v2 = max;
+            auto const v1 = glm::vec2{ v2.x, v0.y };
+            auto const v3 = glm::vec2{ v0.x, v2.y };
+
+            auto& aabb = item.aabb;
+            aabb.min = min;
+            aabb.max = max;
+
+            auto& box = item.box;
+            box.v0 = v0;
+            box.v2 = v2;
+            box.v1 = v1;
+            box.v3 = v3;
+            box.center = (v0 + v1 + v2 + v3) * 0.25f;
+
+            if (checkForCollision == true)
+            {
+                bool const hasCollision = CheckForAABB_Collision(item);
+                if (hasCollision == true)
+                {
+                    return false;
+                }
+            }
+
+            findResult->second = item;
+
+            return true;
+        }
         return false;
     }
 
-	auto const TwoA = 2.0f * A;
+    //-----------------------------------------------------------------------
 
-    auto const t0 = (-B + B2Min4AC) / TwoA;
-    auto const t1 = (-B - B2Min4AC) / TwoA;
-
-    auto t = 1.1f;
-
-    if (t0 > 0.0f)
+    bool Physics2D::MoveSphere(
+        EntityID const id,
+        glm::vec2 const & center,
+        float const radius,
+        bool checkForCollision
+    )
     {
-        t = std::min(t0, t);
-    }
-    if (t1 > 0.0f)
-    {
-        t = std::min(t1, t);
-    }
-
-	outTime = t;
-    outNormal = ray.origin + (t * rayMaxDistance) - F;
-    return t >= 0.0f && t <= 1.0f;
-}
-
-//-----------------------------------------------------------------------
-
-bool Physics2D::RayBoxIntersection(
-    Ray const& ray,
-	float const rayMaxDistance,
-	Box & box, 
-    float& outTime,
-    glm::vec2& outNormal
-)
-{
-    bool hasCollision = false;
-
-    outTime = rayMaxDistance + 1.0f;
-
-    {
-        float time{};
-        OrthogonalDirection(box.v0v1N_dirty, box.v0v1N, box.v1, box.v0, box.center);
-        bool const lineHasCollision = RayLineIntersection(
-            ray,
-            rayMaxDistance,
-            box.v0,
-            box.v1,
-            box.v0v1N,
-            time
-        );
-        if (lineHasCollision == true)
+        auto const findResult = _itemMap.find(id);
+        if (findResult != _itemMap.end())
         {
-            outTime = time;
-            outNormal = box.v0v1N;
-            hasCollision = true;
+            Entity item = findResult->second;
+
+            MFA_ASSERT(item.type == Type::Sphere);
+
+            // TODO: We have to return if the movement is less than a threshold.
+
+            auto& sphere = item.sphere;
+            sphere.center = center;
+            sphere.radius = radius;
+
+            auto& aabb = item.aabb;
+            aabb.min.x = center.x - radius;
+            aabb.min.y = center.y - radius;
+            aabb.max.x = center.x + radius;
+            aabb.max.y = center.y + radius;
+
+            if (checkForCollision == true)
+            {
+                bool const hasCollision = CheckForSphereCollision(item);
+                if (hasCollision == true)
+                {
+                    return false;
+                }
+            }
+
+            findResult->second = item;
+
+            return true;
         }
-    }
-    {
-        float time{};
-        OrthogonalDirection(box.v1v2N_dirty, box.v1v2N, box.v2, box.v1, box.center);
-        bool const lineHasCollision = RayLineIntersection(
-            ray,
-            rayMaxDistance,
-            box.v1,
-            box.v2,
-            box.v1v2N,
-            time
-        );
-        if (lineHasCollision == true && time < outTime)
-        {
-            outTime = time;
-            outNormal = box.v1v2N;
-            hasCollision = true;
-        }
-    }
-    {
-        float time{};
-        OrthogonalDirection(box.v2v3N_dirty, box.v2v3N, box.v3, box.v2, box.center);
-        bool const lineHasCollision = RayLineIntersection(
-            ray,
-            rayMaxDistance,
-            box.v2,
-            box.v3,
-            box.v2v3N,
-            time
-        );
-        if (lineHasCollision == true && time < outTime)
-        {
-            outTime = time;
-            outNormal = box.v2v3N;
-            hasCollision = true;
-        }
-    }
-    {
-        float time{};
-        OrthogonalDirection(box.v3v0N_dirty, box.v3v0N, box.v0, box.v3, box.center);
-        bool const lineHasCollision = RayLineIntersection(
-            ray,
-            rayMaxDistance,
-            box.v3,
-            box.v0,
-            box.v3v0N,
-            time
-        );
-        if (lineHasCollision == true && time < outTime)
-        {
-            outTime = time;
-            outNormal = box.v3v0N;
-            hasCollision = true;
-        }
-    }
 
-    return hasCollision;
-}
-
-//-----------------------------------------------------------------------
-
-bool Physics2D::RayLineIntersection(
-    Ray const& ray,
-    float rayMaxDistance,
-    glm::vec2 const& lineV0,
-    glm::vec2 const& lineV1,
-    glm::vec2 const& lineNormal,
-    float& outTime
-)
-{
-    auto const & n = lineNormal;
-
-	glm::vec2 const& D = ray.direction * rayMaxDistance;
-    glm::vec2 const& P = ray.origin;
-    glm::vec2 const& Q0 = lineV0;
-
-    float const DdotN = glm::dot(D, n);
-    if (DdotN >= 0.0f)
-    {
         return false;
     }
 
-    float const t1 = glm::dot((Q0 - P), n) / DdotN;
-    outTime = t1;
+    //-----------------------------------------------------------------------
 
-    if (t1 >= 0.0f && t1 <= 1.0f)
+    bool Physics2D::MoveBox(
+        EntityID const id,
+        glm::vec2 const& v0,
+        glm::vec2 const& v1,
+        glm::vec2 const& v2,
+        glm::vec2 const& v3,
+        bool checkForCollision
+    )
     {
-        auto const Q = (outTime * D) + ray.origin;
-        auto const lineDiff = lineV1 - lineV0;
-        auto const lineDiff2 = glm::dot(lineDiff, lineDiff);
-        if (lineDiff2 == 0.0f)
+        auto const findResult = _itemMap.find(id);
+        if (findResult != _itemMap.end())
         {
-            MFA_ASSERT(false);
+            Entity item = findResult->second;
+
+            MFA_ASSERT(item.type == Type::Box);
+
+            // TODO: We have to return if the movement is less than a threshold.
+
+            auto& box = item.box;
+            box.v0 = v0;
+            box.v1 = v1;
+            box.v2 = v2;
+            box.v3 = v3;
+
+            box.center = (box.v0 + box.v1 + box.v2 + box.v3) * 0.25f;
+
+            box.v0v1N_dirty = true;
+            box.v1v2N_dirty = true;
+            box.v2v3N_dirty = true;
+            box.v3v0N_dirty = true;
+
+            auto& aabb = item.aabb;
+            AABB2D::Min(v0, v1, aabb.min);
+            AABB2D::Min(aabb.min, v2, aabb.min);
+            AABB2D::Min(aabb.min, v3, aabb.min);
+
+            AABB2D::Max(v0, v1, aabb.max);
+            AABB2D::Max(aabb.max, v2, aabb.max);
+            AABB2D::Max(aabb.max, v3, aabb.max);
+
+            if (checkForCollision == true)
+            {
+                bool const hasCollision = CheckForBoxCollision(item);
+                if (hasCollision == true)
+                {
+                    return false;
+                }
+            }
+
+            findResult->second = item;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    //-----------------------------------------------------------------------
+
+    //bool Physics2D::MovePolygon(EntityID const id, std::vector<glm::vec2> const& vertices)
+    //{
+    //    auto const findResult = _nonStaticItemMap.find(id);
+    //    if (findResult != _nonStaticItemMap.end())
+    //    {
+    //        _isNonStaticGridDirty = true;
+    //
+    //        auto& polygon = findResult->second.polygon;
+    //        polygon.vertices = vertices;
+    //
+    //        auto& aabb = findResult->second.aabb;
+    //        AABB2D::Min(polygon.vertices[0], polygon.vertices[1], aabb.min);
+    //        AABB2D::Max(polygon.vertices[0], polygon.vertices[1], aabb.max);
+    //
+    //        for (int i = 2; i < static_cast<int>(polygon.vertices.size()); ++i)
+    //        {
+    //            AABB2D::Min(polygon.vertices[i], aabb.min, aabb.min);
+    //            AABB2D::Max(polygon.vertices[i], aabb.max, aabb.max);
+    //        }
+    //
+    //        return true;
+    //    }
+    //    return false;
+    //}
+
+    //-----------------------------------------------------------------------
+
+    void Physics2D::Update()
+    {
+        if (_isMapDirty == true)
+        {
+            _isMapDirty = false;
+
+            _itemList.clear();
+            for (auto & [key, value] : _itemMap)
+            {
+                _itemList.emplace_back(&value);
+            }
+        }
+        /*// TODO: We have to restore the acceleration structure. This can be a good practive for you.
+        if (_isNonStaticGridDirty == true)
+        {
+            for (auto const & [key, item] : _nonStaticItemMap)
+            {
+                _nonStaticCellSize += item.aabb.max - item.aabb.min;
+            }
+            _nonStaticCellSize /= static_cast<double>(_nonStaticItemMap.size());
+            _nonStaticCellSize *= 2.0f;
+
+            _nonStaticGrid.clear();
+            for (auto & [key, item] : _nonStaticItemMap)
+            {
+                auto const min = item.aabb.min;
+                auto const max = item.aabb.max;
+
+                int const minX = static_cast<int>(std::floor(min.x / _nonStaticCellSize.x));
+                int const minY = static_cast<int>(std::floor(min.y / _nonStaticCellSize.y));
+
+                int const maxX = static_cast<int>(std::ceil(max.x / _nonStaticCellSize.x));
+                int const maxY = static_cast<int>(std::ceil(max.y / _nonStaticCellSize.y));
+
+                for (int x = minX; x <= maxX; ++x)
+                {
+                    for (int y = minY; y <= maxY; ++y)
+                    {
+                        _nonStaticGrid[glm::ivec2{ x, y }].emplace_back(&item);
+                    }
+                }
+            }
+        }
+        if (_isStaticGridDirty == true)
+        {
+            for (auto const & [key, item] : _staticItemMap)
+            {
+                _staticCellSize += item.aabb.max - item.aabb.min;
+            }
+            _staticCellSize /= static_cast<double>(_staticItemMap.size());
+            _staticCellSize *= 2.0f;
+
+            _staticGrid.clear();
+            for (auto & [key, item] : _staticItemMap)
+            {
+                auto const min = item.aabb.min;
+                auto const max = item.aabb.max;
+
+                int const minX = static_cast<int>(std::floor(min.x / _staticCellSize.x));
+                int const minY = static_cast<int>(std::floor(min.y / _staticCellSize.y));
+
+                int const maxX = static_cast<int>(std::ceil(max.x / _staticCellSize.x));
+                int const maxY = static_cast<int>(std::ceil(max.y / _staticCellSize.y));
+
+                for (int x = minX; x <= maxX; ++x)
+                {
+                    for (int y = minY; y <= maxY; ++y)
+                    {
+                        _staticGrid[glm::ivec2{ x, y }].emplace_back(&item);
+                    }
+                }
+            }
+        }
+        */
+    }
+
+    //-----------------------------------------------------------------------
+
+
+    //-----------------------------------------------------------------------
+
+    bool Physics2D::Raycast(Layer const layerMask, std::set<EntityID> const &excludeIds, Ray const &ray, float maxDistance,
+                            HitInfo &outHitInfo)
+    {
+        auto const startPos = ray.origin - ray.direction * 1e-5f;
+        auto const endPos = ray.origin + ray.direction * (maxDistance + 1e-5f);
+        maxDistance += 2e-5f;
+
+        glm::vec2 max{};
+        AABB2D::Max(startPos, endPos, max);
+
+        glm::vec2 min{};
+        AABB2D::Min(startPos, endPos, min);
+
+        AABB2D const aabb{.min = min, .max = max};
+
+        /*
+            {// Static
+                int const minX = static_cast<int>(std::floor(min.x / _staticCellSize.x));
+                int const minY = static_cast<int>(std::floor(min.y / _staticCellSize.y));
+
+                int const maxX = static_cast<int>(std::ceil(max.x / _staticCellSize.x));
+                int const maxY = static_cast<int>(std::ceil(max.y / _staticCellSize.y));
+
+                for (int x = minX; x <= maxX; ++x)
+                {
+                    for (int y = minY; y <= maxY; ++y)
+                    {
+                        auto & items =  _staticGrid[glm::ivec2{ x, y }];
+                        set.insert(items.begin(), items.end());
+                    }
+                }
+            }
+
+            {// Non static
+                int const minX = static_cast<int>(std::floor(min.x / _nonStaticCellSize.x));
+                int const minY = static_cast<int>(std::floor(min.y / _nonStaticCellSize.y));
+
+                int const maxX = static_cast<int>(std::ceil(max.x / _nonStaticCellSize.x));
+                int const maxY = static_cast<int>(std::ceil(max.y / _nonStaticCellSize.y));
+
+                for (int x = minX; x <= maxX; ++x)
+                {
+                    for (int y = minY; y <= maxY; ++y)
+                    {
+                        auto& items = _nonStaticGrid[glm::ivec2{ x, y }];
+                        set.insert(items.begin(), items.end());
+                    }
+                }
+            }
+            */
+
+        bool hit = false;
+
+        for (auto *item : _itemList)
+        {
+            if (excludeIds.contains(item->id) == false && (item->layer & layerMask) > 0)
+            {
+                if (item->aabb.Overlap(aabb) == true)
+                {
+                    float time{};
+                    glm::vec2 normal{};
+                    bool hasCollision = false;
+
+                    switch (item->type)
+                    {
+                    case Type::Sphere:
+                    {
+                        hasCollision = RaySphereIntersection(ray, maxDistance, item->sphere, time, normal);
+
+                        break;
+                    }
+                    case Type::AABB:
+                    case Type::Box:
+                    {
+                        hasCollision = RayBoxIntersection(ray, maxDistance, item->box, time, normal);
+                        break;
+                    }
+                    default:
+                    {
+                        MFA_LOG_ERROR("Item type not handled");
+                    }
+                    }
+
+                    if (hasCollision == true && (hit == false || time < outHitInfo.hitTime))
+                    {
+                        hit = true;
+                        outHitInfo.layer = item->layer;
+                        outHitInfo.onHit = item->onHit;
+                        outHitInfo.hitNormal = normal;
+                        outHitInfo.hitTime = time;
+                        outHitInfo.entityId = item->id;
+                    }
+                }
+            }
+        }
+
+        if (hit == true)
+        {
+            outHitInfo.hitPoint = ray.origin + (outHitInfo.hitTime * maxDistance * ray.direction);
+        }
+
+        return hit;
+    }
+
+    void Physics2D::DrawDebug() const
+    {
+        // Draw all physics entities
+        for (auto const* entity : _itemList)
+        {
+            if (entity == nullptr)
+                continue;
+
+            // Get color based on layer (convert bit flag to index)
+            glm::vec4 color(0.5f, 0.5f, 0.5f, 1.0f); // Default gray
+
+            // Find which bit is set (convert from bit flag to index)
+            uint32_t layerIndex = 0;
+            if (entity->layer != 0)
+            {
+                uint32_t temp = entity->layer;
+                while ((temp & 1) == 0 && layerIndex < 31)
+                {
+                    temp >>= 1;
+                    layerIndex++;
+                }
+            }
+
+            if (layerIndex < numLayers)
+            {
+                color = layerColors[layerIndex];
+            }
+            else
+            {
+                // For layers beyond predefined colors, generate a color based on layer index
+                float hue = (layerIndex % 12) / 12.0f;
+                float r = glm::abs(glm::sin(hue * 6.28f));
+                float g = glm::abs(glm::sin(hue * 6.28f + 2.09f));
+                float b = glm::abs(glm::sin(hue * 6.28f + 4.18f));
+                color = glm::vec4(r, g, b, 1.0f);
+            }
+
+            // Convert 2D to 3D (z = 0)
+            auto to3D = [](const glm::vec2& v) { return glm::vec3(v.x, v.y, 0.0f); };
+
+            switch (entity->type)
+            {
+            case Type::AABB:
+            {
+                // Draw AABB as a rectangle
+                const auto& aabb = entity->aabb;
+                glm::vec3 v0 = to3D(aabb.min);
+                glm::vec3 v1 = glm::vec3(aabb.max.x, aabb.min.y, 0.0f);
+                glm::vec3 v2 = to3D(aabb.max);
+                glm::vec3 v3 = glm::vec3(aabb.min.x, aabb.max.y, 0.0f);
+
+                Gizmos::DrawLine(v0, v1, color);
+                Gizmos::DrawLine(v1, v2, color);
+                Gizmos::DrawLine(v2, v3, color);
+                Gizmos::DrawLine(v3, v0, color);
+            }
+                break;
+
+            case Type::Box:
+            {
+                // Draw box with its 4 vertices
+                const auto& box = entity->box;
+                glm::vec3 v0 = to3D(box.v0);
+                glm::vec3 v1 = to3D(box.v1);
+                glm::vec3 v2 = to3D(box.v2);
+                glm::vec3 v3 = to3D(box.v3);
+
+                Gizmos::DrawLine(v0, v1, color);
+                Gizmos::DrawLine(v1, v2, color);
+                Gizmos::DrawLine(v2, v3, color);
+                Gizmos::DrawLine(v3, v0, color);
+
+                // Draw diagonals with a slightly darker color to show rotation
+                glm::vec4 diagonalColor = color * 0.5f;
+                diagonalColor.a = 1.0f;
+                Gizmos::DrawLine(v0, v2, diagonalColor);
+                Gizmos::DrawLine(v1, v3, diagonalColor);
+            }
+                break;
+
+            case Type::Sphere:
+            {
+                // Draw sphere as a circle approximation
+                const auto& sphere = entity->sphere;
+                glm::vec3 center = to3D(sphere.center);
+
+                // Draw center point
+                Gizmos::DrawPoint(center, color, 5.0f);
+
+                // Draw circle using line segments
+                const int segments = 32;
+                for (int i = 0; i < segments; ++i)
+                {
+                    float angle1 = (i * 2.0f * 3.14159f) / segments;
+                    float angle2 = ((i + 1) * 2.0f * 3.14159f) / segments;
+
+                    glm::vec3 p1 = center + glm::vec3(
+                        glm::cos(angle1) * sphere.radius,
+                        glm::sin(angle1) * sphere.radius,
+                        0.0f
+                    );
+
+                    glm::vec3 p2 = center + glm::vec3(
+                        glm::cos(angle2) * sphere.radius,
+                        glm::sin(angle2) * sphere.radius,
+                        0.0f
+                    );
+
+                    Gizmos::DrawLine(p1, p2, color);
+                }
+
+                // Draw cross through center
+                Gizmos::DrawLine(
+                    center + glm::vec3(-sphere.radius, 0.0f, 0.0f),
+                    center + glm::vec3(sphere.radius, 0.0f, 0.0f),
+                    color
+                );
+                Gizmos::DrawLine(
+                    center + glm::vec3(0.0f, -sphere.radius, 0.0f),
+                    center + glm::vec3(0.0f, sphere.radius, 0.0f),
+                    color
+                );
+            }
+                break;
+
+            default:
+                break;
+            }
+        }
+    }
+
+    //-----------------------------------------------------------------------
+
+    ID Physics2D::AllocateID()
+    {
+        auto const id = _nextId;
+        ++_nextId;
+        return id;
+    }
+
+    //-----------------------------------------------------------------------
+
+    glm::vec2 Physics2D::OrthogonalDirection(glm::vec2 const& v0, glm::vec2 const& v1, glm::vec2 const & center)
+    {
+        auto const direction = v1 - v0;
+        glm::vec3 const normal3 = glm::cross(
+            glm::vec3 {direction.x, 0.0f, direction.y},
+            glm::vec3 {0.0f, 1.0f, 0.0f}
+        );
+        MFA_ASSERT((std::abs(normal3.y) - glm::epsilon<float>() < 0));
+        auto normal2 = glm::vec2{normal3.x, normal3.z};
+        if (glm::dot(normal2, v0 - center) < 0)
+        {
+            normal2 = -normal2;
+        }
+        return glm::normalize(normal2);
+    }
+
+    //-----------------------------------------------------------------------
+
+    void Physics2D::OrthogonalDirection(
+        bool & inOutIsDirty,
+        glm::vec2 & inOutNormal,
+        glm::vec2 const & v0,
+        glm::vec2 const & v1,
+        glm::vec2 const & center
+    )
+    {
+        if (inOutIsDirty == true)
+        {
+            inOutIsDirty = false;
+            inOutNormal = OrthogonalDirection(v0, v1, center);
+        }
+    }
+
+    //-----------------------------------------------------------------------
+
+    bool Physics2D::RaySphereIntersection(
+        Ray const& ray,
+        float const rayMaxDistance,
+        Sphere const& sphere,
+        float& outTime,
+        glm::vec2& outNormal
+    )
+    {
+        glm::vec2 const& P = ray.origin;
+        glm::vec2 const D = ray.direction * rayMaxDistance;
+        glm::vec2 const& F = sphere.center;
+        float const & r = sphere.radius;
+
+        float const A = glm::dot(D, D);
+        if (std::abs(A) < glm::epsilon<float>())
+        {
             return false;
         }
 
-        float const t2 = glm::dot(Q - lineV0, lineDiff) / lineDiff2;
-        auto const hasCollision = t2 <= 1.0f + 1e-5f && t2 >= -1e-5f;
+        glm::vec2 const PMinF = P - F;
+        float const B = 2.0f * glm::dot(D, PMinF);
+        float const C = glm::dot(PMinF, PMinF) - (r * r);
+
+        float const B2Min4AC = (B * B) - (4.0f * A * C);
+        if (B2Min4AC < 0.0f)
+        {
+            return false;
+        }
+
+        auto const TwoA = 2.0f * A;
+
+        auto const t0 = (-B + B2Min4AC) / TwoA;
+        auto const t1 = (-B - B2Min4AC) / TwoA;
+
+        auto t = 1.1f;
+
+        if (t0 > 0.0f)
+        {
+            t = std::min(t0, t);
+        }
+        if (t1 > 0.0f)
+        {
+            t = std::min(t1, t);
+        }
+
+        outTime = t;
+        outNormal = ray.origin + (t * rayMaxDistance) - F;
+        return t >= 0.0f && t <= 1.0f;
+    }
+
+    //-----------------------------------------------------------------------
+
+    bool Physics2D::RayBoxIntersection(
+        Ray const& ray,
+        float const rayMaxDistance,
+        Box & box,
+        float& outTime,
+        glm::vec2& outNormal
+    )
+    {
+        bool hasCollision = false;
+
+        outTime = rayMaxDistance + 1.0f;
+
+        {
+            float time{};
+            OrthogonalDirection(box.v0v1N_dirty, box.v0v1N, box.v1, box.v0, box.center);
+            bool const lineHasCollision = RayLineIntersection(
+                ray,
+                rayMaxDistance,
+                box.v0,
+                box.v1,
+                box.v0v1N,
+                time
+            );
+            if (lineHasCollision == true)
+            {
+                outTime = time;
+                outNormal = box.v0v1N;
+                hasCollision = true;
+            }
+        }
+        {
+            float time{};
+            OrthogonalDirection(box.v1v2N_dirty, box.v1v2N, box.v2, box.v1, box.center);
+            bool const lineHasCollision = RayLineIntersection(
+                ray,
+                rayMaxDistance,
+                box.v1,
+                box.v2,
+                box.v1v2N,
+                time
+            );
+            if (lineHasCollision == true && time < outTime)
+            {
+                outTime = time;
+                outNormal = box.v1v2N;
+                hasCollision = true;
+            }
+        }
+        {
+            float time{};
+            OrthogonalDirection(box.v2v3N_dirty, box.v2v3N, box.v3, box.v2, box.center);
+            bool const lineHasCollision = RayLineIntersection(
+                ray,
+                rayMaxDistance,
+                box.v2,
+                box.v3,
+                box.v2v3N,
+                time
+            );
+            if (lineHasCollision == true && time < outTime)
+            {
+                outTime = time;
+                outNormal = box.v2v3N;
+                hasCollision = true;
+            }
+        }
+        {
+            float time{};
+            OrthogonalDirection(box.v3v0N_dirty, box.v3v0N, box.v0, box.v3, box.center);
+            bool const lineHasCollision = RayLineIntersection(
+                ray,
+                rayMaxDistance,
+                box.v3,
+                box.v0,
+                box.v3v0N,
+                time
+            );
+            if (lineHasCollision == true && time < outTime)
+            {
+                outTime = time;
+                outNormal = box.v3v0N;
+                hasCollision = true;
+            }
+        }
+
         return hasCollision;
     }
 
-    return false;
-}
+    //-----------------------------------------------------------------------
 
-//-----------------------------------------------------------------------
-
-bool Physics2D::BoxAABB_Collision(Box & box, Entity const & aabbEntity)
-{
-    if (aabbEntity.aabb.Overlap(box.v0) ||
-        aabbEntity.aabb.Overlap(box.v1) ||
-        aabbEntity.aabb.Overlap(box.v2) ||
-        aabbEntity.aabb.Overlap(box.v3) ||
-        IsInsideBox(box, aabbEntity.box.v0) ||
-        IsInsideBox(box, aabbEntity.box.v1) ||
-        IsInsideBox(box, aabbEntity.box.v2) ||
-        IsInsideBox(box, aabbEntity.box.v3))
+    bool Physics2D::RayLineIntersection(
+        Ray const& ray,
+        float rayMaxDistance,
+        glm::vec2 const& lineV0,
+        glm::vec2 const& lineV1,
+        glm::vec2 const& lineNormal,
+        float& outTime
+    )
     {
-        return true;
-    }
-    return false;
-}
+        auto const & n = lineNormal;
 
-//-----------------------------------------------------------------------
+        glm::vec2 const& D = ray.direction * rayMaxDistance;
+        glm::vec2 const& P = ray.origin;
+        glm::vec2 const& Q0 = lineV0;
 
-bool Physics2D::SphereBoxCollision(Sphere const & sphere, Box & box)
-{
-    if (IsInsideSphere(sphere, box.v0) ||
-        IsInsideSphere(sphere, box.v1) ||
-        IsInsideSphere(sphere, box.v2) ||
-        IsInsideSphere(sphere, box.v3))
-    {
-        return true;
-    }
-    return false;
-}
-
-//-----------------------------------------------------------------------
-
-bool Physics2D::BoxBoxCollision(Box & box0, Box & box1)
-{
-    if (IsInsideBox(box0, box1.v0) ||
-        IsInsideBox(box0, box1.v1) ||
-        IsInsideBox(box0, box1.v2) ||
-        IsInsideBox(box0, box1.v3) ||
-        IsInsideBox(box1, box0.v0) ||
-        IsInsideBox(box1, box0.v1) ||
-        IsInsideBox(box1, box0.v2) ||
-        IsInsideBox(box1, box0.v3))
-    {
-        return true;
-    }
-    return false;
-}
-
-//-----------------------------------------------------------------------
-
-bool Physics2D::SphereSphere_Collision(Sphere const& sphere0, Sphere const & sphere1)
-{
-    auto const dist2 = glm::length2(sphere0.center - sphere1.center);
-
-	auto const maxDist = sphere0.radius + sphere1.radius;
-    auto const maxDist2 = maxDist * maxDist;
-
-	if (dist2 < maxDist2)
-    {
-        return true;
-    }
-    return false;
-}
-
-//-----------------------------------------------------------------------
-
-bool Physics2D::IsInsideSphere(Sphere const& sphere, glm::vec2 const& position)
-{
-    auto const sqrDist = glm::length2(position - sphere.center);
-    if (sqrDist <= sphere.radius * sphere.radius)
-    {
-        return true;
-    }
-    return false;
-}
-
-//-----------------------------------------------------------------------
-
-bool Physics2D::IsInsideBox(Box & box, glm::vec2 const& position, glm::vec2 & outClosestWallNormal)
-{
-    float closestWallDistance = std::numeric_limits<float>::max();
-    
-    {
-        OrthogonalDirection(box.v0v1N_dirty, box.v0v1N, box.v1, box.v0, box.center);
-        auto const dot = glm::dot(position - box.v0, box.v0v1N);
-        if (dot > 0)
+        float const DdotN = glm::dot(D, n);
+        if (DdotN >= 0.0f)
         {
             return false;
         }
-        if (dot < closestWallDistance)
-        {
-            outClosestWallNormal = box.v0v1N;
-            closestWallDistance = dot;
-        }
-    }
-    {
-        OrthogonalDirection(box.v1v2N_dirty, box.v1v2N, box.v2, box.v1, box.center);
-        auto const dot = glm::dot(position - box.v1, box.v1v2N);
-        if (dot > 0)
-        {
-            return false;
-        }
-        if (dot < closestWallDistance)
-        {
-            outClosestWallNormal = box.v1v2N;   
-            closestWallDistance = dot;
-        }
-    }
-    {
-        OrthogonalDirection(box.v2v3N_dirty, box.v2v3N, box.v3, box.v2, box.center);
-        auto const dot = glm::dot(position - box.v2, box.v2v3N);
-        if (dot > 0)
-        {
-            return false;
-        }
-        if (dot < closestWallDistance)
-        {
-            outClosestWallNormal = box.v2v3N;
-            closestWallDistance = dot;
-        }
-    }
-    {
-        OrthogonalDirection(box.v3v0N_dirty, box.v3v0N, box.v0, box.v3, box.center);
-        auto const dot = glm::dot(position - box.v3, box.v3v0N);
-        if (dot > 0)
-        {
-            return false;
-        }
-        if (dot < closestWallDistance)
-        {
-            outClosestWallNormal = box.v3v0N;
-            closestWallDistance = dot;
-        }
-    }
 
-    return true;
-}
+        float const t1 = glm::dot((Q0 - P), n) / DdotN;
+        outTime = t1;
 
-//-----------------------------------------------------------------------
-
-bool Physics2D::IsInsideBox(
-    Box & box,
-    glm::vec2 const & position
-)
-{
-    glm::vec2 outClosestWallNormal{};
-    return IsInsideBox(box, position, outClosestWallNormal);
-}
-
-//-----------------------------------------------------------------------
-
-bool Physics2D::CheckForAABB_Collision(Entity & item) const
-{
-    AABB2D const & aabb = item.aabb;
-    for (auto * other : _itemList)
-    {
-        if (other->id != item.id && (other->layer & item.layerMask) > 0)
+        if (t1 >= 0.0f && t1 <= 1.0f)
         {
-            if (other->aabb.Overlap(aabb) == true)
+            auto const Q = (outTime * D) + ray.origin;
+            auto const lineDiff = lineV1 - lineV0;
+            auto const lineDiff2 = glm::dot(lineDiff, lineDiff);
+            if (lineDiff2 == 0.0f)
             {
-                switch (other->type)
+                MFA_ASSERT(false);
+                return false;
+            }
+
+            float const t2 = glm::dot(Q - lineV0, lineDiff) / lineDiff2;
+            auto const hasCollision = t2 <= 1.0f + 1e-5f && t2 >= -1e-5f;
+            return hasCollision;
+        }
+
+        return false;
+    }
+
+    //-----------------------------------------------------------------------
+
+    bool Physics2D::BoxAABB_Collision(Box & box, Entity const & aabbEntity)
+    {
+        if (aabbEntity.aabb.Overlap(box.v0) ||
+            aabbEntity.aabb.Overlap(box.v1) ||
+            aabbEntity.aabb.Overlap(box.v2) ||
+            aabbEntity.aabb.Overlap(box.v3) ||
+            IsInsideBox(box, aabbEntity.box.v0) ||
+            IsInsideBox(box, aabbEntity.box.v1) ||
+            IsInsideBox(box, aabbEntity.box.v2) ||
+            IsInsideBox(box, aabbEntity.box.v3))
+        {
+            return true;
+        }
+        return false;
+    }
+
+    //-----------------------------------------------------------------------
+
+    bool Physics2D::SphereBoxCollision(Sphere const & sphere, Box & box)
+    {
+        if (IsInsideSphere(sphere, box.v0) ||
+            IsInsideSphere(sphere, box.v1) ||
+            IsInsideSphere(sphere, box.v2) ||
+            IsInsideSphere(sphere, box.v3))
+        {
+            return true;
+        }
+        return false;
+    }
+
+    //-----------------------------------------------------------------------
+
+    bool Physics2D::BoxBoxCollision(Box & box0, Box & box1)
+    {
+        if (IsInsideBox(box0, box1.v0) ||
+            IsInsideBox(box0, box1.v1) ||
+            IsInsideBox(box0, box1.v2) ||
+            IsInsideBox(box0, box1.v3) ||
+            IsInsideBox(box1, box0.v0) ||
+            IsInsideBox(box1, box0.v1) ||
+            IsInsideBox(box1, box0.v2) ||
+            IsInsideBox(box1, box0.v3))
+        {
+            return true;
+        }
+        return false;
+    }
+
+    //-----------------------------------------------------------------------
+
+    bool Physics2D::SphereSphere_Collision(Sphere const& sphere0, Sphere const & sphere1)
+    {
+        auto const dist2 = glm::length2(sphere0.center - sphere1.center);
+
+        auto const maxDist = sphere0.radius + sphere1.radius;
+        auto const maxDist2 = maxDist * maxDist;
+
+        if (dist2 < maxDist2)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    //-----------------------------------------------------------------------
+
+    bool Physics2D::IsInsideSphere(Sphere const& sphere, glm::vec2 const& position)
+    {
+        auto const sqrDist = glm::length2(position - sphere.center);
+        if (sqrDist <= sphere.radius * sphere.radius)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    //-----------------------------------------------------------------------
+
+    bool Physics2D::IsInsideBox(Box & box, glm::vec2 const& position, glm::vec2 & outClosestWallNormal)
+    {
+        float closestWallDistance = std::numeric_limits<float>::max();
+
+        {
+            OrthogonalDirection(box.v0v1N_dirty, box.v0v1N, box.v1, box.v0, box.center);
+            auto const dot = glm::dot(position - box.v0, box.v0v1N);
+            if (dot > 0)
+            {
+                return false;
+            }
+            if (dot < closestWallDistance)
+            {
+                outClosestWallNormal = box.v0v1N;
+                closestWallDistance = dot;
+            }
+        }
+        {
+            OrthogonalDirection(box.v1v2N_dirty, box.v1v2N, box.v2, box.v1, box.center);
+            auto const dot = glm::dot(position - box.v1, box.v1v2N);
+            if (dot > 0)
+            {
+                return false;
+            }
+            if (dot < closestWallDistance)
+            {
+                outClosestWallNormal = box.v1v2N;
+                closestWallDistance = dot;
+            }
+        }
+        {
+            OrthogonalDirection(box.v2v3N_dirty, box.v2v3N, box.v3, box.v2, box.center);
+            auto const dot = glm::dot(position - box.v2, box.v2v3N);
+            if (dot > 0)
+            {
+                return false;
+            }
+            if (dot < closestWallDistance)
+            {
+                outClosestWallNormal = box.v2v3N;
+                closestWallDistance = dot;
+            }
+        }
+        {
+            OrthogonalDirection(box.v3v0N_dirty, box.v3v0N, box.v0, box.v3, box.center);
+            auto const dot = glm::dot(position - box.v3, box.v3v0N);
+            if (dot > 0)
+            {
+                return false;
+            }
+            if (dot < closestWallDistance)
+            {
+                outClosestWallNormal = box.v3v0N;
+                closestWallDistance = dot;
+            }
+        }
+
+        return true;
+    }
+
+    //-----------------------------------------------------------------------
+
+    bool Physics2D::IsInsideBox(
+        Box & box,
+        glm::vec2 const & position
+    )
+    {
+        glm::vec2 outClosestWallNormal{};
+        return IsInsideBox(box, position, outClosestWallNormal);
+    }
+
+    //-----------------------------------------------------------------------
+
+    bool Physics2D::CheckForAABB_Collision(Entity & item) const
+    {
+        AABB2D const & aabb = item.aabb;
+        for (auto * other : _itemList)
+        {
+            if (other->id != item.id && (other->layer & item.layerMask) > 0)
+            {
+                if (other->aabb.Overlap(aabb) == true)
                 {
-	                case Type::AABB:
-	                case Type::Box:
-	                {
+                    switch (other->type)
+                    {
+                    case Type::AABB:
+                    case Type::Box:
+                    {
                         if (BoxAABB_Collision(other->box, item) == true)
                         {
                             return true;
                         }
-		                break;
-	                }
-		            case Type::Sphere:
-		            {
+                        break;
+                    }
+                    case Type::Sphere:
+                    {
                         if (SphereBoxCollision(other->sphere, item.box) == true)
                         {
                             return true;
                         }
-			            break;
-		            }
-	                default:
-	                    MFA_LOG_ERROR("Unhandled collidetr type");
-	            }
+                        break;
+                    }
+                    default:
+                        MFA_LOG_ERROR("Unhandled collidetr type");
+                    }
+                }
             }
         }
+        return false;
     }
-    return false;
-}
 
-//-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
 
-bool Physics2D::CheckForSphereCollision(Entity const& item) const
-{
-    for (auto * other : _itemList)
+    bool Physics2D::CheckForSphereCollision(Entity const& item) const
     {
-        if (other->id != item.id && (other->layer & item.layerMask) > 0)
+        for (auto * other : _itemList)
         {
-            if (other->aabb.Overlap(item.aabb) == true)
+            if (other->id != item.id && (other->layer & item.layerMask) > 0)
             {
-                switch (other->type)
+                if (other->aabb.Overlap(item.aabb) == true)
                 {
-                case Type::AABB:
-                case Type::Box:
-                {
-                    if (SphereBoxCollision(item.sphere, other->box) == true)
+                    switch (other->type)
                     {
-                        return true;
-                    }
-                    break;
-                }
-                case Type::Sphere:
-                {
-                    if (SphereSphere_Collision(other->sphere, item.sphere) == true)
+                    case Type::AABB:
+                    case Type::Box:
                     {
-                        return true;
+                        if (SphereBoxCollision(item.sphere, other->box) == true)
+                        {
+                            return true;
+                        }
+                        break;
                     }
-                    break;
-                }
-                default:
-                    MFA_LOG_ERROR("Unhandled collidetr type");
+                    case Type::Sphere:
+                    {
+                        if (SphereSphere_Collision(other->sphere, item.sphere) == true)
+                        {
+                            return true;
+                        }
+                        break;
+                    }
+                    default:
+                        MFA_LOG_ERROR("Unhandled collidetr type");
+                    }
                 }
             }
         }
+        return false;
     }
-    return false;
-}
 
-//-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
 
-bool Physics2D::CheckForBoxCollision(Entity & item) const
-{
-    for (auto * other : _itemList)
+    bool Physics2D::CheckForBoxCollision(Entity & item) const
     {
-        if (other->id != item.id && (other->layer & item.layerMask) > 0)
+        for (auto * other : _itemList)
         {
-            if (other->aabb.Overlap(item.aabb) == true)
+            if (other->id != item.id && (other->layer & item.layerMask) > 0)
             {
-                switch (other->type)
+                if (other->aabb.Overlap(item.aabb) == true)
                 {
-                case Type::AABB:
-                {
-                    if (BoxAABB_Collision(item.box, *other) == true)
+                    switch (other->type)
                     {
-                        return true;
-                    }
-                }
-                case Type::Box:
-                {
-                    if (BoxBoxCollision(item.box, other->box) == true)
+                    case Type::AABB:
                     {
-                        return true;
+                        if (BoxAABB_Collision(item.box, *other) == true)
+                        {
+                            return true;
+                        }
                     }
-                    break;
-                }
-                case Type::Sphere:
-                {
-                    if (SphereBoxCollision(other->sphere, item.box) == true)
+                    case Type::Box:
                     {
-                        return true;
+                        if (BoxBoxCollision(item.box, other->box) == true)
+                        {
+                            return true;
+                        }
+                        break;
                     }
-                    break;
-                }
-                default:
-                    MFA_LOG_ERROR("Unhandled collidetr type");
+                    case Type::Sphere:
+                    {
+                        if (SphereBoxCollision(other->sphere, item.box) == true)
+                        {
+                            return true;
+                        }
+                        break;
+                    }
+                    default:
+                        MFA_LOG_ERROR("Unhandled collidetr type");
+                    }
                 }
             }
         }
+        return false;
     }
-    return false;
-}
 
-//-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+}

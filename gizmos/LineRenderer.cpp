@@ -22,8 +22,6 @@ namespace MFA
         glm::vec4 const &color
     )
     {
-	    if (_vertexBuffer == nullptr || _indexBuffer == nullptr) PrepareBuffers(recordState);
-
         using namespace MFA;
 
         _linePipeline->BindPipeline(recordState);
@@ -67,8 +65,10 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    void LineRenderer::PrepareBuffers(RT::CommandRecordState &recordState)
+    void LineRenderer::UpdateBuffers(RT::CommandRecordState &recordState)
 	{
+	    if (_vertexBuffer != nullptr && _indexBuffer != nullptr) return;
+
 	    using namespace MFA;
 
 	    {
@@ -117,6 +117,18 @@ namespace MFA
         );
 
 	    _indexCount = (int)indices.size();
+
+	    // TODO: Create a new function called addTemporaryMemory that you just pass the memories you want it to preseve
+	    std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight() + 1);
+	    LogicalDevice::AddRenderTask([indexStageBuffer, vertexStageBuffer, counter](RT::CommandRecordState const & recordState)->bool
+        {
+            (*counter) -= 1;
+            if (*counter <= 0)
+            {
+                return false;
+            }
+            return true;
+        });
 	}
 
     //-------------------------------------------------------------------------------------------------

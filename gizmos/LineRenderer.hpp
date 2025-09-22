@@ -11,6 +11,9 @@ namespace MFA
     public:
 
         explicit LineRenderer(std::shared_ptr<LinePipeline> linePipeline);
+
+        void UpdateBuffers(RT::CommandRecordState& recordState);
+
         // Note: This code is not optimized and is for debug purposes only
         void Draw(
             RT::CommandRecordState& recordState,
@@ -20,8 +23,6 @@ namespace MFA
     );
 
     private:
-
-        void PrepareBuffers(RT::CommandRecordState& recordState);
 
         std::shared_ptr<LinePipeline> _linePipeline{};
         std::shared_ptr<RT::BufferAndMemory> _vertexBuffer{};

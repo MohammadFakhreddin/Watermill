@@ -37,11 +37,11 @@ namespace MFA
         _viewProjectionTracker = std::make_unique<HostVisibleBufferTracker>(viewProjectionBuffer, Alias(viewProjection));
 
         {
-            auto linePipeline = std::make_shared<LinePipeline>(displayRenderPass, viewProjectionBuffer, 1);
+            auto linePipeline = std::make_shared<LinePipeline>(displayRenderPass, viewProjectionBuffer, device->GetMaxFramePerFlight());
             _lineRenderer = std::make_unique<LineRenderer>(std::move(linePipeline));
         }
         {
-            auto pointPipeline = std::make_shared<PointPipeline>(displayRenderPass, viewProjectionBuffer, 1);
+            auto pointPipeline = std::make_shared<PointPipeline>(displayRenderPass, viewProjectionBuffer, device->GetMaxFramePerFlight());
             _pointRenderer = std::make_unique<PointRenderer>(std::move(pointPipeline));
         }
     }
@@ -56,9 +56,17 @@ namespace MFA
 
     //==================================================================================================================
 
-    void Gizmos::SetViewProjection(glm::mat4 const &viewProjection) const
+    void Gizmos::SetViewProjection(glm::mat4 const &viewProjection)
     {
-        _viewProjectionTracker->SetData(Alias(viewProjection));
+        if (Instance != nullptr) Instance->Private_SetViewProjection(viewProjection);
+    }
+
+    //==================================================================================================================
+
+    void Gizmos::UpdateBuffers(RT::CommandRecordState &recordState) const
+    {
+        _lineRenderer->UpdateBuffers(recordState);
+        _pointRenderer->UpdateBuffers(recordState);
     }
 
     //==================================================================================================================
@@ -88,9 +96,14 @@ namespace MFA
     void Gizmos::Private_DrawPoint(glm::vec3 const &position, glm::vec4 const &color, float pointSize)
     {
         _renderTasks.emplace_back([this, position, color, pointSize](RT::CommandRecordState &recordState) -> void
-        {
-            _pointRenderer->Draw(recordState, position, color, pointSize);
-        });
+                                  { _pointRenderer->Draw(recordState, position, color, pointSize); });
+    }
+
+    //==================================================================================================================
+
+    void Gizmos::Private_SetViewProjection(glm::mat4 const &viewProjection) const
+    {
+        _viewProjectionTracker->SetData(Alias(viewProjection));
     }
 
     //==================================================================================================================

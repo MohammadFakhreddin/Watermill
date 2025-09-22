@@ -7,13 +7,10 @@ using namespace MFA;
 
 //======================================================================================================================
 
-ScoreboardScene::ScoreboardScene(
-    WebViewContainer::Params const & webviewParams,
-    Params params
-)
-    : _params(std::move(params))
+ScoreboardScene::ScoreboardScene(WebViewContainer::Params const &webviewParams, Params params) :
+    _params(std::move(params))
 {
-    auto const * device = LogicalDevice::Instance;
+    auto const *device = LogicalDevice::Instance;
 
     auto const htmlPath = Path::Get("ui/scoreboard/Scoreboard.html");
 
@@ -35,7 +32,7 @@ void ScoreboardScene::Update(float deltaTime)
 
 //======================================================================================================================
 
-void ScoreboardScene::UpdateBuffer(RT::CommandRecordState &recordState)
+void ScoreboardScene::UpdateBuffers(RT::CommandRecordState &recordState)
 {
     _webViewContainer->UpdateBuffer(recordState);
 }
@@ -76,6 +73,10 @@ void ScoreboardScene::Reload()
 
     _webViewContainer->OnReload(clip);
 }
+
+//======================================================================================================================
+
+void ScoreboardScene::OnUI() {}
 
 //======================================================================================================================
 

@@ -9,8 +9,13 @@
 #include "JobSystem.hpp"
 #include "Time.hpp"
 #include "ScopeProfiler.hpp"
+#include "Constants.hpp"
 
+#include <algorithm>
 #include <utility>
+
+#include "Gizmos.hpp"
+#include "imgui.h"
 
 using namespace MFA;
 
@@ -41,6 +46,8 @@ GameScene::GameScene(WebViewContainer::Params const &webviewParams, Params gameP
 
     // Initialize Physics2D system
     _physics2D = std::make_unique<Physics2D>();
+
+
 }
 
 GameScene::~GameScene()
@@ -125,7 +132,7 @@ void GameScene::Update(float const deltaTime)
 
 //======================================================================================================================
 
-void GameScene::UpdateBuffer(MFA::RT::CommandRecordState &recordState)
+void GameScene::UpdateBuffers(MFA::RT::CommandRecordState &recordState)
 {
     _webViewContainer->UpdateBuffer(recordState);
 }
@@ -156,16 +163,26 @@ void GameScene::Render(MFA::RT::CommandRecordState &recordState)
         auto const projection = glm::ortho(left, right, _cameraBottom, _cameraTop, _cameraNear, _cameraFar);
         auto const view = glm::lookAt(_mainCameraPosition, _mainCameraPosition + Math::ForwardVec3, -Math::UpVec3);
         auto const viewProjection = projection * view;
-        // TODO: We need instance rendering
-        for (auto & instance : _instances)
+
+        Gizmos::SetViewProjection(viewProjection);
+
+        if (_debugPhysics == false)
         {
-            SpritePipeline::PushConstants pushConstants {
-                .color = instance->color,
-                .model = glm::transpose(instance->transform->GlobalTransform() * instance->scaleMat),
-                // TODO: This should be a separate buffer
-                .viewProjection = glm::transpose(viewProjection),
-            };
-            _spriteRenderer->Draw(recordState, pushConstants, *instance->sprite);
+            // TODO: We need instance rendering
+            for (auto & instance : _instances)
+            {
+                SpritePipeline::PushConstants pushConstants {
+                    .color = instance->color,
+                    .model = glm::transpose(instance->transform->GlobalTransform() * instance->scaleMat),
+                    // TODO: This should be a separate buffer
+                    .viewProjection = glm::transpose(viewProjection),
+                };
+                _spriteRenderer->Draw(recordState, pushConstants, *instance->sprite);
+            }
+        }
+        else
+        {
+            _physics2D->DrawDebug();
         }
     }
     _webViewContainer->DisplayPass(recordState);
@@ -203,6 +220,15 @@ void GameScene::Reload()
 
 //======================================================================================================================
 
+void GameScene::OnUI()
+{
+    ImGui::Begin("Game Scene");
+    ImGui::Checkbox("DEBUG physics2", &_debugPhysics);
+    ImGui::End();
+}
+
+//======================================================================================================================
+
 void GameScene::UpdateInputAxis(const glm::vec2 &inputAxis) {}
 void GameScene::ButtonA_Changed(bool const value)
 {
@@ -216,6 +242,43 @@ void GameScene::ButtonB_Pressed(bool const value)
     if (value == true)
     {
         _params.backPressed();
+    }
+}
+
+//======================================================================================================================
+
+void GameScene::DeterminePhysicsLayer(const std::string& tag,
+                                      MFA::Physics2D::Layer& outLayer,
+                                      MFA::Physics2D::Layer& outLayerMask)
+{
+    // Convert tag to lowercase for comparison
+    std::string lowerTag = tag;
+    std::transform(lowerTag.begin(), lowerTag.end(), lowerTag.begin(), ::tolower);
+
+    // Default to invalid layer with no collisions
+    outLayer = TimeShift::Layers::Invalid;
+    outLayerMask = TimeShift::Layers::EmptyMask;
+
+    // Determine layer based on tag
+    if (lowerTag.find(TimeShift::Tags::Wall) != std::string::npos)
+    {
+        outLayer = TimeShift::Layers::Wall;
+        outLayerMask = TimeShift::Layers::WallMask;
+    }
+    else if (lowerTag.find(TimeShift::Tags::Player) != std::string::npos)
+    {
+        outLayer = TimeShift::Layers::Player;
+        outLayerMask = TimeShift::Layers::PlayerMask;
+    }
+    else if (lowerTag.find(TimeShift::Tags::Enemy) != std::string::npos)
+    {
+        outLayer = TimeShift::Layers::Enemy;
+        outLayerMask = TimeShift::Layers::EnemyMask;
+    }
+    else if (lowerTag.find(TimeShift::Tags::Lava) != std::string::npos)
+    {
+        outLayer = TimeShift::Layers::Lava;
+        outLayerMask = TimeShift::Layers::LavaMask;
     }
 }
 
@@ -411,22 +474,23 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
         {
             if (collider && collider->transform)
             {
-                // Register the collider with the physics system
-                Physics2D::Layer layer = 1; // Default layer
-                Physics2D::Layer layerMask = 0xFFFFFFFF; // Collide with all layers by default
-                
+                // Determine layer based on transform tag
+                Physics2D::Layer layer;
+                Physics2D::Layer layerMask;
+                DeterminePhysicsLayer(collider->transform->tag, layer, layerMask);
+
                 auto physicsId = _physics2D->Register(
                     Physics2D::Type::AABB,
                     layer,
                     layerMask,
-                    [collider](Physics2D::Layer hitLayer) {
+                    [collider](Physics2D::Layer hitLayer, void * userData) {
                         // Collision callback - can be customized per collider
                         // For now, just a placeholder
                     }
                 );
                 
                 // Store the physics entity reference
-                _physicsEntities.push_back({physicsId, collider});
+                // _physicsEntities.push_back({physicsId, collider});
                 
                 // Set initial position
                 auto globalTransform = collider->transform->GlobalTransform();
@@ -441,6 +505,8 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
             }
         }
     }
+
+    // TODO: We need the entity system back
 
     {// Parsing patrol enemies
         auto const & jsonEnemies = levelParser->GetPatrolEnemy();

@@ -2,24 +2,27 @@
 
 #include <glm.hpp>
 
-class AABB2D
+namespace MFA
 {
-public:
-      
-    glm::vec2 min{};
-    glm::vec2 max{};
+    class AABB2D
+    {
+    public:
 
-    [[nodiscard]]
-    bool Overlap(AABB2D const& other) const;
+        glm::vec2 min{};
+        glm::vec2 max{};
 
-    [[nodiscard]]
-    bool Overlap(glm::vec2 const& position) const;
+        [[nodiscard]]
+        bool Overlap(AABB2D const& other) const;
 
-    static void Min(glm::vec2 const& a, glm::vec2 const& b, glm::vec2& outMin) ;
+        [[nodiscard]]
+        bool Overlap(glm::vec2 const& position) const;
 
-    static void Max(glm::vec2 const& a, glm::vec2 const& b, glm::vec2& outMax) ;
+        static void Min(glm::vec2 const& a, glm::vec2 const& b, glm::vec2& outMin) ;
 
-private:
+        static void Max(glm::vec2 const& a, glm::vec2 const& b, glm::vec2& outMax) ;
 
-    static bool IsOverlapping1D(double const & min1, double const & max1, double const & min2, double const & max2);
-};
+    private:
+
+        static bool IsOverlapping1D(double const & min1, double const & max1, double const & min2, double const & max2);
+    };
+}

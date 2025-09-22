@@ -24,12 +24,7 @@ namespace MFA
     {
         using namespace MFA;
 
-	    if (_vertexBuffer == nullptr || _indexBuffer == nullptr)
-	    {
-	        PrepareBuffers(recordState);
-	    }
-
-        _pointPipeline->BindPipeline(recordState);
+	     _pointPipeline->BindPipeline(recordState);
 
         glm::mat4 matrix = Math::Translate(position);
 
@@ -45,8 +40,10 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    void PointRenderer::PrepareBuffers(RT::CommandRecordState & recordState)
+    void PointRenderer::UpdateBuffers(RT::CommandRecordState & recordState)
 	{
+	    if (_vertexBuffer != nullptr && _indexBuffer != nullptr) return;
+
 	    std::vector<glm::vec3> vertices{ {0.0f, 0.0f, 0.0f} };
 	    std::vector<uint16_t> indices{ 0 };
 

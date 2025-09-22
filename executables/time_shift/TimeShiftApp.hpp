@@ -8,6 +8,7 @@
 #include <functional>
 #include <unordered_map>
 
+#include "Gizmos.hpp"
 #include "UI.hpp"
 
 // TODO: Resource manager
@@ -71,6 +72,7 @@ private:
 
     std::shared_ptr<MFA::DisplayRenderPass> _displayRenderPass;
     std::unique_ptr<MFA::UI> _ui;
+    std::unique_ptr<MFA::Gizmos> _gizmos;
 
     std::shared_ptr<MFA::SolidFillRenderer> _solidFillRenderer;
     std::shared_ptr<MFA::BorderRenderer> _borderRenderer;
