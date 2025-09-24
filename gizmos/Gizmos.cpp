@@ -36,8 +36,18 @@ namespace MFA
         // Create buffer tracker for view projection
         _viewProjectionTracker = std::make_unique<HostVisibleBufferTracker>(viewProjectionBuffer, Alias(viewProjection));
 
+        // We want the gizmos the be drawn on top of everything else.
+        auto pipelineOptions = RB::CreateGraphicPipelineOptions{};
+        pipelineOptions.depthStencil.depthTestEnable = false;
+        pipelineOptions.depthStencil.depthWriteEnable = false;
+
         {
-            auto linePipeline = std::make_shared<LinePipeline>(displayRenderPass, viewProjectionBuffer, device->GetMaxFramePerFlight());
+            auto linePipeline = std::make_shared<LinePipeline>(
+                displayRenderPass,
+                viewProjectionBuffer,
+                device->GetMaxFramePerFlight(),
+                pipelineOptions
+            );
             _lineRenderer = std::make_unique<LineRenderer>(std::move(linePipeline));
         }
         {

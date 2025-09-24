@@ -31,8 +31,8 @@ cbuffer {
 VSOut main(VSIn input) {
     VSOut output;
 
-    float4x4 mvpMatrix = mul(mvpBuffer.viewProjection, pushConsts.model);
-    output.position = mul(mvpMatrix, float4(input.position, 1.0));
+    float4x4 mvpMatrix = mvpBuffer.viewProjection * pushConsts.model;
+    output.position = mvpMatrix * float4(input.position, 1.0);
     output.PSize = pushConsts.pointSize;
 
     return output;

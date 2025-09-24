@@ -53,7 +53,7 @@ namespace MFA
 
             glm::mat4 matrix = translateMat * rotationMat * scaleMat;
 
-            _linePipeline->SetPushConstants(recordState, LinePipeline::PushConstants{.model = matrix, .color = color});
+            _linePipeline->SetPushConstants(recordState, LinePipeline::PushConstants{.model = glm::transpose(matrix), .color = color});
 
             RB::BindIndexBuffer(recordState, *_indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 

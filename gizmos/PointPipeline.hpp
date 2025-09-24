@@ -2,6 +2,7 @@
 
 #include "RenderTypes.hpp"
 #include "render_pass/DisplayRenderPass.hpp"
+#include "RenderBackend.hpp"
 
 #include <glm/glm.hpp>
 
@@ -36,7 +37,8 @@ namespace MFA
         explicit PointPipeline(
             std::shared_ptr<DisplayRenderPass> displayRenderPass,
             std::shared_ptr<RT::BufferGroup> viewProjectionBuffer,
-            int maxSets
+            int maxSets,
+            RB::CreateGraphicPipelineOptions pipelineOptions = RB::CreateGraphicPipelineOptions{}
         );
 
         ~PointPipeline();
@@ -52,7 +54,7 @@ namespace MFA
 
         void CreateDescriptorSetLayout();
 
-        void CreatePipeline();
+        void CreatePipeline(RB::CreateGraphicPipelineOptions & pipelineOptions);
 
         void CreateDescriptorSets();
 

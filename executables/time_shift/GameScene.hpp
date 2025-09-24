@@ -100,5 +100,6 @@ private:
     bool _initialized = false;
     bool _isReadyToRender = false;
 
+    bool _displayLevel = true;
     bool _debugPhysics = false;
 };

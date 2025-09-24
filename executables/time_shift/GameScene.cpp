@@ -163,10 +163,11 @@ void GameScene::Render(MFA::RT::CommandRecordState &recordState)
         auto const projection = glm::ortho(left, right, _cameraBottom, _cameraTop, _cameraNear, _cameraFar);
         auto const view = glm::lookAt(_mainCameraPosition, _mainCameraPosition + Math::ForwardVec3, -Math::UpVec3);
         auto const viewProjection = projection * view;
+        auto const viewProjectionT = glm::transpose(viewProjection);
 
-        Gizmos::SetViewProjection(viewProjection);
+        Gizmos::SetViewProjection(viewProjectionT);
 
-        if (_debugPhysics == false)
+        if (_displayLevel == true)
         {
             // TODO: We need instance rendering
             for (auto & instance : _instances)
@@ -175,12 +176,12 @@ void GameScene::Render(MFA::RT::CommandRecordState &recordState)
                     .color = instance->color,
                     .model = glm::transpose(instance->transform->GlobalTransform() * instance->scaleMat),
                     // TODO: This should be a separate buffer
-                    .viewProjection = glm::transpose(viewProjection),
+                    .viewProjection = viewProjectionT,
                 };
                 _spriteRenderer->Draw(recordState, pushConstants, *instance->sprite);
             }
         }
-        else
+        if (_debugPhysics == true)
         {
             _physics2D->DrawDebug();
         }
@@ -224,6 +225,7 @@ void GameScene::OnUI()
 {
     ImGui::Begin("Game Scene");
     ImGui::Checkbox("DEBUG physics2", &_debugPhysics);
+    ImGui::Checkbox("DEBUG display level", &_displayLevel);
     ImGui::End();
 }
 
@@ -493,8 +495,8 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
                 // _physicsEntities.push_back({physicsId, collider});
                 
                 // Set initial position
-                auto globalTransform = collider->transform->GlobalTransform();
-                glm::vec2 position = glm::vec2(globalTransform[3].x, globalTransform[3].z);
+                auto globalPosition = collider->transform->GlobalPosition();
+                glm::vec2 position = glm::vec2(globalPosition.x, globalPosition.y);
                 position += collider->offset;
                 
                 glm::vec2 halfSize = collider->size * 0.5f;

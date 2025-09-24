@@ -29,7 +29,9 @@ namespace MFA
         glm::mat4 matrix = Math::Translate(position);
 
         _pointPipeline->SetPushConstants(
-            recordState, PointPipeline::PushConstants{.model = matrix, .color = color, .pointSize = pointSize});
+            recordState,
+            PointPipeline::PushConstants{.model = glm::transpose(matrix), .color = color, .pointSize = pointSize}
+        );
 
         RB::BindIndexBuffer(recordState, *_indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 

@@ -14,7 +14,8 @@ namespace MFA
     PointPipeline::PointPipeline(
         std::shared_ptr<DisplayRenderPass> displayRenderPass,
         std::shared_ptr<RT::BufferGroup> viewProjectionBuffer,
-        int const maxSets
+        int const maxSets,
+        RB::CreateGraphicPipelineOptions pipelineOptions
     )
     {
         mDisplayRenderPass = std::move(displayRenderPass);
@@ -26,7 +27,7 @@ namespace MFA
             maxSets
         );
         CreateDescriptorSetLayout();
-        CreatePipeline();
+        CreatePipeline(pipelineOptions);
         CreateDescriptorSets();
     }
 
@@ -104,9 +105,17 @@ namespace MFA
 
     //-------------------------------------------------------------------------------------------------
 
-    void PointPipeline::CreatePipeline()
+    void PointPipeline::CreatePipeline(RB::CreateGraphicPipelineOptions & pipelineOptions)
     {
         // Vertex shader
+        {
+            bool success = Importer::CompileShaderToSPV(
+                Path::Get("shaders/point_pipeline/PointPipeline.vert.hlsl"),
+                Path::Get("shaders/point_pipeline/PointPipeline.vert.spv"),
+                "vert"
+            );
+            MFA_ASSERT(success == true);
+        }
         auto cpuVertexShader = Importer::ShaderFromSPV(
             Path::Get("shaders/point_pipeline/PointPipeline.vert.spv"),
             VK_SHADER_STAGE_VERTEX_BIT,
@@ -118,6 +127,14 @@ namespace MFA
         );
 
         // Fragment shader
+        {
+            bool success = Importer::CompileShaderToSPV(
+                Path::Get("shaders/point_pipeline/PointPipeline.frag.hlsl"),
+                Path::Get("shaders/point_pipeline/PointPipeline.frag.spv"),
+                "frag"
+            );
+            MFA_ASSERT(success == true);
+        }
         auto cpuFragmentShader = Importer::ShaderFromSPV(
             Path::Get("shaders/point_pipeline/PointPipeline.frag.spv"),
             VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -145,7 +162,6 @@ namespace MFA
             .offset = offsetof(Vertex, position),
             });
 
-        RB::CreateGraphicPipelineOptions pipelineOptions{};
         pipelineOptions.useStaticViewportAndScissor = false;
         pipelineOptions.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
         // TODO I think we should submit each pipeline . Each one should have independent depth buffer 

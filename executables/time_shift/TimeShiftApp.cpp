@@ -301,7 +301,6 @@ void TimeShiftApp::Run()
         {
             auto const deltaTimeSec = Time::DeltaTimeSec();
             Update(deltaTimeSec);
-            _ui->Update(deltaTimeSec);
             Render(recordState);
             device->SubmitQueues(recordState);
             device->Present(recordState, swapChainResource->GetSwapChainImages().swapChain);
@@ -319,6 +318,7 @@ void TimeShiftApp::Run()
 
 void TimeShiftApp::Update(float const deltaTime)
 {
+    _ui->Update(deltaTime);
     _currentScene->Update(deltaTime);
 }
 
@@ -333,12 +333,11 @@ void TimeShiftApp::Render(RT::CommandRecordState &recordState)
     _currentScene->UpdateBuffers(recordState);
     _gizmos->UpdateBuffers(recordState);
 
-
     _displayRenderPass->Begin(recordState);
 
     _currentScene->Render(recordState);
-    _ui->Render(recordState);
     _gizmos->Render(recordState);
+    _ui->Render(recordState);
 
     _displayRenderPass->End(recordState);
 

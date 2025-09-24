@@ -2,6 +2,7 @@
 
 #include "RenderTypes.hpp"
 #include "render_pass/DisplayRenderPass.hpp"
+#include "RenderBackend.hpp"
 
 #include <glm/glm.hpp>
 
@@ -30,7 +31,8 @@ namespace MFA
         explicit LinePipeline(
             std::shared_ptr<DisplayRenderPass> displayRenderPass,
             std::shared_ptr<RT::BufferGroup> viewProjectionBuffer,
-            int maxSets // TODO: Instead of having this, we have to dynamically create a bigger pool.
+            int maxSets, // TODO: Instead of having this, we have to dynamically create a bigger pool.
+            RB::CreateGraphicPipelineOptions pipelineOptions = RB::CreateGraphicPipelineOptions{}
         );
 
         ~LinePipeline();
@@ -46,7 +48,7 @@ namespace MFA
 
         void CreateDescriptorSetLayout();
 
-        void CreatePipeline();
+        void CreatePipeline(RB::CreateGraphicPipelineOptions & options);
 
         void CreateDescriptorSets();
 
@@ -58,6 +60,8 @@ namespace MFA
         RT::DescriptorSetGroup mDescriptorSetGroup{};
 
         std::shared_ptr<DisplayRenderPass> mDisplayRenderPass {};
+
+        RB::CreateGraphicPipelineOptions mPipelineOptions {};
         
     };
 }
