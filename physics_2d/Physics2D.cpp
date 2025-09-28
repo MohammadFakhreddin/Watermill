@@ -10,7 +10,7 @@
 namespace MFA
 {
     using ID = Physics2D::EntityID;
-
+    // TODO: Rewrite this class to have signed distance field instead
     //-----------------------------------------------------------------------
 
     Physics2D::Physics2D()

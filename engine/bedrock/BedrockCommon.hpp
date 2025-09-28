@@ -20,29 +20,8 @@ type Get##variable() const                                      \
 }                                                               \
 protected:                                                      \
 
+
 #define MFA_VARIABLE2(variable, type, default, onChange, pre)   \
-protected:                                                      \
-type pre##variable = default;                                   \
-public:                                                         \
-bool Set##variable(type value)                                  \
-{                                                               \
-    if (pre##variable == value)                                 \
-    {                                                           \
-        return false;                                           \
-    }                                                           \
-    pre##variable = value;                                      \
-    onChange();                                                 \
-	return true;                                                \
-}                                                               \
-[[nodiscard]]                                                   \
-type Get##variable() const                                      \
-{                                                               \
-    return pre##variable;                                       \
-}                                                               \
-protected:                                                      \
-
-
-#define MFA_VARIABLE3(variable, type, default, onChange, pre)   \
 protected:                                                      \
 type pre##variable = default;                                   \
 public:                                                         \
@@ -62,6 +41,28 @@ type const & Get##variable() const                              \
     return pre##variable;                                       \
 }                                                               \
 protected:                                                      \
+
+#define MFA_VARIABLE3(variable, type, default, onSet, onGet, pre)   \
+protected:                                                          \
+type pre##variable = default;                                       \
+public:                                                             \
+bool Set##variable(type value)                                      \
+{                                                                   \
+    if (pre##variable == value)                                     \
+    {                                                               \
+        return false;                                               \
+    }                                                               \
+    pre##variable = value;                                          \
+    onSet();                                                        \
+    return true;                                                    \
+}                                                                   \
+[[nodiscard]]                                                       \
+type const & Get##variable()                                        \
+{                                                                   \
+    onGet();                                                        \
+    return pre##variable;                                           \
+}                                                                   \
+protected:                                                          \
 
 
 #define MFA_PARALLEL_BLOCK(size)                                                                        \

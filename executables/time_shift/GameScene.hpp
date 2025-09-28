@@ -1,13 +1,15 @@
 #pragma once
 
-#include "LevelParser.hpp"
+#include "AABB_Collider.hpp"
+#include "Constants.hpp"
 #include "IScene.hpp"
+#include "LevelParser.hpp"
+#include "PatrolEnemy.hpp"
+#include "Physics2D.hpp"
 #include "SpriteRenderer.hpp"
 #include "Transform.hpp"
 #include "WebViewContainer.hpp"
 #include "camera/ArcballCamera.hpp"
-#include "PatrolEnemy.hpp"
-#include "Physics2D.hpp"
 
 class GameScene final : public IScene
 {
@@ -51,9 +53,15 @@ private:
 
     void ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser);
 
-    static void DeterminePhysicsLayer(const std::string& tag,
-                                      MFA::Physics2D::Layer& outLayer,
-                                      MFA::Physics2D::Layer& outLayerMask);
+    [[nodiscard]]
+    static Constants::GameTags ParseGameTag(std::string const & tag);
+
+    [[nodiscard]]
+    static bool DeterminePhysicsLayer(
+        Constants::GameTags tag,
+        MFA::Physics2D::Layer& outLayer,
+        MFA::Physics2D::Layer& outLayerMask
+    );
 
     std::unique_ptr<WebViewContainer> _webViewContainer;
     std::vector<litehtml::element::ptr> _buttons{};
@@ -76,14 +84,10 @@ private:
     std::shared_ptr<SpriteRenderer> _spriteRenderer;
     std::vector<std::shared_ptr<PatrolEnemy>> _patrolEnemies;
 
-    // struct PhysicsEntity
-    // {
-    //     MFA::Physics2D::EntityID physicsId;
-    //     std::shared_ptr<LevelParser::BoxCollider2D> collider;
-    // };
-    // std::vector<PhysicsEntity> _physicsEntities;
     std::unique_ptr<MFA::Physics2D> _physics2D;
-    // TODO: We need a physics bddy for each object with boxCollider2d
+    std::vector<std::shared_ptr<MFA::AABB_Collider>> _colliders;
+
+    MFA::Transform * _spawnPoint = nullptr;
 
     float _cameraLeft{};
     float _cameraRight{};

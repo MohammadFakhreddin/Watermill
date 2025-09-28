@@ -2,6 +2,7 @@
 
 #include "BedrockRotation.hpp"
 #include "BedrockCommon.hpp"
+#include "BedrockSignal.hpp"
 
 #include <string>
 #include <set>
@@ -58,7 +59,8 @@ namespace MFA
         std::string name;
         std::string tag;
 
-        // TODO: Add an signal to listen to the class being dirty
+        // Signal emitted when transform becomes dirty
+        Signal<> DirtyListener;
 
     private:
 
@@ -67,13 +69,13 @@ namespace MFA
         void SetGlobalTransformDirty();
 
         // Local position
-        MFA_VARIABLE3(LocalPosition, glm::vec3, glm::vec3(0.0f, 0.0f, 0.0f), SetLocalTransformDirty, m)
+        MFA_VARIABLE2(LocalPosition, glm::vec3, glm::vec3(0.0f, 0.0f, 0.0f), SetLocalTransformDirty, m)
         // Local rotation
-    	MFA_VARIABLE3(LocalRotation, Rotation, Rotation(glm::identity<glm::quat>()), SetLocalTransformDirty, m)
+    	MFA_VARIABLE2(LocalRotation, Rotation, Rotation(glm::identity<glm::quat>()), SetLocalTransformDirty, m)
         // Local scale
-    	MFA_VARIABLE3(LocalScale, glm::vec3, glm::vec3(1.0f, 1.0f, 1.0f), SetLocalTransformDirty, m)
+    	MFA_VARIABLE2(LocalScale, glm::vec3, glm::vec3(1.0f, 1.0f, 1.0f), SetLocalTransformDirty, m)
         // Local extra transform
-    	MFA_VARIABLE3(LocalExtraTransform, glm::mat4, glm::identity<glm::mat4>(), SetLocalTransformDirty, m)
+    	MFA_VARIABLE2(LocalExtraTransform, glm::mat4, glm::identity<glm::mat4>(), SetLocalTransformDirty, m)
         
         bool mIsLocalTransformDirty = true;
         bool mGlobalTransformDirty = true;

@@ -10,6 +10,7 @@
 #include "Time.hpp"
 #include "ScopeProfiler.hpp"
 #include "Constants.hpp"
+#include "AABB_Collider.hpp"
 
 #include <algorithm>
 #include <utility>
@@ -106,25 +107,15 @@ void GameScene::Update(float const deltaTime)
         }
     }
 
-    // {// Update physics entities positions
-    //     for (auto & physicsEntity : _physicsEntities)
-    //     {
-    //         auto & collider = physicsEntity.collider;
-    //         if (collider && collider->transform)
-    //         {
-    //             auto globalTransform = collider->transform->GlobalTransform();
-    //             glm::vec2 position = glm::vec2(globalTransform[3].x, globalTransform[3].z);
-    //             position += collider->offset;
-    //
-    //             glm::vec2 halfSize = collider->size * 0.5f;
-    //             glm::vec2 min = position - halfSize;
-    //             glm::vec2 max = position + halfSize;
-    //
-    //             // Update the physics body position
-    //             _physics2D->MoveAABB(physicsEntity.physicsId, min, max, !collider->isTrigger);
-    //         }
-    //     }
-    // }
+    {// Update colliders - only updates physics when position changes
+        for (auto & collider : _colliders)
+        {
+            if (collider)
+            {
+                collider->Update();
+            }
+        }
+    }
 
     // Update physics system
     _physics2D->Update();
@@ -154,8 +145,8 @@ void GameScene::Render(MFA::RT::CommandRecordState &recordState)
         auto const ratio = (float)windowWidth / (float)windowHeight;
 
         auto const newWidth = ratio * worldHeight ;
-        auto const left = xCenter - newWidth / 2.0f;
-        auto const right = xCenter + newWidth / 2.0f;
+        auto const left = xCenter + newWidth / 2.0f;
+        auto const right = xCenter - newWidth / 2.0f;
         // auto const newHeight = worldWidth / ratio;
         // auto const bottom = yCenter - newHeight * 0.5f;
         // auto const top = yCenter + newHeight * 0.5f;
@@ -249,43 +240,6 @@ void GameScene::ButtonB_Pressed(bool const value)
 
 //======================================================================================================================
 
-void GameScene::DeterminePhysicsLayer(const std::string& tag,
-                                      MFA::Physics2D::Layer& outLayer,
-                                      MFA::Physics2D::Layer& outLayerMask)
-{
-    // Convert tag to lowercase for comparison
-    std::string lowerTag = tag;
-    std::transform(lowerTag.begin(), lowerTag.end(), lowerTag.begin(), ::tolower);
-
-    // Default to invalid layer with no collisions
-    outLayer = TimeShift::Layers::Invalid;
-    outLayerMask = TimeShift::Layers::EmptyMask;
-
-    // Determine layer based on tag
-    if (lowerTag.find(TimeShift::Tags::Wall) != std::string::npos)
-    {
-        outLayer = TimeShift::Layers::Wall;
-        outLayerMask = TimeShift::Layers::WallMask;
-    }
-    else if (lowerTag.find(TimeShift::Tags::Player) != std::string::npos)
-    {
-        outLayer = TimeShift::Layers::Player;
-        outLayerMask = TimeShift::Layers::PlayerMask;
-    }
-    else if (lowerTag.find(TimeShift::Tags::Enemy) != std::string::npos)
-    {
-        outLayer = TimeShift::Layers::Enemy;
-        outLayerMask = TimeShift::Layers::EnemyMask;
-    }
-    else if (lowerTag.find(TimeShift::Tags::Lava) != std::string::npos)
-    {
-        outLayer = TimeShift::Layers::Lava;
-        outLayerMask = TimeShift::Layers::LavaMask;
-    }
-}
-
-//======================================================================================================================
-
 void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
 {
     // MFA_SCOPE_Profiler("Read level from json")
@@ -295,15 +249,12 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
 
     std::weak_ptr sceneRef = shared_from_this();
 
-    auto * logicalDevice = LogicalDevice::Instance;
-    auto * device = logicalDevice->GetVkDevice();
-    auto * commandPool = logicalDevice->GetGraphicCommandPool();
+    auto *logicalDevice = LogicalDevice::Instance;
+    auto *device = logicalDevice->GetVkDevice();
+    auto *commandPool = logicalDevice->GetGraphicCommandPool();
 
     MFA_SCOPE_LOCK(commandPool->lock);
-    auto commandBufferGroup = RB::BeginSecondaryCommand(
-        device,
-        *commandPool
-    );
+    auto commandBufferGroup = RB::BeginSecondaryCommand(device, *commandPool);
     auto commandBuffer = commandBufferGroup->commandBuffers[0];
 
     auto errorTexture = ResourceManager::ErrorTexture();
@@ -311,17 +262,17 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
     std::unordered_map<int, std::shared_ptr<RT::BufferAndMemory>> vertexBuffers{};
     std::unordered_map<int, std::tuple<std::shared_ptr<RT::BufferAndMemory>, int>> indexBuffers{};
 
-    auto const & rawBuffers = levelParser->GetBuffers();
-    auto const & rawBlob = levelParser->GetBlob();
+    auto const &rawBuffers = levelParser->GetBuffers();
+    auto const &rawBlob = levelParser->GetBlob();
     std::vector<std::shared_ptr<RT::BufferGroup>> stageBuffers;
 
     for (int bIdx = 0; bIdx < rawBuffers.size(); ++bIdx)
     {
-        auto const & rawBuffer = rawBuffers[bIdx];
+        auto const &rawBuffer = rawBuffers[bIdx];
 
-        auto const & bufferType = rawBuffer->type;
-        auto const & bufferOffset = rawBuffer->offset;
-        auto const & bufferSize = rawBuffer->size;
+        auto const &bufferType = rawBuffer->type;
+        auto const &bufferOffset = rawBuffer->offset;
+        auto const &bufferSize = rawBuffer->size;
 
         MFA_ASSERT(bufferOffset >= 0);
         MFA_ASSERT(bufferSize > 0);
@@ -338,9 +289,9 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
             std::vector<SpritePipeline::UV> uvs(oVsCount);
             for (size_t i = 0; i < oVsCount; ++i)
             {
-                auto const & levelVertex = levelVertices[i];
-                auto & position = positions[i];
-                auto & uv = uvs[i];
+                auto const &levelVertex = levelVertices[i];
+                auto &position = positions[i];
+                auto &uv = uvs[i];
 
                 position = glm::vec4{levelVertex.position, 0.0f, 1.0f};
 
@@ -349,11 +300,7 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
             }
 
             auto [vertexBuffer, vertexStageBuffer] = _spriteRenderer->AllocateVertexBuffer(
-                commandBuffer,
-                (int)positions.size(),
-                positions.data(),
-                uvs.data()
-            );
+                commandBuffer, (int)positions.size(), positions.data(), uvs.data());
 
             vertexBuffers.emplace(bIdx, std::move(vertexBuffer));
             stageBuffers.emplace_back(std::move(vertexStageBuffer));
@@ -370,11 +317,8 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
                 indices[i] = levelIndices[i];
             }
 
-            auto [indexBuffer, indexStageBuffer] = _spriteRenderer->AllocateIndexBuffer(
-                commandBuffer,
-                (int)indices.size(),
-                indices.data()
-            );
+            auto [indexBuffer, indexStageBuffer] =
+                _spriteRenderer->AllocateIndexBuffer(commandBuffer, (int)indices.size(), indices.data());
 
             indexBuffers.emplace(bIdx, std::tuple{std::move(indexBuffer), indicesCount});
             stageBuffers.emplace_back(indexStageBuffer);
@@ -385,11 +329,11 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
         }
     }
 
-    {// Parsing sprites
-        auto const & jsonSprites = levelParser->GetSprites();
+    { // Parsing sprites
+        auto const &jsonSprites = levelParser->GetSprites();
         for (int i = 0; i < (int)jsonSprites.size(); ++i)
         {
-            auto & jsonSprite = jsonSprites[i];
+            auto &jsonSprite = jsonSprites[i];
 
             MFA_ASSERT(jsonSprite->vertexBufferIndex >= 0);
             auto vertexBuffer = vertexBuffers[jsonSprite->vertexBufferIndex];
@@ -404,10 +348,10 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
             std::shared_ptr sprite = _spriteRenderer->CreateSprite(vertexBuffer, indexCount, indexBuffer, material);
             _sprites.emplace_back(sprite);
 
-            auto const & instances = levelParser->GetSpriteInstances(i);
-            for (auto const & instance : instances)
+            auto const &instances = levelParser->GetSpriteInstances(i);
+            for (auto const &instance : instances)
             {
-                glm::vec3 flipScale {1.0f, 1.0f, 1.0f};
+                glm::vec3 flipScale{1.0f, 1.0f, 1.0f};
                 if (instance->flipX == true)
                 {
                     flipScale.x *= -1.0f;
@@ -425,7 +369,7 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
                 myInstance->color = instance->color;
 
                 bool inserted = false;
-                for (int j = 0 ; j < _instances.size(); j++)
+                for (int j = 0; j < _instances.size(); j++)
                 {
                     if (_instances[j]->transform->GlobalPosition().z < myInstance->transform->GlobalPosition().z)
                     {
@@ -444,78 +388,100 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
             if (std::filesystem::exists(address))
             {
                 int spriteIndex = i;
-                ResourceManager::RequestImage(address.c_str(), [spriteIndex, sceneRef](std::shared_ptr<RT::GpuTexture> gpuTexture)->void
-                {
-                    std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight());
-                    LogicalDevice::AddRenderTask([spriteIndex, sceneRef, gpuTexture, counter](RT::CommandRecordState & recordState)->bool
+                ResourceManager::RequestImage(
+                    address.c_str(),
+                    [spriteIndex, sceneRef](std::shared_ptr<RT::GpuTexture> gpuTexture) -> void
                     {
-                        auto scenePtr = sceneRef.lock();
-                        if (scenePtr == nullptr)
-                        {
-                           return false;
-                        }
-                        auto * scene = (GameScene *)scenePtr.get();
-                        auto & sprite = scene->_sprites[spriteIndex];
-                        scene->_spriteRenderer->UpdateMaterial(recordState.frameIndex, *sprite->material, gpuTexture);
-                        (*counter) -= 1;
-                        if (*counter <= 0)
-                        {
-                            // Remove the task from the queue
-                            return false;
-                        }
-                        return true;
+                        std::shared_ptr<int> counter =
+                            std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight());
+                        LogicalDevice::AddRenderTask(
+                            [spriteIndex, sceneRef, gpuTexture, counter](RT::CommandRecordState &recordState) -> bool
+                            {
+                                auto scenePtr = sceneRef.lock();
+                                if (scenePtr == nullptr)
+                                {
+                                    return false;
+                                }
+                                auto *scene = (GameScene *)scenePtr.get();
+                                auto &sprite = scene->_sprites[spriteIndex];
+
+                                scene->_spriteRenderer->UpdateMaterial(
+                                    recordState.frameIndex,
+                                    *sprite->material,
+                                    gpuTexture
+                                );
+
+                                (*counter) -= 1;
+                                if (*counter <= 0)
+                                {
+                                    // Remove the task from the queue
+                                    return false;
+                                }
+                                return true;
+                            });
                     });
-                });
             }
         }
     }
 
-    {// Parsing colliders and register with physics system
-        auto const & jsonColliders = levelParser->GetColliders();
-        for (auto const & collider : jsonColliders)
+    { // Parsing colliders and creating AABB_Collider instances
+        auto const &jsonColliders = levelParser->GetColliders();
+        for (auto const &collider : jsonColliders)
         {
-            if (collider && collider->transform)
+            if (collider && collider->transform != nullptr)
             {
+                auto const gameTag = ParseGameTag(collider->transform->tag);
+
                 // Determine layer based on transform tag
                 Physics2D::Layer layer;
                 Physics2D::Layer layerMask;
-                DeterminePhysicsLayer(collider->transform->tag, layer, layerMask);
+                bool const isValid = DeterminePhysicsLayer(gameTag, layer, layerMask);
+                if (isValid == false)
+                {
+                    continue;
+                }
 
-                auto physicsId = _physics2D->Register(
-                    Physics2D::Type::AABB,
+                // Create AABB_Collider with proper size and offset
+                auto aabbCollider = std::make_shared<MFA::AABB_Collider>(
+                    collider->transform,
                     layer,
                     layerMask,
-                    [collider](Physics2D::Layer hitLayer, void * userData) {
-                        // Collision callback - can be customized per collider
-                        // For now, just a placeholder
-                    }
+                    collider->size,
+                    collider->offset,
+                    collider->isTrigger
                 );
-                
-                // Store the physics entity reference
-                // _physicsEntities.push_back({physicsId, collider});
-                
-                // Set initial position
-                auto globalPosition = collider->transform->GlobalPosition();
-                glm::vec2 position = glm::vec2(globalPosition.x, globalPosition.y);
-                position += collider->offset;
-                
-                glm::vec2 halfSize = collider->size * 0.5f;
-                glm::vec2 min = position - halfSize;
-                glm::vec2 max = position + halfSize;
-                
-                _physics2D->MoveAABB(physicsId, min, max, false);
+
+                _colliders.emplace_back(std::move(aabbCollider));
+            }
+        }
+    }
+
+    {// TODO: Searching for spawn point
+        for (auto & transform : _transforms)
+        {
+            std::string lowerTag = transform->tag;
+            std::ranges::transform(lowerTag, lowerTag.begin(), ::tolower);
+            if (lowerTag.find(Constants::GameTagKeys::SpawnPoint) != std::string::npos)
+            {
+                // We can have maximum of one spawn point.
+                MFA_ASSERT(_spawnPoint == nullptr);
+                _spawnPoint = transform.get();
             }
         }
     }
 
     // TODO: We need the entity system back
 
-    {// Parsing patrol enemies
-        auto const & jsonEnemies = levelParser->GetPatrolEnemy();
+    { // Parsing patrol enemies
+        auto const &jsonEnemies = levelParser->GetPatrolEnemy();
         for (int i = 0; i < (int)jsonEnemies.size(); ++i)
         {
             auto rawEnemy = jsonEnemies[i];
-            auto patrolEnemy = std::make_shared<PatrolEnemy>(rawEnemy->transform, rawEnemy->movementSpeed, rawEnemy->patrolPositions);
+            auto patrolEnemy = std::make_shared<PatrolEnemy>(
+                rawEnemy->transform,
+                rawEnemy->movementSpeed,
+                rawEnemy->patrolPositions
+            );
             _patrolEnemies.emplace_back(std::move(patrolEnemy));
         }
     }
@@ -523,34 +489,34 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
     RB::EndCommandBuffer(commandBuffer);
 
     std::weak_ptr weakRef = shared_from_this();
-    logicalDevice->AddRenderTask([commandBufferGroup = std::move(commandBufferGroup), stageBuffers, weakRef](RT::CommandRecordState & recordState)->bool
-    {
-        auto strongRef = weakRef.lock();
-        if (strongRef == nullptr)
+    logicalDevice->AddRenderTask(
+        [commandBufferGroup = std::move(commandBufferGroup), stageBuffers,
+         weakRef](RT::CommandRecordState &recordState) -> bool
         {
-            return false;
-        }
-
-        RB::ExecuteCommandBuffer(
-            recordState.commandBuffer,
-            *commandBufferGroup
-        );
-
-        std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight() + 1);
-        LogicalDevice::AddRenderTask([stageBuffers, counter](RT::CommandRecordState const & recordState)->bool
-        {
-            (*counter) -= 1;
-            if (*counter <= 0)
+            auto strongRef = weakRef.lock();
+            if (strongRef == nullptr)
             {
                 return false;
             }
-            return true;
+
+            RB::ExecuteCommandBuffer(recordState.commandBuffer, *commandBufferGroup);
+
+            std::shared_ptr<int> counter = std::make_shared<int>(LogicalDevice::Instance->GetMaxFramePerFlight() + 1);
+            LogicalDevice::AddRenderTask(
+                [stageBuffers, counter](RT::CommandRecordState const &recordState) -> bool
+                {
+                    (*counter) -= 1;
+                    if (*counter <= 0)
+                    {
+                        return false;
+                    }
+                    return true;
+                });
+
+            return false;
         });
 
-        return false;
-    });
-
-    auto const & cameras = levelParser->GetCameras();
+    auto const &cameras = levelParser->GetCameras();
     if (cameras.empty() == false)
     {
         if (cameras.size() > 1)
@@ -558,7 +524,7 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
             MFA_LOG_WARN("More than one camera detected");
         }
 
-        auto & mainCamera = cameras[0];
+        auto &mainCamera = cameras[0];
 
         _cameraLeft = mainCamera->right;
         _cameraRight = mainCamera->left;
@@ -579,6 +545,99 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
     }
 
     _isReadyToRender = true;
+}
+
+//======================================================================================================================
+
+Constants::GameTags GameScene::ParseGameTag(std::string const &tag)
+{
+    using namespace Constants;
+
+    // Convert tag to lowercase for comparison
+    std::string lowerTag = tag;
+    std::ranges::transform(lowerTag, lowerTag.begin(), ::tolower);
+
+    // Determine tag based on string
+    if (lowerTag.find(GameTagKeys::Block) != std::string::npos)
+    {
+        return GameTags::Block;
+    }
+
+    if (lowerTag.find(GameTagKeys::Player) != std::string::npos)
+    {
+        return GameTags::Player;
+    }
+
+    if (lowerTag.find(GameTagKeys::Enemy) != std::string::npos)
+    {
+        return GameTags::Enemy;
+    }
+
+    if (lowerTag.find(GameTagKeys::Coin) != std::string::npos)
+    {
+        return GameTags::Coin;
+    }
+
+    if (lowerTag.find(GameTagKeys::SpawnPoint) != std::string::npos)
+    {
+        return GameTags::SpawnPoint;
+    }
+
+    if (lowerTag.find(GameTagKeys::FinishPoint) != std::string::npos)
+    {
+        return GameTags::FinishPoint;
+    }
+
+    return GameTags::Invalid;
+}
+
+//======================================================================================================================
+
+bool GameScene::DeterminePhysicsLayer(
+    const Constants::GameTags tag,
+    Physics2D::Layer& outLayer,
+    Physics2D::Layer& outLayerMask
+)
+{
+    using namespace Constants;
+
+    // Determine layer based on tag
+    if (tag == GameTags::Block)
+    {
+        outLayer = Layers::Block;
+        outLayerMask = Masks::WallMask;
+        return true;
+    }
+
+    if (tag == GameTags::Player)
+    {
+        outLayer = Layers::Player;
+        outLayerMask = Masks::PlayerMask;
+        return true;
+    }
+
+    if (tag == GameTags::Enemy)
+    {
+        outLayer = Layers::Enemy;
+        outLayerMask = Masks::EnemyMask;
+        return true;
+    }
+
+    if (tag == GameTags::Coin)
+    {
+        outLayer = Layers::Coin;
+        outLayerMask = Masks::CoinMask;
+        return true;
+    }
+
+    if (tag == GameTags::FinishPoint)
+    {
+        outLayer = Layers::FinishPoint;
+        outLayerMask = Masks::FinishMask;
+        return true;
+    }
+
+    return false;
 }
 
 //======================================================================================================================

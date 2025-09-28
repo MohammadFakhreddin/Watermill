@@ -242,9 +242,12 @@ namespace MFA
 		mGlobalTransformDirty = true;
 		mGlobalPositionDirty = true;
 		mGlobalRotationDirty = true;
-		mForwardDirty = true;
+	    mForwardDirty = true;
 		mUpDirty = true;
 		mRightDirty = true;
+
+		// Emit dirty signal to notify listeners
+		DirtyListener.Emit();
 
 		for(auto * child : mChildren)
 		{
