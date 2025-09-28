@@ -107,13 +107,17 @@ void GameScene::Update(float const deltaTime)
         }
     }
 
-    {// Update colliders - only updates physics when position changes
-        for (auto & collider : _colliders)
+    {// Update player
+        if (_player)
         {
-            if (collider)
-            {
-                collider->Update();
-            }
+            _player->Update(deltaTime);
+        }
+    }
+
+    {// Update colliders - only updates physics when position changes
+        for (auto const & collider : _colliders)
+        {
+            collider->Update();
         }
     }
 
@@ -222,7 +226,14 @@ void GameScene::OnUI()
 
 //======================================================================================================================
 
-void GameScene::UpdateInputAxis(const glm::vec2 &inputAxis) {}
+void GameScene::UpdateInputAxis(const glm::vec2 &inputAxis)
+{
+    if (_player)
+    {
+        _player->SetMovementInput(inputAxis);
+    }
+}
+
 void GameScene::ButtonA_Changed(bool const value)
 {
     if (value == true)
@@ -230,6 +241,7 @@ void GameScene::ButtonA_Changed(bool const value)
         _params.nextLevel();
     }
 }
+
 void GameScene::ButtonB_Pressed(bool const value)
 {
     if (value == true)
@@ -451,7 +463,18 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
                     collider->isTrigger
                 );
 
-                _colliders.emplace_back(std::move(aabbCollider));
+                _colliders.emplace_back(aabbCollider);
+
+                if (gameTag == Constants::GameTags::Player)
+                {
+                    MFA_ASSERT(_player == nullptr);
+                    // Found the player collider - create player instance
+                    _player = std::make_unique<Player>(
+                        collider->transform,
+                        aabbCollider.get(),
+                        10.0f  // Movement  // TODO: This should be an adjustable gameplay parameter.
+                    );
+                }
             }
         }
     }
@@ -466,6 +489,7 @@ void GameScene::ReadLevelFromJson(std::shared_ptr<LevelParser> levelParser)
                 // We can have maximum of one spawn point.
                 MFA_ASSERT(_spawnPoint == nullptr);
                 _spawnPoint = transform.get();
+                break;
             }
         }
     }

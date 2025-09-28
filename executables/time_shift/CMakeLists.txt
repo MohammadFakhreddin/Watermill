@@ -26,6 +26,8 @@ list(
     "${CMAKE_CURRENT_SOURCE_DIR}/PatrolEnemy.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Constants.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Constants.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Player.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Player.hpp"
 )
 
 ### Linking libraries ####################################

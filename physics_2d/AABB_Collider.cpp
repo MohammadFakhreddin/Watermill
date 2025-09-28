@@ -67,6 +67,8 @@ namespace MFA
     {
         UpdateSize();
         UpdateOffset();
+        
+        mIsTransformDirty = false;
 
         position += mGlobalOffset;
         glm::vec2 halfSize = mGlobalSize * 0.5f;
@@ -90,7 +92,7 @@ namespace MFA
 
         if (mIsTrigger == true || checkForCollision == false)
         {
-            AABB2D const & aabb = GetAABB(finalPosition);
+            AABB2D const & aabb = GetAABB(finalPosition.xy);
             bool success = Physics2D::Instance->MoveAABB(mEntityId, aabb.min, aabb.max, false);
             MFA_ASSERT(success == true);
             mStartPosition = finalPosition.xy;
@@ -188,7 +190,7 @@ namespace MFA
                 );
                 MFA_ASSERT(success == true);
 
-                mTransform->SetLocalPosition(glm::vec3{mStartPosition.x, mStartPosition.y, finalPosition.z});
+                mTransform->SetGlobalPosition(glm::vec3{mStartPosition.x, mStartPosition.y, finalPosition.z});
             }
             while (true);
         }
@@ -210,7 +212,7 @@ namespace MFA
 
     void AABB_Collider::UpdateSize()
     {
-        if (mIsSizeDirty == true)
+        if (mIsSizeDirty == true || mIsTransformDirty == true)
         {
             mIsSizeDirty = false;
             mGlobalSize = mTransform->GlobalTransform() * glm::vec4(mSize.xy, 0.0f, 0.0f);
@@ -221,7 +223,7 @@ namespace MFA
 
     void AABB_Collider::UpdateOffset()
     {
-        if (mIsOffsetDirty == true)
+        if (mIsOffsetDirty == true || mIsTransformDirty == true)
         {
             mIsOffsetDirty = false;
             mGlobalOffset = mTransform->GlobalTransform() * glm::vec4(mOffset.xy, 0.0f, 0.0f);

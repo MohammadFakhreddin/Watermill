@@ -6,6 +6,7 @@
 #include "LevelParser.hpp"
 #include "PatrolEnemy.hpp"
 #include "Physics2D.hpp"
+#include "Player.hpp"
 #include "SpriteRenderer.hpp"
 #include "Transform.hpp"
 #include "WebViewContainer.hpp"
@@ -86,6 +87,8 @@ private:
 
     std::unique_ptr<MFA::Physics2D> _physics2D;
     std::vector<std::shared_ptr<MFA::AABB_Collider>> _colliders;
+
+    std::unique_ptr<Player> _player;
 
     MFA::Transform * _spawnPoint = nullptr;
 
